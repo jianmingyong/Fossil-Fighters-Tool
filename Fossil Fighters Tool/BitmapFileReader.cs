@@ -24,40 +24,67 @@ public class BitmapFileReader : IDisposable
 
         Unknown1 = binaryReader.ReadInt32();
         
-        if ((Unknown1 & 0xF) == 0x04)
+        switch (Unknown1 & 0xF)
         {
-            Width = 16;
-            Height = 16;
-        }
-        else if ((Unknown1 & 0xF) == 0x08)
-        {
-            Width = 32;
-            Height = 32;
-        }
-        else if ((Unknown1 & 0xF) == 0x09)
-        {
-            Width = 32;
-            Height = 16;
-        }
-        else if ((Unknown1 & 0xF) == 0x0A)
-        {
-            Width = 16;
-            Height = 32;
-        }
-        else if ((Unknown1 & 0xF) == 0x0C)
-        {
-            Width = 64;
-            Height = 64;
-        }
-        else if ((Unknown1 & 0xF) == 0x0D)
-        {
-            Width = 64;
-            Height = 32;
-        }
-        else if ((Unknown1 & 0xF) == 0x0E)
-        {
-            Width = 32;
-            Height = 64;
+            case 0x00:
+                Width = 8;
+                Height = 8;
+                break;
+
+            case 0x01:
+                Width = 16;
+                Height = 8;
+                break;
+
+            case 0x02:
+                Width = 8;
+                Height = 16;
+                break;
+
+            case 0x04:
+                Width = 16;
+                Height = 16;
+                break;
+
+            case 0x05:
+                Width = 32;
+                Height = 8;
+                break;
+            
+            case 0x06:
+                Width = 8;
+                Height = 32;
+                break;
+
+            case 0x08:
+                Width = 32;
+                Height = 32;
+                break;
+
+            case 0x09:
+                Width = 32;
+                Height = 16;
+                break;
+
+            case 0x0A:
+                Width = 16;
+                Height = 32;
+                break;
+
+            case 0x0C:
+                Width = 64;
+                Height = 64;
+                break;
+
+            case 0x0D:
+                Width = 64;
+                Height = 32;
+                break;
+
+            case 0x0E:
+                Width = 32;
+                Height = 64;
+                break;
         }
 
         ColorType = Unknown1 >> 16;

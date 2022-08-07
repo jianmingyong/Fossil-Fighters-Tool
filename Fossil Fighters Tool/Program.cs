@@ -38,7 +38,6 @@ class Program
         try
         {
             ExtractMarFile(inputFilePath);
-            return;
         }
         catch (Exception)
         {
@@ -65,6 +64,16 @@ class Program
             {
                 try
                 {
+                    ExtractHuffmanFile(Path.Combine(marExtractedDirectory, i.ToString(), $"{j}.bin"));
+                    Console.WriteLine($"Extracted: {Path.Combine(marExtractedDirectory, i.ToString(), $"{j}.bin.decompressed")}");
+                }
+                catch (Exception)
+                {
+                    // ignored
+                }
+                
+                try
+                {
                     ExtractMmsFile(Path.Combine(marExtractedDirectory, i.ToString(), $"{j}.bin"));
                 }
                 catch (Exception)
@@ -75,6 +84,13 @@ class Program
         }
     }
 
+    private static void ExtractHuffmanFile(string inputFilePath)
+    {
+        using var huffmanFileReader = new HuffmanFileReader(new FileStream(inputFilePath, FileMode.Open, FileAccess.Read));
+        var inputFileDirectory = Path.GetDirectoryName(inputFilePath)!;
+        huffmanFileReader.Decompress(inputFileDirectory);
+    }
+    
     private static void ExtractMmsFile(string inputFilePath)
     {
         using var mmsFileReader = new MmsFileReader(new FileStream(inputFilePath, FileMode.Open, FileAccess.Read));
@@ -114,16 +130,16 @@ class Program
 
                 if (bitmapFileReader.ColorType == 0)
                 {
-                    if (colorPalettes.Count > 1) return;
-                    
                     while (bitmapIndex * 2 < width * height)
                     {
                         for (var y = 0; y < 8; y++)
                         {
                             for (var x = 0; x < 8; x += 2)
                             {
-                                image[x + gridX * 8, y + gridY * 8] = colorPalettes[0].ColorTable[bitmapFileReader.BitmapColorIndexes[bitmapIndex] >> 4];
-                                image[x + 1 + gridX * 8, y + gridY * 8] = colorPalettes[0].ColorTable[bitmapFileReader.BitmapColorIndexes[bitmapIndex] & 0xF];
+                                // TODO: Which color palette to use? God knows...
+                                image[x + gridX * 8, y + gridY * 8] = colorPalettes[i / (mmsFileReader.BitmapFileIndexes.Length / colorPalettes.Count)].ColorTable[bitmapFileReader.BitmapColorIndexes[bitmapIndex] >> 4];
+                                image[x + 1 + gridX * 8, y + gridY * 8] = colorPalettes[i / (mmsFileReader.BitmapFileIndexes.Length / colorPalettes.Count)].ColorTable[bitmapFileReader.BitmapColorIndexes[bitmapIndex] & 0xF];
+                                
                                 bitmapIndex++;
                             }
                         }
@@ -160,6 +176,7 @@ class Program
                 }
                 
                 image.SaveAsPng(Path.Combine(inputFileDirectory, $"{mmsFileReader.BitmapFileIndexes[i]}.png"));
+                Console.WriteLine($"Extracted: {Path.Combine(inputFileDirectory, $"{mmsFileReader.BitmapFileIndexes[i]}.png")}");
             }
             catch (Exception)
             {
