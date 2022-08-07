@@ -78,12 +78,27 @@ public class HuffmanFileReader : IDisposable
         RootNode = new HuffmanNode(this, stream.Position, false);
 
         var compressedBitstream = new List<int>();
-        
+
         while (_stream.Position < _stream.Length)
         {
-            compressedBitstream.Add(binaryReader.ReadInt32());
+            if (_stream.Position + 4 <= _stream.Length)
+            {
+                compressedBitstream.Add(binaryReader.ReadInt32());
+            }
+            else if (_stream.Position + 3 <= _stream.Length)
+            {
+                compressedBitstream.Add(binaryReader.ReadByte() + binaryReader.ReadInt16() << 8);
+            }
+            else if (_stream.Position + 2 <= _stream.Length)
+            {
+                compressedBitstream.Add(binaryReader.ReadInt16());
+            }
+            else
+            {
+                compressedBitstream.Add(binaryReader.ReadByte());
+            }
         }
-
+        
         CompressedBitstream = compressedBitstream.ToArray();
     }
 

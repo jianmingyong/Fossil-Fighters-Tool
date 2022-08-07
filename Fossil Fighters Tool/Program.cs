@@ -52,6 +52,7 @@ class Program
         var directoryName = Path.GetDirectoryName(inputFilePath)!;
         var fileName = Path.GetFileName(inputFilePath);
         var marExtractedDirectory = Path.Combine(directoryName, "bin", fileName);
+        var isModelFolder = Array.Exists(marExtractedDirectory.Split(Path.DirectorySeparatorChar), s => s.Equals("model"));
 
         marFileReader.ExtractTo(marExtractedDirectory);
     
@@ -64,8 +65,10 @@ class Program
             {
                 try
                 {
-                    ExtractHuffmanFile(Path.Combine(marExtractedDirectory, i.ToString(), $"{j}.bin"));
-                    Console.WriteLine($"Extracted: {Path.Combine(marExtractedDirectory, i.ToString(), $"{j}.bin.decompressed")}");
+                    if (!isModelFolder)
+                    {
+                        ExtractHuffmanFile(Path.Combine(marExtractedDirectory, i.ToString(), $"{j}.bin"));
+                    }
                 }
                 catch (Exception)
                 {

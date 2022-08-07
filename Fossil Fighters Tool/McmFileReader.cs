@@ -62,6 +62,7 @@ public class McmFileReader : IDisposable
         }
 
         var buffer = ArrayPool<byte>.Shared.Rent(4096);
+        var totalWritten = 0;
 
         try
         {
@@ -87,6 +88,8 @@ public class McmFileReader : IDisposable
 
                     written += readCount;
                 } while (written < fileLength);
+
+                totalWritten += written;
             }
         }
         finally
