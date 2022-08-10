@@ -75,28 +75,18 @@ public class HuffmanFileReader : IDisposable
 
         DecompressSize = secondHeader & 0xFFFFFF;
         TreeSize = (byte) (secondHeader >> 24);
+        
+        var treeEnd = stream.Position - 1 + (TreeSize + 1) * 2;
+        
         RootNode = new HuffmanNode(this, stream.Position, false);
 
+        stream.Seek(treeEnd, SeekOrigin.Begin);
+        
         var compressedBitstream = new List<int>();
 
-        while (_stream.Position < _stream.Length)
+        while (stream.Position < stream.Length)
         {
-            if (_stream.Position + 4 <= _stream.Length)
-            {
-                compressedBitstream.Add(binaryReader.ReadInt32());
-            }
-            else if (_stream.Position + 3 <= _stream.Length)
-            {
-                compressedBitstream.Add(binaryReader.ReadByte() + binaryReader.ReadInt16() << 8);
-            }
-            else if (_stream.Position + 2 <= _stream.Length)
-            {
-                compressedBitstream.Add(binaryReader.ReadInt16());
-            }
-            else
-            {
-                compressedBitstream.Add(binaryReader.ReadByte());
-            }
+            compressedBitstream.Add(binaryReader.ReadInt32());
         }
         
         CompressedBitstream = compressedBitstream.ToArray();
