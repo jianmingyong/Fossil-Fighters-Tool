@@ -1,7 +1,7 @@
 ﻿using System.Text;
 using SixLabors.ImageSharp.PixelFormats;
 
-namespace Fossil_Fighters_Tool;
+namespace Fossil_Fighters_Tool.Motion;
 
 public class ColorPaletteFileReader : IDisposable
 {

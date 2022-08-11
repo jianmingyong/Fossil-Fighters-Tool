@@ -1,4 +1,5 @@
 ﻿using Fossil_Fighters_Tool;
+using Fossil_Fighters_Tool.Motion;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
@@ -185,5 +186,48 @@ class Program
             {
             }
         }
+    }
+
+    private static void TestFile(string inputFilePath)
+    {
+        var inputFileDirectory = Path.GetDirectoryName(inputFilePath)!;
+
+        using var testColor = new Fossil_Fighters_Tool.Image.ColorPaletteFileReader(File.OpenRead(Path.Combine(inputFileDirectory, "0.bin")));
+        var test = File.ReadAllBytes(inputFilePath);
+
+        var width = 256;
+        var height = 32;
+        
+        using var image = new Image<Rgba32>(width, height);
+
+        var bitmapIndex = 0;
+        var gridX = 0;
+        var gridY = 0;
+        
+        while (bitmapIndex < width * height)
+        {
+            for (var y = 0; y < 8; y++)
+            {
+                for (var x = 0; x < 8; x += 1)
+                {
+                    // TODO: Which color palette to use? God knows...
+                    //image[x + gridX * 8, y + gridY * 8] = testColor.ColorTable[test[bitmapIndex] & 0xF];
+                    //image[x + 1 + gridX * 8, y + gridY * 8] = testColor.ColorTable[test[bitmapIndex] >> 4];
+                    image[x + gridX * 8, y + gridY * 8] = testColor.ColorTable[test[bitmapIndex]];
+                        
+                    bitmapIndex++;
+                }
+            }
+
+            gridX++;
+
+            if (gridX >= width / 8)
+            {
+                gridX = 0;
+                gridY++;
+            }
+        }
+        
+        image.SaveAsPng(Path.Combine(inputFileDirectory, "0.png"));
     }
 }

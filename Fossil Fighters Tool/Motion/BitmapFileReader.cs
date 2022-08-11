@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace Fossil_Fighters_Tool;
+namespace Fossil_Fighters_Tool.Motion;
 
 public class BitmapFileReader : IDisposable
 {
