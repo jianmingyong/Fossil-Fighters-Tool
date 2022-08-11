@@ -45,23 +45,23 @@ File Lists
 
 This file contains information about the original data file size and the type of compression used. After doing this step, you would get the actual raw binary data to be read in-game.
 
-Files may be split into 8kb chunks which is then compressed via Huffman / LZ10 / RLE.
+The original data are split into 8kb chunks which is then compressed via the compression types below. If you noticed, there are two compression types. Data can be compressed twice per chunk.
 
 MCM Header
 
 ```text
 File Header
     0x00h 4     ID "MCM" (0x004D434D)
-    0x04h 4     Decompressed file size
+    0x04h 4     Decompressed data size
     0x08h 4     Max size per chunk (Usually 0x2000)
     0x0Ch 4     Number of chunks
     0x10h 1     Compression Type 1 (0x00: None, 0x01: RLE, 0x02: LZ10, 0x03: Huffman)
     0x11h 1     Compression Type 2 (0x00: None, 0x01: RLE, 0x02: LZ10, 0x03: Huffman)
     0x12h 2     Padding
-    0x14h N*4   File chunk (See below)
-    ..    4     EOF offset (Offset from MCM+0)
+    0x14h N*4   Data chunk (See below)
+    ..    4     End of file (EOF) offset (Offset from MCM+0)
     
-File Chunk
+Data Chunk
     0x00h 4     Chunk offset (Offset from MCM+0)
 ```
 
