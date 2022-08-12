@@ -1,7 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using System.Text;
 
-namespace Fossil_Fighters_Tool;
+namespace Fossil_Fighters_Tool.Archive;
 
 public class MarArchive : IDisposable
 {
@@ -20,42 +20,35 @@ public class MarArchive : IDisposable
     
     public MarArchiveMode Mode { get; }
 
-    public IReadOnlyCollection<MarArchiveEntry> Entries
+    public ReadOnlyCollection<MarArchiveEntry> Entries
     {
         get
         {
             if (_isDisposed) throw new ObjectDisposedException(nameof(MarArchive));
-            EnsureReadEntries();
+            ReadEntries();
             return _entriesCollection;
         }
     }
 
-    internal readonly Stream _archiveStream;
-    private readonly Stream? _backingStream;
-    private readonly bool _leaveOpen;
-
+    internal readonly Stream ArchiveStream;
+    
     private readonly BinaryReader? _archiveReader;
+    private readonly Stream _disposableStream;
+    private readonly bool _leaveOpen;
 
     private readonly List<MarArchiveEntry> _entries = new();
     private readonly ReadOnlyCollection<MarArchiveEntry> _entriesCollection;
 
-    private bool _readEntries;
+    private bool _entriesRead;
     private bool _isDisposed;
-
-    /// <summary>
-    /// Initializes a new instance of the MarArchive class on the specified stream for the specified mode, and optionally leaves the stream open.
-    /// </summary>
-    /// <param name="stream">The input or output stream.</param>
-    /// <param name="mode">One of the enumeration values that indicates whether the mar archive is used to read, create, or update entries.</param>
-    /// <param name="leaveOpen">true to leave the stream open after the MarArchive object is disposed; otherwise, false.</param>
-    /// <exception cref="ArgumentException">The stream is already closed or does not support reading or writing.</exception>
-    /// <exception cref="ArgumentNullException"><paramref name="stream"/> is null.</exception>
-    /// <exception cref="InvalidDataException">The contents of the stream are not in the mar archive format.</exception>
+    
     public MarArchive(Stream stream, MarArchiveMode mode = MarArchiveMode.Read, bool leaveOpen = false)
     {
-        _archiveStream = stream ?? throw new ArgumentNullException(nameof(stream));
+        ArchiveStream = stream;
+        _disposableStream = stream;
         _leaveOpen = leaveOpen;
         _entriesCollection = new ReadOnlyCollection<MarArchiveEntry>(_entries);
+        
         Mode = mode;
         
         try
@@ -67,14 +60,15 @@ public class MarArchive : IDisposable
                     
                     if (!stream.CanSeek)
                     {
-                        _archiveStream = _backingStream = new MemoryStream();
-                        stream.CopyTo(_backingStream);
+                        ArchiveStream = new MemoryStream();
+                        stream.CopyTo(ArchiveStream);
+                        ArchiveStream.Seek(0, SeekOrigin.Begin);
                     }
                     break;
 
                 case MarArchiveMode.Create:
                     if (!stream.CanWrite) throw new ArgumentException("Cannot use create mode on a non-writable stream.");
-                    _readEntries = true;
+                    _entriesRead = true;
                     break;
 
                 case MarArchiveMode.Update:
@@ -85,13 +79,13 @@ public class MarArchive : IDisposable
                     throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
             }
 
-            _archiveReader = mode == MarArchiveMode.Create ? null : new BinaryReader(_archiveStream, Encoding.ASCII, leaveOpen);
+            _archiveReader = mode == MarArchiveMode.Create ? null : new BinaryReader(ArchiveStream, Encoding.ASCII, leaveOpen);
             
             switch (mode)
             {
                 case MarArchiveMode.Read:
                 case MarArchiveMode.Update:
-                    if (_archiveReader!.ReadInt32() != Id) throw new InvalidDataException("The contents of the stream are not in the mar archive format.");
+                    if (_archiveReader!.ReadUInt32() != Id) throw new InvalidDataException("The contents of the stream are not in the mar archive format.");
                     break;
 
                 case MarArchiveMode.Create:
@@ -103,29 +97,36 @@ public class MarArchive : IDisposable
         }
         catch
         {
-            _backingStream?.Dispose();
+            if (ArchiveStream is MemoryStream) ArchiveStream.Dispose();
             throw;
         }
     }
 
-    private void EnsureReadEntries()
+    public MarArchiveEntry GetEntry(int entryIndex)
     {
-        if (!_readEntries)
-        {
-            _readEntries = true;
+        if (Mode == MarArchiveMode.Create) throw new NotSupportedException();
+        
+        ReadEntries();
+        return _entriesCollection[entryIndex];
+    }
 
-            _archiveReader!.BaseStream.Seek(0x4, SeekOrigin.Begin);
-            var expectedFileLength = _archiveReader!.ReadInt32();
+    private void ReadEntries()
+    {
+        if (!_entriesRead)
+        {
+            _entriesRead = true;
+            
+            var expectedFileLength = _archiveReader!.ReadUInt32();
             var offsets = new List<(int offset, int dataSize)>();
 
             for (var i = 0; i < expectedFileLength; i++)
             {
-                offsets.Add((_archiveReader!.ReadInt32(), _archiveReader!.ReadInt32()));
+                offsets.Add(((int) _archiveReader!.ReadUInt32(), (int) _archiveReader!.ReadUInt32()));
             }
 
             for (var i = 0; i < expectedFileLength; i++)
             {
-                var endingOffset = i + 1 < expectedFileLength ? offsets[i + 1].offset : _archiveReader.BaseStream.Length;
+                var endingOffset = i + 1 < expectedFileLength ? offsets[i + 1].offset : _archiveReader!.BaseStream.Length;
                 _entries.Add(new MarArchiveEntry(this, offsets[i].offset, endingOffset - offsets[i].offset));
             }
         }
@@ -136,13 +137,11 @@ public class MarArchive : IDisposable
         if (_isDisposed) return;
         _isDisposed = true;
         
-        if (_leaveOpen)
+        if (!_leaveOpen)
         {
-            _backingStream?.Dispose();
+            _disposableStream.Dispose();
         }
-        else
-        {
-            _archiveStream.Dispose();
-        }
+        
+        _archiveReader?.Dispose();
     }
 }

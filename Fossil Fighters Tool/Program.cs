@@ -1,4 +1,4 @@
-﻿using Fossil_Fighters_Tool.Archive.Compression.Huffman;
+﻿using Fossil_Fighters_Tool.Archive;
 using Fossil_Fighters_Tool.Motion;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -20,12 +20,11 @@ internal static class Program
                 try
                 {
                     if (Array.Exists(Path.GetDirectoryName(file)!.Split(Path.DirectorySeparatorChar), s => s.Equals("bin"))) continue;
-                    Console.WriteLine($"Extracting: {file}");
-                    ExtractMarFile(file);
+                    ExtractMarArchive(file);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // ignored
+                    Console.Error.WriteLine(ex.ToString());
                 }
             }
             
@@ -38,68 +37,42 @@ internal static class Program
             return;
         }
 
-        using var output = new MemoryStream();
-        using var test = new HuffmanStream(output, HuffmanStreamMode.Decompress, true);
-        using var file2 = File.OpenRead(inputFilePath);
-        file2.CopyTo(test);
-
         try
         {
-            ExtractMarFile(inputFilePath);
+            ExtractMarArchive(inputFilePath);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // ignored
+            Console.Error.WriteLine(ex.ToString());
         }
     }
     
-    private static void ExtractMarFile(string inputFilePath)
+    private static void ExtractMarArchive(string inputFilePath)
     {
-        using var marFileReader = new MarFileReader(new FileStream(inputFilePath, FileMode.Open, FileAccess.Read));
-
+        Console.WriteLine($"Extracting: {inputFilePath}");
+        
         var directoryName = Path.GetDirectoryName(inputFilePath)!;
         var fileName = Path.GetFileName(inputFilePath);
-        var marExtractedDirectory = Path.Combine(directoryName, "bin", fileName);
-        var isModelFolder = Array.Exists(marExtractedDirectory.Split(Path.DirectorySeparatorChar), s => s.Equals("model"));
-
-        marFileReader.ExtractTo(marExtractedDirectory);
-    
-        for (var i = 0; i < marFileReader.FilePointers.Length; i++)
+        
+        using var marArchive = new MarArchive(new FileStream(inputFilePath, FileMode.Open, FileAccess.Read));
+        var marEntries = marArchive.Entries;
+        
+        for (var i = 0; i < marEntries.Count; i++)
         {
-            using var mcmFileReader = new McmFileReaderOld(new FileStream(Path.Combine(marExtractedDirectory, $"{i}.mcm"), FileMode.Open));
-            mcmFileReader.ExtractTo(Path.Combine(marExtractedDirectory, i.ToString()));
+            var outputDirectory = Path.Combine(directoryName, "bin", fileName);
 
-            for (int j = 0; j < mcmFileReader.FilePointers.Length; j++)
+            if (!Directory.Exists(outputDirectory))
             {
-                try
-                {
-                    if (!isModelFolder)
-                    {
-                        ExtractHuffmanFile(Path.Combine(marExtractedDirectory, i.ToString(), $"{j}.bin"));
-                    }
-                }
-                catch (Exception)
-                {
-                    // ignored
-                }
-                
-                try
-                {
-                    ExtractMmsFile(Path.Combine(marExtractedDirectory, i.ToString(), $"{j}.bin"));
-                }
-                catch (Exception)
-                {
-                    // ignored
-                }
+                Directory.CreateDirectory(outputDirectory);
             }
+            
+            var outputFile = Path.Combine(outputDirectory, $"{i}.bin");
+            using var outputStream = new FileStream(outputFile, FileMode.Create, FileAccess.Write);
+            using var mcmFileStream = new McmFileStream(outputStream, McmFileStreamMode.Decompress);
+            using var inputStream = marEntries[i].Open();
+            inputStream.CopyTo(mcmFileStream);
+            mcmFileStream.Flush();
         }
-    }
-
-    private static void ExtractHuffmanFile(string inputFilePath)
-    {
-        using var huffmanFileReader = new HuffmanFileReader(new FileStream(inputFilePath, FileMode.Open, FileAccess.Read));
-        var inputFileDirectory = Path.GetDirectoryName(inputFilePath)!;
-        huffmanFileReader.Decompress(inputFileDirectory);
     }
     
     private static void ExtractMmsFile(string inputFilePath)
@@ -115,7 +88,7 @@ internal static class Program
 
             if (!File.Exists(colorPaletteFile))
             {
-                ExtractMarFile(Path.Combine(inputFileDirectory, "..", "..", "..", mmsFileReader.ColorPaletteFileName));
+                ExtractMarArchive(Path.Combine(inputFileDirectory, "..", "..", "..", mmsFileReader.ColorPaletteFileName));
             }
             
             using var colorPaletteFileReader = new ColorPaletteFileReader(new FileStream(colorPaletteFile, FileMode.Open, FileAccess.Read));

@@ -52,6 +52,7 @@ public class HuffmanStream : Stream
     private readonly MemoryStream _inputStream = new();
     private readonly BinaryReader _inputStreamReader;
     private long _inputStreamRead;
+    private long _inputStreamWritten;
     
     private readonly Stream _outputStream;
     private readonly HuffmanStreamMode _streamMode;
@@ -90,15 +91,19 @@ public class HuffmanStream : Stream
     
     public override void Write(byte[] buffer, int offset, int count)
     {
+        _inputStream.Seek(_inputStreamWritten, SeekOrigin.Begin);
+        _inputStream.Write(buffer, offset, count);
+        _inputStreamWritten += count;
+        
+        _inputStream.Seek(_inputStreamRead, SeekOrigin.Begin);
+        
         if (_streamMode == HuffmanStreamMode.Decompress)
         {
-            _inputStream.Write(buffer, offset, count);
-            _inputStream.Seek(_inputStreamRead, SeekOrigin.Begin);
             Decompress();
         }
         else
         {
-            throw new NotImplementedException();
+            Compress();
         }
     }
 
@@ -123,7 +128,7 @@ public class HuffmanStream : Stream
         {
             if (_inputStream.Length - _inputStream.Position < 4) return;
             
-            var rawDataHeader = _inputStreamReader.ReadInt32();
+            var rawDataHeader = _inputStreamReader.ReadUInt32();
                 
             if (((rawDataHeader >> 4) & 0xF) != 0x2)
             {
@@ -131,7 +136,7 @@ public class HuffmanStream : Stream
             }
                 
             _dataSize = (HuffmanDataSize) (rawDataHeader & 0xF);
-            _decompressLength = rawDataHeader >> 8;
+            _decompressLength = (int) (rawDataHeader >> 8);
             _inputStreamRead += 4;
             
             _hasDataHeader = true;
@@ -166,7 +171,7 @@ public class HuffmanStream : Stream
             // Compressed Bitstream
             while (_inputStream.Length - _inputStream.Position >= 4)
             {
-                var bitStream = _inputStreamReader.ReadInt32();
+                var bitStream = _inputStreamReader.ReadUInt32();
                 _inputStreamRead += 4;
                 
                 for (var index = 31; index >= 0; index--)
@@ -183,6 +188,7 @@ public class HuffmanStream : Stream
                             if (_isHalfDataWritten)
                             {
                                 _outputStream.WriteByte((byte) (_halfData | (_currentNode.Data.Value << 4)));
+                                _outputStream.Flush();
                                 _isHalfDataWritten = false;
                                 _writtenLength += 1;
                             }
@@ -197,6 +203,7 @@ public class HuffmanStream : Stream
                         else
                         {
                             _outputStream.WriteByte(_currentNode.Data.Value);
+                            _outputStream.Flush();
                             _writtenLength += 1;
                             _currentNode = _rootNode;
                         }
@@ -285,8 +292,8 @@ public class HuffmanStream : Stream
                 }
             }
         }
-        
-        
+
+        throw new NotImplementedException();
     }
     
     protected override void Dispose(bool disposing)

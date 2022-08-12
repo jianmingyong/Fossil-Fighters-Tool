@@ -1,4 +1,4 @@
-﻿namespace Fossil_Fighters_Tool;
+﻿namespace Fossil_Fighters_Tool.Archive;
 
 public enum MarArchiveMode
 {

@@ -1,10 +1,12 @@
 ﻿using System.Text;
 using Fossil_Fighters_Tool.Archive.Compression.Huffman;
+using Fossil_Fighters_Tool.Archive.Compression.Lzss;
 
 namespace Fossil_Fighters_Tool.Archive;
 
 public class McmFileStream : Stream
 {
+    private const int Id = 0x004D434D;
     /*
         File Header
         0x00h 4     ID "MCM" (0x004D434D)
@@ -17,29 +19,28 @@ public class McmFileStream : Stream
         0x14h N*4   Data Chunk offsets (Offset from MCM+0)
         ..    4     End of file (EOF) offset (Offset from MCM+0)
      */
-    
+
     public override bool CanRead => false;
     public override bool CanSeek => false;
     public override bool CanWrite => true;
 
     public override long Length => throw new NotSupportedException();
-    
+
+    private readonly MemoryStream _inputStream = new();
+    private readonly BinaryReader _inputStreamReader;
+
+    private readonly Stream _outputStream;
+    private readonly McmFileStreamMode _streamMode;
+    private readonly bool _leaveOpen;
+
     public override long Position
     {
         get => throw new NotSupportedException();
         set => throw new NotSupportedException();
     }
-    
-    private const int Id = 0x004D434D;
 
-    private readonly MemoryStream _inputStream = new();
-    private readonly BinaryReader _inputStreamReader;
     private long _inputStreamRead;
-    
-    private readonly Stream _outputStream;
-    private readonly McmFileStreamMode _streamMode;
-    private readonly bool _leaveOpen;
-    
+
     // Decompress
     private bool _hasFirstHeaderChunk;
     private bool _hasSecondHeaderChunk;
@@ -62,18 +63,19 @@ public class McmFileStream : Stream
     {
         throw new NotSupportedException();
     }
-    
+
     public override void Write(byte[] buffer, int offset, int count)
     {
+        _inputStream.Write(buffer, offset, count);
+        _inputStream.Seek(_inputStreamRead, SeekOrigin.Begin);
+
         if (_streamMode == McmFileStreamMode.Decompress)
         {
-            _inputStream.Write(buffer, offset, count);
-            _inputStream.Seek(_inputStreamRead, SeekOrigin.Begin);
             Decompress();
         }
         else
         {
-            throw new NotImplementedException();
+            Compress();
         }
     }
 
@@ -87,21 +89,26 @@ public class McmFileStream : Stream
         throw new NotSupportedException();
     }
 
+    public override void Flush()
+    {
+        _outputStream.Flush();
+    }
+
     private void Decompress()
     {
         if (!_hasFirstHeaderChunk)
         {
             if (_inputStream.Length - _inputStream.Position < 20) return;
-            if (_inputStreamReader.ReadInt32() != Id) throw new InvalidDataException("The contents of the stream is not in the MCM format.");
+            if (_inputStreamReader.ReadUInt32() != Id) throw new InvalidDataException("The contents of the stream is not in the MCM format.");
             _inputStreamRead += 4;
 
-            _decompressionSize = _inputStreamReader.ReadInt32();
+            _decompressionSize = (int) _inputStreamReader.ReadUInt32();
             _inputStreamRead += 4;
 
-            _maxSizePerChunk = _inputStreamReader.ReadInt32();
+            _maxSizePerChunk = (int) _inputStreamReader.ReadUInt32();
             _inputStreamRead += 4;
 
-            _dataChunkOffsets = new int[_inputStreamReader.ReadInt32() + 1];
+            _dataChunkOffsets = new int[_inputStreamReader.ReadUInt32() + 1];
             _inputStreamRead += 4;
 
             _decompressionType1 = (McmCompressionType) _inputStreamReader.ReadByte();
@@ -111,28 +118,26 @@ public class McmFileStream : Stream
 
             _hasFirstHeaderChunk = true;
         }
-        
+
         if (_hasFirstHeaderChunk && !_hasSecondHeaderChunk)
         {
             if (_inputStream.Length - _inputStream.Position < 4 * _dataChunkOffsets.Length) return;
 
             for (var i = 0; i < _dataChunkOffsets.Length; i++)
             {
-                _dataChunkOffsets[i] = _inputStreamReader.ReadInt32();
+                _dataChunkOffsets[i] = (int) _inputStreamReader.ReadUInt32();
                 _inputStreamRead += 4;
             }
-            
+
             _hasSecondHeaderChunk = true;
         }
 
         if (_hasFirstHeaderChunk && _hasSecondHeaderChunk)
         {
-            using var tempOutputStream = new MemoryStream(_decompressionSize);
-            
             for (var i = 0; i < _dataChunkOffsets.Length - 1; i++)
             {
-                using var tempDecompressOutputStream = new MemoryStream(_maxSizePerChunk);
-                
+                using var tempDecompressOutputStream = new MemoryStream();
+
                 // Try decompress the file in order
                 switch (_decompressionType1)
                 {
@@ -142,13 +147,19 @@ public class McmFileStream : Stream
                         stream.CopyTo(tempDecompressOutputStream);
                         break;
                     }
-                        
+
                     case McmCompressionType.Rle:
                         throw new NotImplementedException();
-                    
+
                     case McmCompressionType.Lzss:
-                        throw new NotImplementedException();
-                    
+                    {
+                        using var lzssStream = new LzssStream(tempDecompressOutputStream, LzssStreamMode.Decompress, true);
+                        using var stream = new ReadOnlyStream(_inputStream, _dataChunkOffsets[i], _dataChunkOffsets[i + 1] - _dataChunkOffsets[i], true);
+                        stream.CopyTo(lzssStream);
+                        lzssStream.Flush();
+                        break;
+                    }
+
                     case McmCompressionType.Huffman:
                     {
                         using var huffmanStream = new HuffmanStream(tempDecompressOutputStream, HuffmanStreamMode.Decompress, true);
@@ -161,25 +172,31 @@ public class McmFileStream : Stream
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
-                
+
                 switch (_decompressionType2)
                 {
                     case McmCompressionType.None:
                     {
                         tempDecompressOutputStream.Seek(0, SeekOrigin.Begin);
-                        tempDecompressOutputStream.CopyTo(tempOutputStream);
+                        tempDecompressOutputStream.CopyTo(_outputStream);
                         break;
                     }
-                    
+
                     case McmCompressionType.Rle:
                         throw new NotImplementedException();
-                    
+
                     case McmCompressionType.Lzss:
-                        throw new NotImplementedException();
-                    
+                    {
+                        using var lzssStream = new LzssStream(_outputStream, LzssStreamMode.Decompress, true);
+                        tempDecompressOutputStream.Seek(0, SeekOrigin.Begin);
+                        tempDecompressOutputStream.CopyTo(lzssStream);
+                        lzssStream.Flush();
+                        break;
+                    }
+
                     case McmCompressionType.Huffman:
                     {
-                        using var huffmanStream = new HuffmanStream(tempOutputStream, HuffmanStreamMode.Decompress, true);
+                        using var huffmanStream = new HuffmanStream(_outputStream, HuffmanStreamMode.Decompress, true);
                         tempDecompressOutputStream.Seek(0, SeekOrigin.Begin);
                         tempDecompressOutputStream.CopyTo(huffmanStream);
                         huffmanStream.Flush();
@@ -190,20 +207,12 @@ public class McmFileStream : Stream
                         throw new ArgumentOutOfRangeException();
                 }
             }
-
-            tempOutputStream.Seek(0, SeekOrigin.Begin);
-            tempOutputStream.CopyTo(_outputStream);
         }
     }
 
     private void Compress()
     {
         throw new NotImplementedException();
-    }
-
-    public override void Flush()
-    {
-        _outputStream.Flush();
     }
 
     protected override void Dispose(bool disposing)
@@ -214,11 +223,11 @@ public class McmFileStream : Stream
             {
                 _outputStream.Dispose();
             }
-            
+
             _inputStream.Dispose();
             _inputStreamReader.Dispose();
         }
-        
+
         base.Dispose(disposing);
     }
 }

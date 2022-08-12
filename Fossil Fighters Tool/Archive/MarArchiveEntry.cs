@@ -1,6 +1,4 @@
-﻿using Fossil_Fighters_Tool.Archive;
-
-namespace Fossil_Fighters_Tool;
+﻿namespace Fossil_Fighters_Tool.Archive;
 
 public class MarArchiveEntry
 {
@@ -16,23 +14,23 @@ public class MarArchiveEntry
      */
     
     public MarArchive Archive { get; }
-    
-    public long Length { get; }
 
-    private long _fileOffset;
+    public long FileLength { get; }
+
+    private readonly long _fileOffset;
 
     public MarArchiveEntry(MarArchive archive, long fileOffset, long fileLength)
     {
         Archive = archive;
+        FileLength = fileLength;
         _fileOffset = fileOffset;
-        Length = fileLength;
     }
 
     public Stream Open()
     {
         if (Archive.Mode == MarArchiveMode.Read)
         {
-            return new ReadOnlyStream(Archive._archiveStream, _fileOffset, Length);
+            return new ReadOnlyStream(Archive.ArchiveStream, _fileOffset, FileLength);
         }
         
         throw new NotImplementedException();
@@ -40,6 +38,7 @@ public class MarArchiveEntry
 
     public void Delete()
     {
+        if (Archive.Mode != MarArchiveMode.Update) throw new NotSupportedException();
         throw new NotImplementedException();
     }
 }
