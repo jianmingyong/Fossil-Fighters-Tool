@@ -35,10 +35,12 @@ File Header
     0x00h 4     ID "MAR" (0x0052414D)
     0x04h 4     Number of files
     0x08h N*8   File Lists (see below)
-    
+
 File Lists
     0x00h 4     MCM File offset (Offset from MAR+0)
     0x04h 4     Data File size (Decompressed)
+
+Note: The value is expressed in little-endian format. LSB should come first before MSB.
 ```
 
 ### MCM File
@@ -53,16 +55,15 @@ MCM Header
 File Header
     0x00h 4     ID "MCM" (0x004D434D)
     0x04h 4     Decompressed data size
-    0x08h 4     Max size per chunk (Usually 0x2000)
+    0x08h 4     Max size per chunk in bytes (Usually 8kb)
     0x0Ch 4     Number of chunks
     0x10h 1     Compression Type 1 (0x00: None, 0x01: RLE, 0x02: LZ10, 0x03: Huffman)
     0x11h 1     Compression Type 2 (0x00: None, 0x01: RLE, 0x02: LZ10, 0x03: Huffman)
     0x12h 2     Padding
-    0x14h N*4   Data chunk (See below)
+    0x14h N*4   Data Chunk offsets (Offset from MCM+0)
     ..    4     End of file (EOF) offset (Offset from MCM+0)
-    
-Data Chunk
-    0x00h 4     Chunk offset (Offset from MCM+0)
+
+Note: The value is expressed in little-endian format. LSB should come first before MSB.
 ```
 
 ### Built With
