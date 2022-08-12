@@ -3,7 +3,7 @@ using System.Text;
 
 namespace Fossil_Fighters_Tool;
 
-public class McmFileReader : IDisposable
+public class McmFileReaderOld : IDisposable
 {
     public readonly struct McmFilePointer
     {
@@ -24,7 +24,7 @@ public class McmFileReader : IDisposable
 
     private readonly FileStream _stream;
 
-    public McmFileReader(FileStream stream)
+    public McmFileReaderOld(FileStream stream)
     {
         _stream = stream;
 

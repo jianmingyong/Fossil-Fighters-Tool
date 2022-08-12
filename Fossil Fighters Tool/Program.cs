@@ -1,9 +1,11 @@
-﻿using Fossil_Fighters_Tool;
+﻿using Fossil_Fighters_Tool.Archive.Compression.Huffman;
 using Fossil_Fighters_Tool.Motion;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
-class Program
+namespace Fossil_Fighters_Tool;
+
+internal static class Program
 {
     public static void Main(string[] args)
     {
@@ -36,6 +38,11 @@ class Program
             return;
         }
 
+        using var output = new MemoryStream();
+        using var test = new HuffmanStream(output, HuffmanStreamMode.Decompress, true);
+        using var file2 = File.OpenRead(inputFilePath);
+        file2.CopyTo(test);
+
         try
         {
             ExtractMarFile(inputFilePath);
@@ -59,7 +66,7 @@ class Program
     
         for (var i = 0; i < marFileReader.FilePointers.Length; i++)
         {
-            using var mcmFileReader = new McmFileReader(new FileStream(Path.Combine(marExtractedDirectory, $"{i}.mcm"), FileMode.Open));
+            using var mcmFileReader = new McmFileReaderOld(new FileStream(Path.Combine(marExtractedDirectory, $"{i}.mcm"), FileMode.Open));
             mcmFileReader.ExtractTo(Path.Combine(marExtractedDirectory, i.ToString()));
 
             for (int j = 0; j < mcmFileReader.FilePointers.Length; j++)
