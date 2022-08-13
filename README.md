@@ -15,6 +15,9 @@
         <li>
             <a href="#game-file-headers">Game File Headers</a>
             <ul>
+                <li><a href="#acl-found-in-etc-add-contents-def">ACL</a></li>
+                <li><a href="#dbg">DBG</a></li>                
+                <li><a href="#dms">DMS</a></li>
                 <li><a href="#mms-found-in-motion-folder">MMS</a></li>
             </ul>
         </li>
@@ -45,8 +48,6 @@ File Header
 File Lists
     0x00h 4     MCM File offset (Offset from MAR+0)
     0x04h 4     Data File size (Decompressed)
-
-Note: The value is expressed in little-endian format. LSB should come first before MSB.
 ```
 
 ### MCM File
@@ -68,11 +69,46 @@ File Header
     0x12h 2     Padding
     0x14h N*4   Data Chunk offsets (Offset from MCM+0)
     ..    4     End of file (EOF) offset (Offset from MCM+0)
-
-Note: The value is expressed in little-endian format. LSB should come first before MSB.
 ```
 
 ## Game File Headers
+
+### ACL (Found in etc/add_contents_def)
+
+This file contains information about DLC definition.
+
+```text
+File Header
+    0x00h 4     ID "ACL" (0x004C4341)
+    0x04h 4     DLC Count
+    0x08h 4     DLC List Offset (Offset from ACL+0)
+    0x0Ch 4*N   DLC Info
+
+DLC Info
+    0x00h 2     DLC Index
+    0x02h 2     DLC ID
+```
+
+### DBG
+
+This file contains a value for debug stuff
+
+```text
+File Header
+    0x00h 4     ID "DBG" (0x00474244)
+    0x04h 4     Unknown
+    0x08h 4     Unknown
+```
+
+### DMS
+
+This file contains a value for maxid depending on the target file.
+
+```text
+File Header
+    0x00h 4     ID "DMS" (0x00534D44)
+    0x04h 4     Value
+```
 
 ### MMS (Found in motion folder)
 
@@ -95,8 +131,6 @@ File Header
     0x30h 4     Bitmap File Indexes Count
     0x34h 4     Bitmap File Indexes Offset (Offset from MMS+0)
     0x38h 4     Bitmap File Name
-
-Note: The value is expressed in little-endian format. LSB should come first before MSB.
 ```
 
 <p align="right">(<a href="#top">back to top</a>)</p>
