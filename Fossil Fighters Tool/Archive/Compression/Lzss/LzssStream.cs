@@ -10,53 +10,50 @@ public class LzssStream : Stream
     public override bool CanWrite => true;
 
     public override long Length => throw new NotSupportedException();
-
-    private readonly MemoryStream _inputStream = new();
-    private readonly BinaryReader _inputStreamReader;
-
-    private readonly Stream _outputStream;
-    private readonly LzssStreamMode _mode;
-    private readonly bool _leaveOpen;
-
+    
     public override long Position
     {
         get => throw new NotSupportedException();
         set => throw new NotSupportedException();
     }
 
+    private const int LookbackBufferSize = 0xFFF + 1;
+    
+    private readonly Stream _outputStream;
+    private readonly LzssStreamMode _mode;
+    private readonly bool _leaveOpen;
+    
+    private readonly MemoryBinaryStream _inputStream;
     private long _inputStreamRead;
     private long _inputStreamWritten;
-
+    
     // Decompress
     private bool _hasHeader;
     private bool _hasFlag;
     private bool _hasBlock;
     private int _decompressSize;
+    private int _bytesWritten;
+    private readonly byte[] _lookbackBuffer;
+    private int _lookbackIndex;
     private byte _flagData;
     private int _blockIndex;
-    private int _bytesWritten;
-    private MemoryStream? _tempOutputStream;
-
+    
     public LzssStream(Stream outputStream, LzssStreamMode mode, bool leaveOpen = false)
     {
-        _inputStreamReader = new BinaryReader(_inputStream, Encoding.ASCII);
+        _inputStream = new MemoryBinaryStream(Encoding.ASCII);
         _outputStream = outputStream;
         _mode = mode;
         _leaveOpen = leaveOpen;
+        _lookbackBuffer = mode == LzssStreamMode.Decompress ? ArrayPool<byte>.Shared.Rent(LookbackBufferSize) : Array.Empty<byte>();
     }
-
-    public override int Read(byte[] buffer, int offset, int count)
-    {
-        throw new NotSupportedException();
-    }
-
+    
     public override void Write(byte[] buffer, int offset, int count)
     {
         _inputStream.Seek(_inputStreamWritten, SeekOrigin.Begin);
         _inputStream.Write(buffer, offset, count);
-        _inputStreamWritten += count;
-        
         _inputStream.Seek(_inputStreamRead, SeekOrigin.Begin);
+        
+        _inputStreamWritten += count;
 
         if (_mode == LzssStreamMode.Decompress)
         {
@@ -66,6 +63,11 @@ public class LzssStream : Stream
         {
             Compress();
         }
+    }
+    
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        throw new NotSupportedException();
     }
 
     public override long Seek(long offset, SeekOrigin origin)
@@ -89,13 +91,13 @@ public class LzssStream : Stream
         {
             if (_inputStream.Length - _inputStream.Position < 4) return;
 
-            var rawData = _inputStreamReader.ReadUInt32();
-            _inputStreamRead += 4;
-
-            if (((rawData >> 4) & 0xF) != 0x1) throw new InvalidDataException();
+            var rawData = _inputStream.ReadUInt32();
+            if (((rawData >> 4) & 0xF) != 0x1) throw new InvalidDataException("The contents of the stream is not in the lzss format.");
 
             _decompressSize = (int) (rawData >> 8);
-            _tempOutputStream = new MemoryStream(_decompressSize);
+            _lookbackIndex = 0;
+            
+            _inputStreamRead += 4;
 
             _hasHeader = true;
         }
@@ -106,7 +108,7 @@ public class LzssStream : Stream
             {
                 if (_inputStream.Length - _inputStream.Position < 1) return;
 
-                _flagData = _inputStreamReader.ReadByte();
+                _flagData = _inputStream.ReadByte();
                 _inputStreamRead += 1;
 
                 _hasFlag = true;
@@ -123,42 +125,48 @@ public class LzssStream : Stream
                     if (blockType == 0)
                     {
                         if (_inputStream.Length - _inputStream.Position < 1) return;
-                        _tempOutputStream!.WriteByte(_inputStreamReader.ReadByte());
+
+                        var byteToWrite = _inputStream.ReadByte();
+                        
+                        _outputStream.WriteByte(byteToWrite);
+                        
+                        _lookbackBuffer[_lookbackIndex++] = byteToWrite;
+                        if (_lookbackIndex >= LookbackBufferSize) _lookbackIndex = 0;
+                        
                         _inputStreamRead += 1;
                         _bytesWritten += 1;
                     }
                     else
                     {
                         if (_inputStream.Length - _inputStream.Position < 2) return;
-                        var rawData = _inputStreamReader.ReadByte();
-                        var rawData2 = _inputStreamReader.ReadByte();
-                        _inputStreamRead += 2;
-
-                        var bytesToCopy = ((rawData >> 4) & 0xF) + 3;
-                        var offset = ((rawData & 0xF) << 8) | rawData2;
-                        var data = ArrayPool<byte>.Shared.Rent(bytesToCopy);
                         
-                        try
+                        var rawData = _inputStream.ReadByte();
+                        var rawData2 = _inputStream.ReadByte();
+                        
+                        var bytesToCopy = ((rawData >> 4) & 0xF) + 3;
+                        var offset = (((rawData & 0xF) << 8) | rawData2) + 1;
+                        
+                        for (var i = 0; i < bytesToCopy; i++)
                         {
-                            _tempOutputStream!.Position -= offset + 1;
+                            var index = _lookbackIndex - offset;
 
-                            for (var i = 0; i < bytesToCopy; i++)
+                            if (index < 0)
                             {
-                                data[i] = (byte) _tempOutputStream.ReadByte();
+                                index += LookbackBufferSize;
                             }
-
-                            _tempOutputStream.Seek(_bytesWritten, SeekOrigin.Begin);
-
-                            for (var i = 0; i < bytesToCopy; i++)
+                            else if (index >= LookbackBufferSize)
                             {
-                                _tempOutputStream.WriteByte(data[i]);
-                                _bytesWritten += 1;
+                                index -= LookbackBufferSize;
                             }
+                            
+                            _outputStream.WriteByte(_lookbackBuffer[index]);
+                            
+                            _lookbackBuffer[_lookbackIndex++] = _lookbackBuffer[index];
+                            if (_lookbackIndex >= LookbackBufferSize) _lookbackIndex = 0;
                         }
-                        finally
-                        {
-                            ArrayPool<byte>.Shared.Return(data);
-                        }
+                        
+                        _inputStreamRead += 2;
+                        _bytesWritten += bytesToCopy;
                     }
 
                     if (_bytesWritten == _decompressSize) break;
@@ -169,8 +177,7 @@ public class LzssStream : Stream
             }
         } while (_bytesWritten < _decompressSize);
         
-        _tempOutputStream!.Seek(0, SeekOrigin.Begin);
-        _tempOutputStream.CopyTo(_outputStream);
+        _outputStream.Flush();
     }
 
     private void Compress()
@@ -188,8 +195,11 @@ public class LzssStream : Stream
             }
 
             _inputStream.Dispose();
-            _inputStreamReader.Dispose();
-            _tempOutputStream?.Dispose();
+
+            if (_lookbackBuffer.Length > 0)
+            {
+                ArrayPool<byte>.Shared.Return(_lookbackBuffer);
+            }
         }
 
         base.Dispose(disposing);

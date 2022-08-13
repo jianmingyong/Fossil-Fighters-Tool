@@ -1,5 +1,4 @@
-﻿using System.Collections.ObjectModel;
-using System.Text;
+﻿using System.Text;
 
 namespace Fossil_Fighters_Tool.Archive;
 
@@ -20,13 +19,13 @@ public class MarArchive : IDisposable
     
     public MarArchiveMode Mode { get; }
 
-    public ReadOnlyCollection<MarArchiveEntry> Entries
+    public IReadOnlyList<MarArchiveEntry> Entries
     {
         get
         {
             if (_isDisposed) throw new ObjectDisposedException(nameof(MarArchive));
             ReadEntries();
-            return _entriesCollection;
+            return _entries;
         }
     }
 
@@ -37,7 +36,6 @@ public class MarArchive : IDisposable
     private readonly bool _leaveOpen;
 
     private readonly List<MarArchiveEntry> _entries = new();
-    private readonly ReadOnlyCollection<MarArchiveEntry> _entriesCollection;
 
     private bool _entriesRead;
     private bool _isDisposed;
@@ -47,7 +45,6 @@ public class MarArchive : IDisposable
         ArchiveStream = stream;
         _disposableStream = stream;
         _leaveOpen = leaveOpen;
-        _entriesCollection = new ReadOnlyCollection<MarArchiveEntry>(_entries);
         
         Mode = mode;
         
@@ -107,7 +104,7 @@ public class MarArchive : IDisposable
         if (Mode == MarArchiveMode.Create) throw new NotSupportedException();
         
         ReadEntries();
-        return _entriesCollection[entryIndex];
+        return _entries[entryIndex];
     }
 
     private void ReadEntries()

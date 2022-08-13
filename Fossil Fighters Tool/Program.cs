@@ -71,7 +71,6 @@ internal static class Program
             using var mcmFileStream = new McmFileStream(outputStream, McmFileStreamMode.Decompress);
             using var inputStream = marEntries[i].Open();
             inputStream.CopyTo(mcmFileStream);
-            mcmFileStream.Flush();
         }
     }
     

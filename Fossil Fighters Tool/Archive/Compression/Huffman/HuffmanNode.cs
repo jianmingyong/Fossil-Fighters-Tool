@@ -1,6 +1,4 @@
-﻿using System.Text;
-
-namespace Fossil_Fighters_Tool.Archive.Compression.Huffman;
+﻿namespace Fossil_Fighters_Tool.Archive.Compression.Huffman;
 
 public class HuffmanNode
 {
@@ -10,7 +8,7 @@ public class HuffmanNode
     
     public byte? Data { get; }
 
-    public HuffmanNode(Stream stream, long position, HuffmanDataSize dataSize, bool isData)
+    public HuffmanNode(MemoryBinaryStream stream, long position, HuffmanDataSize dataSize, bool isData)
     {
         /*
          * Tree Table (list of 8bit nodes, starting with the root node)
@@ -23,12 +21,10 @@ public class HuffmanNode
          * Data nodes are (when End Flag was set in parent node):
          * Bit 0-7  Data (upper bits should be zero if Data Size is less than 8)
          */
-
-        using var reader = new BinaryReader(stream, Encoding.ASCII, true);
-
+        
         stream.Seek(position, SeekOrigin.Begin);
         
-        var rawByte = reader.ReadByte();
+        var rawByte = stream.ReadByte();
         
         if (isData)
         {
@@ -38,6 +34,7 @@ public class HuffmanNode
         else
         {
             var offset = rawByte & 0x3F;
+            
             Left = new HuffmanNode(stream, (position & ~1L) + offset * 2 + 2, dataSize, (rawByte & 0x80) > 0);
             Right = new HuffmanNode(stream, (position & ~1L) + offset * 2 + 2 + 1, dataSize, (rawByte & 0x40) > 0);
         }

@@ -12,25 +12,23 @@ public class MarArchiveEntry
             0x00h 4     MCM File offset (Offset from MAR+0)
             0x04h 4     Data File size (Decompressed)
      */
-    
-    public MarArchive Archive { get; }
 
-    public long FileLength { get; }
-
+    private readonly MarArchive _archive;
+    private readonly long _fileLength;
     private readonly long _fileOffset;
 
     public MarArchiveEntry(MarArchive archive, long fileOffset, long fileLength)
     {
-        Archive = archive;
-        FileLength = fileLength;
+        _archive = archive;
+        _fileLength = fileLength;
         _fileOffset = fileOffset;
     }
 
     public Stream Open()
     {
-        if (Archive.Mode == MarArchiveMode.Read)
+        if (_archive.Mode == MarArchiveMode.Read)
         {
-            return new ReadOnlyStream(Archive.ArchiveStream, _fileOffset, FileLength);
+            return new ReadOnlyStream(_archive.ArchiveStream, _fileOffset, _fileLength, true);
         }
         
         throw new NotImplementedException();
@@ -38,7 +36,7 @@ public class MarArchiveEntry
 
     public void Delete()
     {
-        if (Archive.Mode != MarArchiveMode.Update) throw new NotSupportedException();
+        if (_archive.Mode != MarArchiveMode.Update) throw new NotSupportedException();
         throw new NotImplementedException();
     }
 }
