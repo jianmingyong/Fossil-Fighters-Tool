@@ -3,18 +3,23 @@
 # Fossil Fighters Assets Extractor
 
 <details>
-  <summary>Table of Contents</summary>
-  <ol>
-    <li>
-      <a href="#about-the-project">About The Project</a>
-      <ul>
-        <li><a href="#mar-archive">MAR Archive</a></li>
-        <li><a href="#mcm-file">MCM File</a></li>
-      </ul>
-    </li>
-    <li><a href="#game-file-header">Game File Headers</a></li>
-    <li><a href="#built-with">Built With</a></li>
-  </ol>
+    <summary>Table of Contents</summary>
+    <ol>
+        <li>
+            <a href="#about-the-project">About The Project</a>
+            <ul>
+                <li><a href="#mar-archive">MAR Archive</a></li>
+                <li><a href="#mcm-file">MCM File</a></li>
+            </ul>
+        </li>
+        <li>
+            <a href="#game-file-headers">Game File Headers</a>
+            <ul>
+                <li><a href="#mms-found-in-motion-folder">MMS</a></li>
+            </ul>
+        </li>
+        <li><a href="#built-with">Built With</a></li>
+    </ol>
 </details>
 
 ## About The Project
