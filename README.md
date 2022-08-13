@@ -16,8 +16,10 @@
             <a href="#game-file-headers">Game File Headers</a>
             <ul>
                 <li><a href="#acl-found-in-etc-add-contents-def">ACL</a></li>
-                <li><a href="#dbg">DBG</a></li>                
+                <li><a href="#dbg">DBG</a></li>
+                <li><a href="#dbtl">DBTL</a></li>
                 <li><a href="#dms">DMS</a></li>
+                <li><a href="#dmsk">DMSK</a></li>
                 <li><a href="#mms-found-in-motion-folder">MMS</a></li>
             </ul>
         </li>
@@ -100,6 +102,23 @@ File Header
     0x08h 4     Unknown
 ```
 
+### DBTL
+
+This file contains information about BP exchange in DP exchange shop.
+
+```text
+File Header
+    0x00h 4     ID "DBTL" (0x4C544244)
+    0x04h 4     Unknown
+    0x08h 4     BP Exchange Count
+    0x0Ch 4     Starting Offset
+    0x10h 4*N   BP Exchange Info
+
+BP Exchange Info
+    0x00h 2     BP Exchange Value
+    0x02h 2     DP Cost
+```
+
 ### DMS
 
 This file contains a value for maxid depending on the target file.
@@ -108,6 +127,23 @@ This file contains a value for maxid depending on the target file.
 File Header
     0x00h 4     ID "DMS" (0x00534D44)
     0x04h 4     Value
+```
+
+### DMSK
+
+This file contains information about mask in DP exchange shop.
+
+```text
+File Header
+    0x00h 4     ID "DMSK" (0x4B534D44)
+    0x04h 4     Unknown
+    0x08h 4     Mask Count
+    0x0Ch 4     Start Offset (Offset from DMSK+0)
+    0x10h 4*N   Mask Definition
+
+Mask Definition
+    0x00h 2     Mask ID
+    0x02h 2     DP Cost
 ```
 
 ### MMS (Found in motion folder)
