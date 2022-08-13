@@ -1,4 +1,5 @@
 ﻿using Fossil_Fighters_Tool.Archive;
+using Fossil_Fighters_Tool.Header;
 using Fossil_Fighters_Tool.Motion;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;

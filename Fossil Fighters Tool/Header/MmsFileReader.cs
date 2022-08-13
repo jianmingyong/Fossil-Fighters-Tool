@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace Fossil_Fighters_Tool;
+namespace Fossil_Fighters_Tool.Header;
 
 public class MmsFileReader : IDisposable
 {
@@ -16,19 +16,19 @@ public class MmsFileReader : IDisposable
     
     public int EndHeaderOffset { get; }
     
-    public int Unknown6 { get; }
+    public int AnimationFileCount { get; }
     
     public int[] AnimationFileIndexes { get; }
     
     public string AnimationFileName { get; }
     
-    public int Unknown9 { get; }
+    public int ColorPaletteFileCount { get; }
     
     public int[] ColorPaletteFileIndexes { get; }
     
     public string ColorPaletteFileName { get; }
     
-    public int Unknown12 { get; }
+    public int BitmapFileCount { get; }
 
     public int[] BitmapFileIndexes { get; }
     
@@ -52,13 +52,13 @@ public class MmsFileReader : IDisposable
         Unknown3 = binaryReader.ReadInt32();
         Unknown4 = binaryReader.ReadInt32();
         EndHeaderOffset = binaryReader.ReadInt32();
-        Unknown6 = binaryReader.ReadInt32();
+        AnimationFileCount = binaryReader.ReadInt32();
         var animationFileIndexOffset = binaryReader.ReadInt32();
         var animationFileNameOffset = binaryReader.ReadInt32();
-        Unknown9 = binaryReader.ReadInt32();
+        ColorPaletteFileCount = binaryReader.ReadInt32();
         var colorPaletteFileIndexOffset = binaryReader.ReadInt32();
         var colorPaletteFileNameOffset = binaryReader.ReadInt32();
-        Unknown12 = binaryReader.ReadInt32();
+        BitmapFileCount = binaryReader.ReadInt32();
         var bitmapFileIndexOffset = binaryReader.ReadInt32();
         var bitmapFileNameOffset = binaryReader.ReadInt32();
 

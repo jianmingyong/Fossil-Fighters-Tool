@@ -10,9 +10,10 @@
       <ul>
         <li><a href="#mar-archive">MAR Archive</a></li>
         <li><a href="#mcm-file">MCM File</a></li>
-        <li><a href="#built-with">Built With</a></li>
       </ul>
     </li>
+    <li><a href="#game-file-header">Game File Headers</a></li>
+    <li><a href="#built-with">Built With</a></li>
   </ol>
 </details>
 
@@ -66,7 +67,36 @@ File Header
 Note: The value is expressed in little-endian format. LSB should come first before MSB.
 ```
 
-### Built With
+## Game File Headers
+
+### MMS (Found in motion folder)
+
+This file contains information about images that are animatable in-game.
+
+```text
+File Header
+    0x00h 4     ID "MMS" (0x00534D4D)
+    0x04h 4     Unknown
+    0x08h 4     Unknown
+    0x0Ch 4     Unknown
+    0x10h 4     Unknown
+    0x14h 4     Unknown
+    0x18h 4     Animation File Indexes Count
+    0x1Ch 4     Animation File Indexes Offset (Offset from MMS+0)
+    0x20h 4     Animation File Name
+    0x24h 4     Color Palette File Indexes Count
+    0x28h 4     Color Palette File Indexes Offset (Offset from MMS+0)
+    0x2Ch 4     Color Palette File Name
+    0x30h 4     Bitmap File Indexes Count
+    0x34h 4     Bitmap File Indexes Offset (Offset from MMS+0)
+    0x38h 4     Bitmap File Name
+
+Note: The value is expressed in little-endian format. LSB should come first before MSB.
+```
+
+<p align="right">(<a href="#top">back to top</a>)</p>
+
+## Built With
 
 This project is build with Dotnet Core which you can download below.
 
