@@ -1,5 +1,4 @@
-﻿using System.Text;
-using SixLabors.ImageSharp.PixelFormats;
+﻿using SixLabors.ImageSharp.PixelFormats;
 
 namespace Fossil_Fighters_Tool.Motion;
 
@@ -15,27 +14,26 @@ public class ColorPaletteFileReader : IDisposable
     
     public Rgba32[] ColorTable { get; }
 
-    private readonly Stream _stream;
+    private readonly BinaryReader _reader;
 
-    public ColorPaletteFileReader(Stream stream)
+    public ColorPaletteFileReader(BinaryReader reader)
     {
-        _stream = stream;
-        
-        using var binaryReader = new BinaryReader(stream, Encoding.ASCII, true);
+        _reader = reader;
 
-        ColorTableType = Enum.Parse<ColorPaletteType>(binaryReader.ReadInt32().ToString());
+        reader.BaseStream.Seek(0, SeekOrigin.Begin);
+        
+        ColorTableType = (ColorPaletteType) reader.ReadInt32();
         ColorTable = new Rgba32[ColorTableType == ColorPaletteType.Color16 ? 16 : 256];
         
         for (var i = 0; i < ColorTable.Length; i++)
         {
-            var rawValue = binaryReader.ReadInt16();
+            var rawValue = reader.ReadUInt16();
             ColorTable[i] = new Rgba32((byte) ((rawValue & 0x1F) << 3), (byte) (((rawValue >> 5) & 0x1F) << 3), (byte) (((rawValue >> 10) & 0x1F) << 3), (byte) (i == 0 ? 0 : 255));
         }
     }
     
     public void Dispose()
     {
-        _stream.Dispose();
-        GC.SuppressFinalize(this);
+        _reader.Dispose();
     }
 }

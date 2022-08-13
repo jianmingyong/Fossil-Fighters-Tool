@@ -117,6 +117,8 @@ File Header
 BP Exchange Info
     0x00h 2     BP Exchange Value
     0x02h 2     DP Cost
+
+Note: BP Exchange Value cannot be changed as it would require the corresponding image to be present.
 ```
 
 ### DMS

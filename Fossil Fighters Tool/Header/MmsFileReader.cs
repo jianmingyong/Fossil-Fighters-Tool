@@ -4,7 +4,7 @@ namespace Fossil_Fighters_Tool.Header;
 
 public class MmsFileReader : IDisposable
 {
-    private const int MmsFileHeaderId = 0x00534D4D;
+    public const int Id = 0x00534D4D;
     
     public int Unknown1 { get; }
     
@@ -14,7 +14,7 @@ public class MmsFileReader : IDisposable
     
     public int Unknown4 { get; }
     
-    public int EndHeaderOffset { get; }
+    public int Unknown5 { get; }
     
     public int AnimationFileCount { get; }
     
@@ -33,108 +33,98 @@ public class MmsFileReader : IDisposable
     public int[] BitmapFileIndexes { get; }
     
     public string BitmapFileName { get; }
-
-    private readonly FileStream _stream;
-
-    public MmsFileReader(FileStream stream)
+    
+    private readonly BinaryReader _reader;
+    
+    public MmsFileReader(BinaryReader reader)
     {
-        _stream = stream;
-
-        using var binaryReader = new BinaryReader(stream, Encoding.ASCII, true);
+        _reader = reader;
         
-        if (binaryReader.ReadInt32() != MmsFileHeaderId)
+        reader.BaseStream.Seek(0, SeekOrigin.Begin);
+        
+        if (reader.ReadInt32() != Id) throw new Exception("This is not a MMS file.");
+
+        Unknown1 = reader.ReadInt32();
+        Unknown2 = reader.ReadInt32();
+        Unknown3 = reader.ReadInt32();
+        Unknown4 = reader.ReadInt32();
+        Unknown5 = reader.ReadInt32();
+        
+        AnimationFileCount = reader.ReadInt32();
+        AnimationFileIndexes = new int[AnimationFileCount];
+        var animationFileIndexOffset = reader.ReadInt32();
+        var animationFileNameOffset = reader.ReadInt32();
+        
+        ColorPaletteFileCount = reader.ReadInt32();
+        ColorPaletteFileIndexes = new int[ColorPaletteFileCount];
+        var colorPaletteFileIndexOffset = reader.ReadInt32();
+        var colorPaletteFileNameOffset = reader.ReadInt32();
+        
+        BitmapFileCount = reader.ReadInt32();
+        BitmapFileIndexes = new int[BitmapFileCount];
+        var bitmapFileIndexOffset = reader.ReadInt32();
+        var bitmapFileNameOffset = reader.ReadInt32();
+
+        reader.BaseStream.Seek(animationFileIndexOffset, SeekOrigin.Begin);
+
+        for (var i = 0; i < AnimationFileCount; i++)
         {
-            throw new Exception("This is not a MMS file.");
+            AnimationFileIndexes[i] = reader.ReadInt32();
         }
-
-        Unknown1 = binaryReader.ReadInt32();
-        Unknown2 = binaryReader.ReadInt32();
-        Unknown3 = binaryReader.ReadInt32();
-        Unknown4 = binaryReader.ReadInt32();
-        EndHeaderOffset = binaryReader.ReadInt32();
-        AnimationFileCount = binaryReader.ReadInt32();
-        var animationFileIndexOffset = binaryReader.ReadInt32();
-        var animationFileNameOffset = binaryReader.ReadInt32();
-        ColorPaletteFileCount = binaryReader.ReadInt32();
-        var colorPaletteFileIndexOffset = binaryReader.ReadInt32();
-        var colorPaletteFileNameOffset = binaryReader.ReadInt32();
-        BitmapFileCount = binaryReader.ReadInt32();
-        var bitmapFileIndexOffset = binaryReader.ReadInt32();
-        var bitmapFileNameOffset = binaryReader.ReadInt32();
-
-        _stream.Seek(animationFileIndexOffset, SeekOrigin.Begin);
-
-        var animationFileIndexes = new List<int>();
         
-        do
-        {
-            animationFileIndexes.Add(binaryReader.ReadInt32());
-        } while (_stream.Position < animationFileNameOffset);
-
-        AnimationFileIndexes = animationFileIndexes.ToArray();
-        
-        _stream.Seek(animationFileNameOffset, SeekOrigin.Begin);
+        reader.BaseStream.Seek(animationFileNameOffset, SeekOrigin.Begin);
         
         var animationFileName = new StringBuilder();
         char animationFileNameChar;
         
-        while ((animationFileNameChar = binaryReader.ReadChar()) != '\0')
+        while ((animationFileNameChar = reader.ReadChar()) != '\0')
         {
             animationFileName.Append(animationFileNameChar);
         }
 
         AnimationFileName = animationFileName.ToString();
 
-        _stream.Seek(colorPaletteFileIndexOffset, SeekOrigin.Begin);
+        reader.BaseStream.Seek(colorPaletteFileIndexOffset, SeekOrigin.Begin);
 
-        var colorPaletteFileIndexes = new List<int>();
-
-        do
+        for (var i = 0; i < ColorPaletteFileCount; i++)
         {
-            colorPaletteFileIndexes.Add(binaryReader.ReadInt32());
-        } while (_stream.Position < colorPaletteFileNameOffset);
-        
-        ColorPaletteFileIndexes = colorPaletteFileIndexes.ToArray();
-        
-        _stream.Seek(colorPaletteFileNameOffset, SeekOrigin.Begin);
+            ColorPaletteFileIndexes[i] = reader.ReadInt32();
+        }
+
+        reader.BaseStream.Seek(colorPaletteFileNameOffset, SeekOrigin.Begin);
 
         var colorPaletteFileName = new StringBuilder();
         char colorPaletteFileNameChar;
         
-        while ((colorPaletteFileNameChar = binaryReader.ReadChar()) != '\0')
+        while ((colorPaletteFileNameChar = reader.ReadChar()) != '\0')
         {
             colorPaletteFileName.Append(colorPaletteFileNameChar);
         }
 
         ColorPaletteFileName = colorPaletteFileName.ToString();
         
-        _stream.Seek(bitmapFileIndexOffset, SeekOrigin.Begin);
+        reader.BaseStream.Seek(bitmapFileIndexOffset, SeekOrigin.Begin);
 
-        var bitmapFileIndexes = new List<int>();
-
-        do
+        for (var i = 0; i < BitmapFileCount; i++)
         {
-            bitmapFileIndexes.Add(binaryReader.ReadInt32());
-        } while (_stream.Position < bitmapFileNameOffset);
+            BitmapFileIndexes[i] = reader.ReadInt32();
+        }
 
-        BitmapFileIndexes = bitmapFileIndexes.ToArray();
-        
-        _stream.Seek(bitmapFileNameOffset, SeekOrigin.Begin);
+        reader.BaseStream.Seek(bitmapFileNameOffset, SeekOrigin.Begin);
 
         var bitmapFileName = new StringBuilder();
         char bitmapFileNameChar;
         
-        while ((bitmapFileNameChar = binaryReader.ReadChar()) != '\0')
+        while ((bitmapFileNameChar = reader.ReadChar()) != '\0')
         {
             bitmapFileName.Append(bitmapFileNameChar);
         }
 
         BitmapFileName = bitmapFileName.ToString();
     }
-    
+
     public void Dispose()
     {
-        _stream.Dispose();
-        GC.SuppressFinalize(this);
+        _reader.Dispose();
     }
 }

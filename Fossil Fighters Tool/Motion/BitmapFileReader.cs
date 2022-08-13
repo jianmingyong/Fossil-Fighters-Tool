@@ -1,6 +1,4 @@
-﻿using System.Text;
-
-namespace Fossil_Fighters_Tool.Motion;
+﻿namespace Fossil_Fighters_Tool.Motion;
 
 public class BitmapFileReader : IDisposable
 {
@@ -14,15 +12,15 @@ public class BitmapFileReader : IDisposable
     
     public byte[] BitmapColorIndexes { get; }
 
-    private readonly Stream _stream;
+    private readonly BinaryReader _reader;
 
-    public BitmapFileReader(Stream stream)
+    public BitmapFileReader(BinaryReader reader)
     {
-        _stream = stream;
+        _reader = reader;
         
-        using var binaryReader = new BinaryReader(stream, Encoding.ASCII, true);
-
-        Unknown1 = binaryReader.ReadInt32();
+        reader.BaseStream.Seek(0, SeekOrigin.Begin);
+        
+        Unknown1 = reader.ReadInt32();
         
         switch (Unknown1 & 0xF)
         {
@@ -93,15 +91,14 @@ public class BitmapFileReader : IDisposable
         
         do
         {
-            bitmapColorIndexes.Add(binaryReader.ReadByte());
-        } while (_stream.Position < _stream.Length);
+            bitmapColorIndexes.Add(reader.ReadByte());
+        } while (reader.BaseStream.Position < reader.BaseStream.Length);
 
         BitmapColorIndexes = bitmapColorIndexes.ToArray();
     }
 
     public void Dispose()
     {
-        _stream.Dispose();
-        GC.SuppressFinalize(this);
+        _reader.Dispose();
     }
 }

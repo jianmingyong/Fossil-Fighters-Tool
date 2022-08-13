@@ -1,4 +1,5 @@
-﻿using Fossil_Fighters_Tool.Archive;
+﻿using System.Text;
+using Fossil_Fighters_Tool.Archive;
 using Fossil_Fighters_Tool.Header;
 using Fossil_Fighters_Tool.Motion;
 using SixLabors.ImageSharp;
@@ -68,106 +69,127 @@ internal static class Program
             }
             
             var outputFile = Path.Combine(outputDirectory, $"{i}.bin");
-            using var outputStream = new FileStream(outputFile, FileMode.Create, FileAccess.Write);
-            using var mcmFileStream = new McmFileStream(outputStream, McmFileStreamMode.Decompress);
-            using var inputStream = marEntries[i].Open();
-            inputStream.CopyTo(mcmFileStream);
+
+            using (var outputStream = new FileStream(outputFile, FileMode.Create, FileAccess.Write))
+            {
+                using var mcmFileStream = new McmFileStream(outputStream, McmFileStreamMode.Decompress);
+                using var inputStream = marEntries[i].Open();
+                inputStream.CopyTo(mcmFileStream);
+            }
+
+            using var binaryReader = new BinaryReader(new FileStream(outputFile, FileMode.Open, FileAccess.Read), Encoding.ASCII);
+
+            switch (binaryReader.ReadInt32())
+            {
+                case MmsFileReader.Id:
+                {
+                    using var mmsFileReader = new MmsFileReader(binaryReader);
+
+                    var colorPaletteFileReaders = new ColorPaletteFileReader[mmsFileReader.ColorPaletteFileCount];
+
+                    for (var j = 0; j < mmsFileReader.ColorPaletteFileCount; j++)
+                    {
+                        var colorPaletteFile = Path.Combine(outputDirectory, "..", mmsFileReader.ColorPaletteFileName, $"{mmsFileReader.ColorPaletteFileIndexes[j]}.bin");
+
+                        if (!File.Exists(colorPaletteFile))
+                        {
+                            ExtractMarArchive(Path.Combine(outputDirectory, "..", "..", mmsFileReader.ColorPaletteFileName));
+                        }
+                        
+                        using var colorPaletteFileReader = new ColorPaletteFileReader(new BinaryReader(new FileStream(colorPaletteFile, FileMode.Open, FileAccess.Read)));
+                        colorPaletteFileReaders[j] = colorPaletteFileReader;
+                    }
+
+                    for (var j = 0; j < mmsFileReader.BitmapFileCount; j++)
+                    {
+                        var bitmapFile = Path.Combine(outputDirectory, "..", mmsFileReader.BitmapFileName, $"{mmsFileReader.BitmapFileIndexes[j]}.bin");
+
+                        if (!File.Exists(bitmapFile))
+                        {
+                            ExtractMarArchive(Path.Combine(outputDirectory, "..", "..", mmsFileReader.BitmapFileName));
+                        }
+
+                        using var bitmapFileReader = new BitmapFileReader(new BinaryReader(new FileStream(bitmapFile, FileMode.Open, FileAccess.Read)));
+
+                        var width = bitmapFileReader.Width == 0 ? 16 : bitmapFileReader.Width;
+                        var height = bitmapFileReader.Height == 0 ? 16 : bitmapFileReader.Height;
+
+                        using var image = new Image<Rgba32>(width, height);
+
+                        var bitmapIndex = 0;
+                        var gridX = 0;
+                        var gridY = 0;
+
+                        if (bitmapFileReader.ColorType == 0)
+                        {
+                            while (bitmapIndex * 2 < width * height)
+                            {
+                                for (var y = 0; y < 8; y++)
+                                {
+                                    for (var x = 0; x < 8; x += 2)
+                                    {
+                                        // TODO: Which color palette to use? God knows...
+
+                                        int colorPaletteIndex;
+
+                                        if (mmsFileReader.BitmapFileCount < mmsFileReader.ColorPaletteFileCount)
+                                        {
+                                            colorPaletteIndex = 0;
+                                        }
+                                        else
+                                        {
+                                            colorPaletteIndex = j / (int) Math.Ceiling((double) mmsFileReader.BitmapFileCount / (double) mmsFileReader.ColorPaletteFileCount);
+                                        }
+                                        
+                                        image[x + gridX * 8, y + gridY * 8] = colorPaletteFileReaders[colorPaletteIndex].ColorTable[bitmapFileReader.BitmapColorIndexes[bitmapIndex] >> 4];
+                                        image[x + 1 + gridX * 8, y + gridY * 8] = colorPaletteFileReaders[colorPaletteIndex].ColorTable[bitmapFileReader.BitmapColorIndexes[bitmapIndex] & 0xF];
+
+                                        
+                                        bitmapIndex++;
+                                    }
+                                }
+
+                                gridX++;
+
+                                if (gridX >= width / 8)
+                                {
+                                    gridX = 0;
+                                    gridY++;
+                                }
+                            }
+                        }
+                        else if (bitmapFileReader.ColorType == 1)
+                        {
+                            while (bitmapIndex < width * height)
+                            {
+                                for (var y = 0; y < 8; y++)
+                                {
+                                    for (var x = 0; x < 8; x++)
+                                    {
+                                        image[x + gridX * 8, y + gridY * 8] = colorPaletteFileReaders[0].ColorTable[bitmapFileReader.BitmapColorIndexes[bitmapIndex++]];
+                                    }
+                                }
+
+                                gridX++;
+
+                                if (gridX >= width / 8)
+                                {
+                                    gridX = 0;
+                                    gridY++;
+                                }
+                            }
+                        }
+
+                        image.SaveAsPng(Path.Combine(outputDirectory, $"{mmsFileReader.BitmapFileIndexes[j]}.png"));
+                        Console.WriteLine($"Extracted: {Path.Combine(outputDirectory, $"{mmsFileReader.BitmapFileIndexes[j]}.png")}");
+                    }
+                    
+                    break;
+                }
+            }
         }
     }
     
-    private static void ExtractMmsFile(string inputFilePath)
-    {
-        using var mmsFileReader = new MmsFileReader(new FileStream(inputFilePath, FileMode.Open, FileAccess.Read));
-        
-        var inputFileDirectory = Path.GetDirectoryName(inputFilePath)!;
-        var colorPalettes = new List<ColorPaletteFileReader>();
-
-        for (var i = 0; i < mmsFileReader.ColorPaletteFileIndexes.Length; i++)
-        {
-            var colorPaletteFile = Path.Combine(inputFileDirectory, "..", "..", mmsFileReader.ColorPaletteFileName, mmsFileReader.ColorPaletteFileIndexes[i].ToString(), "0.bin");
-
-            if (!File.Exists(colorPaletteFile))
-            {
-                ExtractMarArchive(Path.Combine(inputFileDirectory, "..", "..", "..", mmsFileReader.ColorPaletteFileName));
-            }
-            
-            using var colorPaletteFileReader = new ColorPaletteFileReader(new FileStream(colorPaletteFile, FileMode.Open, FileAccess.Read));
-            colorPalettes.Add(colorPaletteFileReader);
-        }
-        
-        for (var i = 0; i < mmsFileReader.BitmapFileIndexes.Length; i++)
-        {
-            try
-            {
-                var bitmapFile = Path.Combine(inputFileDirectory, "..", "..", mmsFileReader.BitmapFileName, mmsFileReader.BitmapFileIndexes[i].ToString(), "0.bin");
-            
-                using var bitmapFileReader = new BitmapFileReader(new FileStream(bitmapFile, FileMode.Open, FileAccess.Read));
-
-                var width = bitmapFileReader.Width == 0 ? 16 : bitmapFileReader.Width;
-                var height = bitmapFileReader.Height == 0 ? 16 : bitmapFileReader.Height;
-
-                using var image = new Image<Rgba32>(width, height);
-
-                var bitmapIndex = 0;
-                var gridX = 0;
-                var gridY = 0;
-
-                if (bitmapFileReader.ColorType == 0)
-                {
-                    while (bitmapIndex * 2 < width * height)
-                    {
-                        for (var y = 0; y < 8; y++)
-                        {
-                            for (var x = 0; x < 8; x += 2)
-                            {
-                                // TODO: Which color palette to use? God knows...
-                                image[x + gridX * 8, y + gridY * 8] = colorPalettes[i / (mmsFileReader.BitmapFileIndexes.Length / colorPalettes.Count)].ColorTable[bitmapFileReader.BitmapColorIndexes[bitmapIndex] >> 4];
-                                image[x + 1 + gridX * 8, y + gridY * 8] = colorPalettes[i / (mmsFileReader.BitmapFileIndexes.Length / colorPalettes.Count)].ColorTable[bitmapFileReader.BitmapColorIndexes[bitmapIndex] & 0xF];
-                                
-                                bitmapIndex++;
-                            }
-                        }
-
-                        gridX++;
-
-                        if (gridX >= width / 8)
-                        {
-                            gridX = 0;
-                            gridY++;
-                        }
-                    }
-                }
-                else if (bitmapFileReader.ColorType == 1)
-                {
-                    while (bitmapIndex < width * height)
-                    {
-                        for (var y = 0; y < 8; y++)
-                        {
-                            for (var x = 0; x < 8; x++)
-                            {
-                                image[x + gridX * 8, y + gridY * 8] = colorPalettes[0].ColorTable[bitmapFileReader.BitmapColorIndexes[bitmapIndex++]];
-                            }
-                        }
-
-                        gridX++;
-
-                        if (gridX >= width / 8)
-                        {
-                            gridX = 0;
-                            gridY++;
-                        }
-                    }
-                }
-                
-                image.SaveAsPng(Path.Combine(inputFileDirectory, $"{mmsFileReader.BitmapFileIndexes[i]}.png"));
-                Console.WriteLine($"Extracted: {Path.Combine(inputFileDirectory, $"{mmsFileReader.BitmapFileIndexes[i]}.png")}");
-            }
-            catch (Exception)
-            {
-            }
-        }
-    }
-
     private static void TestFile(string inputFilePath)
     {
         var inputFileDirectory = Path.GetDirectoryName(inputFilePath)!;

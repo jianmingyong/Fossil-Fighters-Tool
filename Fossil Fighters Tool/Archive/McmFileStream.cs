@@ -60,11 +60,6 @@ public class McmFileStream : Stream
         _dataChunkOffsets = Array.Empty<int>();
     }
 
-    public override int Read(byte[] buffer, int offset, int count)
-    {
-        throw new NotSupportedException();
-    }
-
     public override void Write(byte[] buffer, int offset, int count)
     {
         _inputStream.Seek(_inputStreamWritten, SeekOrigin.Begin);
@@ -83,6 +78,11 @@ public class McmFileStream : Stream
         }
     }
 
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        throw new NotSupportedException();
+    }
+    
     public override long Seek(long offset, SeekOrigin origin)
     {
         throw new NotSupportedException();
