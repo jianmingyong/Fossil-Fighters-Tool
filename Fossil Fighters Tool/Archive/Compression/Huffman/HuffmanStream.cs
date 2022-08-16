@@ -162,7 +162,18 @@ public class HuffmanStream : Stream
                     {
                         if (_isHalfDataWritten)
                         {
-                            _outputStream.WriteByte((byte) (_halfData | (_currentNode.Data.Value << 4)));
+                            var buffer = ArrayPool<byte>.Shared.Rent(1);
+
+                            try
+                            {
+                                buffer[0] = (byte) (_halfData | (_currentNode.Data.Value << 4));
+                                _outputStream.Write(buffer, 0, 1);
+                            }
+                            finally
+                            {
+                                ArrayPool<byte>.Shared.Return(buffer);
+                            }
+                            
                             _bytesWritten += 1;
                             _isHalfDataWritten = false;
                         }
@@ -176,7 +187,18 @@ public class HuffmanStream : Stream
                     }
                     else
                     {
-                        _outputStream.WriteByte(_currentNode.Data.Value);
+                        var buffer = ArrayPool<byte>.Shared.Rent(1);
+
+                        try
+                        {
+                            buffer[0] = _currentNode.Data.Value;
+                            _outputStream.Write(buffer, 0, 1);
+                        }
+                        finally
+                        {
+                            ArrayPool<byte>.Shared.Return(buffer);
+                        }
+                        
                         _bytesWritten += 1;
                         _currentNode = _rootNode;
                     }

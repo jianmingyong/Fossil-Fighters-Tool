@@ -36,7 +36,7 @@ public static class ImageUtility
         }
     }
 
-    public static byte[] GetColorIndexes(Stream stream)
+    public static byte[] GetBitmap(Stream stream)
     {
         using var memoryStream = new MemoryStream();
         stream.CopyTo(memoryStream);

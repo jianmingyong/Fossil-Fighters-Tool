@@ -38,6 +38,10 @@ public class McmFileStream : Stream
     private McmCompressionType _decompressionType2;
     private int[] _dataChunkOffsets;
     private int _dataChunkIndex;
+    
+    // Compress
+    private int _originalFileSize;
+    private int _numberOfChunks;
 
     public McmFileStream(Stream outputStream, McmFileStreamMode mode, bool leaveOpen = false)
     {
@@ -91,7 +95,7 @@ public class McmFileStream : Stream
     
     private void Compress(ref SequenceReader<byte> sequenceReader)
     {
-        throw new NotImplementedException();
+        
     }
 
     private void Decompress(ref SequenceReader<byte> reader)

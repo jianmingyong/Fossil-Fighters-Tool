@@ -60,6 +60,24 @@ namespace Fossil_Fighters_Tool {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Extracted: {0}.
+        /// </summary>
+        internal static string FileExtracted {
+            get {
+                return ResourceManager.GetString("FileExtracted", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Extracting: {0}.
+        /// </summary>
+        internal static string FileExtracting {
+            get {
+                return ResourceManager.GetString("FileExtracting", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The contents of the stream is not {0} archive..
         /// </summary>
         internal static string StreamIsNotArchive {

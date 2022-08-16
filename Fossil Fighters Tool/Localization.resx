@@ -23,4 +23,10 @@
     <data name="StreamIsNotArchive" xml:space="preserve">
         <value>The contents of the stream is not {0} archive.</value>
     </data>
+    <data name="FileExtracted" xml:space="preserve">
+        <value>Extracted: {0}</value>
+    </data>
+    <data name="FileExtracting" xml:space="preserve">
+        <value>Extracting: {0}</value>
+    </data>
 </root>
