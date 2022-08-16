@@ -1,5 +1,4 @@
 ﻿using System.Buffers;
-using System.Text;
 
 namespace Fossil_Fighters_Tool.Archive.Compression.Lzss;
 
@@ -23,46 +22,48 @@ public class LzssStream : Stream
     private readonly LzssStreamMode _mode;
     private readonly bool _leaveOpen;
     
-    private readonly MemoryBinaryStream _inputStream;
-    private long _inputStreamRead;
-    private long _inputStreamWritten;
+    // Shared between decompress and compress
+    private readonly IMemoryOwner<byte> _unusedMemoryOwner;
+    private ReadOnlyMemory<byte> _unusedBuffer = ReadOnlyMemory<byte>.Empty;
     
     // Decompress
     private bool _hasHeader;
     private bool _hasFlag;
-    private bool _hasBlock;
     private int _decompressSize;
     private int _bytesWritten;
-    private readonly byte[] _lookbackBuffer;
+    private byte[] _lookbackBuffer;
     private int _lookbackIndex;
     private byte _flagData;
     private int _blockIndex;
     
-    public LzssStream(Stream outputStream, LzssStreamMode mode, bool leaveOpen = false)
+    public LzssStream(Stream outputStream, LzssStreamMode mode, int maxSizePerChunk, bool leaveOpen = false)
     {
-        _inputStream = new MemoryBinaryStream(Encoding.ASCII);
         _outputStream = outputStream;
         _mode = mode;
         _leaveOpen = leaveOpen;
+        _unusedMemoryOwner = MemoryPool<byte>.Shared.Rent(maxSizePerChunk);
         _lookbackBuffer = mode == LzssStreamMode.Decompress ? ArrayPool<byte>.Shared.Rent(LookbackBufferSize) : Array.Empty<byte>();
     }
     
     public override void Write(byte[] buffer, int offset, int count)
     {
-        _inputStream.Seek(_inputStreamWritten, SeekOrigin.Begin);
-        _inputStream.Write(buffer, offset, count);
-        _inputStream.Seek(_inputStreamRead, SeekOrigin.Begin);
+        var firstSegment = new ReadOnlyMemorySegment<byte>(_unusedBuffer);
+        var lastSegment = firstSegment.Append(new ReadOnlyMemory<byte>(buffer, offset, count));
+        var sequenceReader = new SequenceReader<byte>(new ReadOnlySequence<byte>(firstSegment, 0, lastSegment, lastSegment.Memory.Length));
         
-        _inputStreamWritten += count;
-
         if (_mode == LzssStreamMode.Decompress)
         {
-            Decompress();
+            Decompress(ref sequenceReader);
+            if (_decompressSize > 0 && _bytesWritten >= _decompressSize) return;
         }
         else
         {
-            Compress();
+            Compress(ref sequenceReader);
         }
+        
+        var unreadSequence = sequenceReader.UnreadSequence;
+        unreadSequence.CopyTo(_unusedMemoryOwner.Memory.Span);
+        _unusedBuffer = _unusedMemoryOwner.Memory[..(int) unreadSequence.Length];
     }
     
     public override int Read(byte[] buffer, int offset, int count)
@@ -85,104 +86,93 @@ public class LzssStream : Stream
         _outputStream.Flush();
     }
 
-    private void Decompress()
+    private void Compress(ref SequenceReader<byte> reader)
+    {
+        throw new NotImplementedException();
+    }
+    
+    private void Decompress(ref SequenceReader<byte> reader)
     {
         if (!_hasHeader)
         {
-            if (_inputStream.Length - _inputStream.Position < 4) return;
+            if (!reader.TryReadLittleEndian(out int rawData)) return;
+            if (((rawData >> 4) & 0xF) != 0x1) throw new InvalidDataException(string.Format(Localization.StreamIsNotCompressed, "LZSS"));
 
-            var rawData = _inputStream.ReadUInt32();
-            if (((rawData >> 4) & 0xF) != 0x1) throw new InvalidDataException("The contents of the stream is not in the lzss format.");
-
-            _decompressSize = (int) (rawData >> 8);
+            _decompressSize = (rawData >> 8) & 0xFFFFFF;
             _lookbackIndex = 0;
-            
-            _inputStreamRead += 4;
 
             _hasHeader = true;
         }
 
-        do
+        if (_hasHeader)
         {
-            if (_hasHeader && !_hasFlag)
+            while (_bytesWritten < _decompressSize)
             {
-                if (_inputStream.Length - _inputStream.Position < 1) return;
-
-                _flagData = _inputStream.ReadByte();
-                _inputStreamRead += 1;
-
-                _hasFlag = true;
-                _hasBlock = false;
-                _blockIndex = 7;
-            }
-
-            if (_hasHeader && _hasFlag && !_hasBlock)
-            {
-                for (; _blockIndex >= 0; _blockIndex--)
+                if (!_hasFlag)
                 {
-                    var blockType = (_flagData >> _blockIndex) & 0x1;
+                    if (!reader.TryRead(out _flagData)) return;
+                    
+                    _blockIndex = 7;
+                    
+                    _hasFlag = true;
+                }
 
-                    if (blockType == 0)
+                if (_hasFlag)
+                {
+                    for (; _blockIndex >= 0; _blockIndex--)
                     {
-                        if (_inputStream.Length - _inputStream.Position < 1) return;
+                        var blockType = (_flagData >> _blockIndex) & 0x1;
 
-                        var byteToWrite = _inputStream.ReadByte();
-                        
-                        _outputStream.WriteByte(byteToWrite);
-                        
-                        _lookbackBuffer[_lookbackIndex++] = byteToWrite;
-                        if (_lookbackIndex >= LookbackBufferSize) _lookbackIndex = 0;
-                        
-                        _inputStreamRead += 1;
-                        _bytesWritten += 1;
-                    }
-                    else
-                    {
-                        if (_inputStream.Length - _inputStream.Position < 2) return;
-                        
-                        var rawData = _inputStream.ReadByte();
-                        var rawData2 = _inputStream.ReadByte();
-                        
-                        var bytesToCopy = ((rawData >> 4) & 0xF) + 3;
-                        var offset = (((rawData & 0xF) << 8) | rawData2) + 1;
-                        
-                        for (var i = 0; i < bytesToCopy; i++)
+                        if (blockType == 0)
                         {
-                            var index = _lookbackIndex - offset;
-
-                            if (index < 0)
-                            {
-                                index += LookbackBufferSize;
-                            }
-                            else if (index >= LookbackBufferSize)
-                            {
-                                index -= LookbackBufferSize;
-                            }
+                            if (!reader.TryRead(out var rawData)) return;
                             
-                            _outputStream.WriteByte(_lookbackBuffer[index]);
-                            
-                            _lookbackBuffer[_lookbackIndex++] = _lookbackBuffer[index];
+                            _outputStream.WriteByte(rawData);
+                        
+                            _lookbackBuffer[_lookbackIndex++] = rawData;
                             if (_lookbackIndex >= LookbackBufferSize) _lookbackIndex = 0;
+                        
+                            _bytesWritten += 1;
+                        }
+                        else
+                        {
+                            if (!reader.TryReadLittleEndian(out short rawData)) return;
+                            
+                            var bytesToCopy = ((rawData >> 4) & 0xF) + 3;
+                            var offset = (((rawData & 0xF) << 8) | ((rawData >> 8) & 0xFF)) + 1;
+                            
+                            for (var i = 0; i < bytesToCopy; i++)
+                            {
+                                var index = _lookbackIndex - offset;
+
+                                switch (index)
+                                {
+                                    case < 0:
+                                        index += LookbackBufferSize;
+                                        break;
+
+                                    case >= LookbackBufferSize:
+                                        index -= LookbackBufferSize;
+                                        break;
+                                }
+                            
+                                _outputStream.WriteByte(_lookbackBuffer[index]);
+                                _bytesWritten += 1;
+                            
+                                _lookbackBuffer[_lookbackIndex++] = _lookbackBuffer[index];
+                                if (_lookbackIndex >= LookbackBufferSize) _lookbackIndex = 0;
+                            }
                         }
                         
-                        _inputStreamRead += 2;
-                        _bytesWritten += bytesToCopy;
+                        if (_bytesWritten == _decompressSize) break;
                     }
-
-                    if (_bytesWritten == _decompressSize) break;
+                    
+                    _hasFlag = false;
                 }
-                
-                _hasBlock = true;
-                _hasFlag = false;
             }
-        } while (_bytesWritten < _decompressSize);
-        
-        _outputStream.Flush();
-    }
-
-    private void Compress()
-    {
-        throw new NotImplementedException();
+            
+            _outputStream.Flush();
+        }
     }
 
     protected override void Dispose(bool disposing)
@@ -194,7 +184,7 @@ public class LzssStream : Stream
                 _outputStream.Dispose();
             }
 
-            _inputStream.Dispose();
+            _unusedMemoryOwner.Dispose();
 
             if (_lookbackBuffer.Length > 0)
             {

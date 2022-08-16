@@ -1,4 +1,4 @@
-﻿using System.Text;
+﻿using System.Buffers;
 
 namespace Fossil_Fighters_Tool.Archive.Compression.Rle;
 
@@ -19,11 +19,11 @@ public class RleStream : Stream
     private readonly Stream _outputStream;
     private readonly RleStreamMode _mode;
     private readonly bool _leaveOpen;
-    
-    private readonly MemoryBinaryStream _inputStream;
-    private long _inputStreamRead;
-    private long _inputStreamWritten;
 
+    // Shared between decompress and compress
+    private readonly IMemoryOwner<byte> _unusedMemoryOwner;
+    private ReadOnlyMemory<byte> _unusedBuffer = ReadOnlyMemory<byte>.Empty;
+    
     // Decompress
     private bool _hasHeader;
     private bool _hasFlag;
@@ -32,30 +32,32 @@ public class RleStream : Stream
     private byte _flagDataLength;
     private byte _flagType;
 
-    public RleStream(Stream outputStream, RleStreamMode mode, bool leaveOpen = false)
+    public RleStream(Stream outputStream, RleStreamMode mode, int maxSizePerChunk, bool leaveOpen = false)
     {
-        _inputStream = new MemoryBinaryStream(Encoding.ASCII);
         _outputStream = outputStream;
         _mode = mode;
         _leaveOpen = leaveOpen;
+        _unusedMemoryOwner = MemoryPool<byte>.Shared.Rent(maxSizePerChunk);
     }
     
     public override void Write(byte[] buffer, int offset, int count)
     {
-        _inputStream.Seek(_inputStreamWritten, SeekOrigin.Begin);
-        _inputStream.Write(buffer, offset, count);
-        _inputStream.Seek(_inputStreamRead, SeekOrigin.Begin);
-        
-        _inputStreamWritten += count;
+        var firstSegment = new ReadOnlyMemorySegment<byte>(_unusedBuffer);
+        var lastSegment = firstSegment.Append(new ReadOnlyMemory<byte>(buffer, offset, count));
+        var sequenceReader = new SequenceReader<byte>(new ReadOnlySequence<byte>(firstSegment, 0, lastSegment, lastSegment.Memory.Length));
 
         if (_mode == RleStreamMode.Decompress)
         {
-            Decompress();
+            Decompress(ref sequenceReader);
         }
         else
         {
-            Compress();
+            Compress(ref sequenceReader);
         }
+        
+        var unreadSequence = sequenceReader.UnreadSequence;
+        unreadSequence.CopyTo(_unusedMemoryOwner.Memory.Span);
+        _unusedBuffer = _unusedMemoryOwner.Memory[..(int) unreadSequence.Length];
     }
 
     public override int Read(byte[] buffer, int offset, int count)
@@ -78,37 +80,34 @@ public class RleStream : Stream
         _outputStream.Flush();
     }
 
-    private void Decompress()
+    private void Compress(ref SequenceReader<byte> reader)
+    {
+        throw new NotImplementedException();
+    }
+    
+    private void Decompress(ref SequenceReader<byte> reader)
     {
         if (!_hasHeader)
         {
-            if (_inputStream.Length - _inputStream.Position < 4) return;
+            if (!reader.TryReadLittleEndian(out int rawData)) return;
+            if (((rawData >> 4) & 0xF) != 0x3) throw new InvalidDataException(string.Format(Localization.StreamIsNotCompressed, "RLE"));
 
-            var rawData = _inputStream.ReadUInt32();
-
-            if (((rawData >> 4) & 0xF) != 3) throw new InvalidDataException("The contents of the stream is not in the rle format.");
-
-            _decompressSize = (int) (rawData >> 8);
-            _inputStreamRead += 4;
+            _decompressSize = (rawData >> 8) & 0xFFFFFF;
             
             _hasHeader = true;
         }
 
         if (_hasHeader)
         {
-            do
+            while (_bytesWritten < _decompressSize)
             {
                 if (!_hasFlag)
                 {
-                    if (_inputStream.Length - _inputStream.Position < 1) return;
-
-                    var rawData = _inputStream.ReadByte();
+                    if (!reader.TryRead(out var rawData)) return;
 
                     _flagDataLength = (byte) (rawData & 0x7F);
                     _flagType = (byte) (rawData >> 7);
-                    
-                    _inputStreamRead += 1;
-                    
+                   
                     _hasFlag = true;
                 }
 
@@ -117,42 +116,39 @@ public class RleStream : Stream
                     if (_flagType == 0)
                     {
                         var bytesToRead = _flagDataLength + 1;
-                        if (_inputStream.Length - _inputStream.Position < bytesToRead) return;
+                        var buffer = ArrayPool<byte>.Shared.Rent(bytesToRead);
 
-                        for (var i = 0; i < bytesToRead; i++)
+                        try
                         {
-                            _outputStream.WriteByte(_inputStream.ReadByte());
+                            if (!reader.TryCopyTo(buffer.AsSpan(0, bytesToRead))) return;
+                            reader.Advance(bytesToRead);
+                            
+                            _outputStream.Write(buffer, 0, bytesToRead);
+                            _bytesWritten += bytesToRead;
                         }
-
-                        _inputStreamRead += bytesToRead;
-                        _bytesWritten += bytesToRead;
+                        finally
+                        {
+                            ArrayPool<byte>.Shared.Return(buffer);
+                        }
                     }
                     else
                     {
-                        if (_inputStream.Length - _inputStream.Position < 1) return;
-
-                        var dataToWrite = _inputStream.ReadByte();
-
-                        for (var i = _flagDataLength + 3; i >= 0; i--)
+                        if (!reader.TryRead(out var rawData)) return;
+                        
+                        for (var i = 0; i < _flagDataLength + 3; i++)
                         {
-                            _outputStream.WriteByte(dataToWrite);
+                            _outputStream.WriteByte(rawData);
                         }
 
-                        _inputStreamRead += 1;
                         _bytesWritten += _flagDataLength + 3;
                     }
-
+                    
                     _hasFlag = false;
                 }
-            } while (_bytesWritten < _decompressSize);
+            }
             
             _outputStream.Flush();
         }
-    }
-
-    private void Compress()
-    {
-        throw new NotImplementedException();
     }
     
     protected override void Dispose(bool disposing)
@@ -162,7 +158,7 @@ public class RleStream : Stream
             _outputStream.Dispose();
         }
         
-        _inputStream.Dispose();
+        _unusedMemoryOwner.Dispose();
         
         base.Dispose(disposing);
     }

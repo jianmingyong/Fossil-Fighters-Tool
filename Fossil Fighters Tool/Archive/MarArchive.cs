@@ -4,17 +4,6 @@ namespace Fossil_Fighters_Tool.Archive;
 
 public class MarArchive : IDisposable
 {
-    /*
-    File Header
-        0x00h 4     ID "MAR" (0x0052414D)
-        0x04h 4     Number of files
-        0x08h N*8   File Lists (see below)
-        
-    File Lists
-        0x00h 4     MCM File offset (Offset from MAR+0)
-        0x04h 4     Data File size (Decompressed)
-    */
-    
     private const int Id = 0x0052414D;
     
     public MarArchiveMode Mode { get; }
@@ -23,7 +12,6 @@ public class MarArchive : IDisposable
     {
         get
         {
-            if (_isDisposed) throw new ObjectDisposedException(nameof(MarArchive));
             ReadEntries();
             return _entries;
         }
@@ -38,7 +26,6 @@ public class MarArchive : IDisposable
     private readonly List<MarArchiveEntry> _entries = new();
 
     private bool _entriesRead;
-    private bool _isDisposed;
     
     public MarArchive(Stream stream, MarArchiveMode mode = MarArchiveMode.Read, bool leaveOpen = false)
     {
@@ -82,7 +69,7 @@ public class MarArchive : IDisposable
             {
                 case MarArchiveMode.Read:
                 case MarArchiveMode.Update:
-                    if (_archiveReader!.ReadUInt32() != Id) throw new InvalidDataException("The contents of the stream are not in the mar archive format.");
+                    if (_archiveReader!.ReadUInt32() != Id) throw new InvalidDataException(string.Format(Localization.StreamIsNotArchive, "MAR"));
                     break;
 
                 case MarArchiveMode.Create:
@@ -97,14 +84,6 @@ public class MarArchive : IDisposable
             if (ArchiveStream is MemoryStream) ArchiveStream.Dispose();
             throw;
         }
-    }
-
-    public MarArchiveEntry GetEntry(int entryIndex)
-    {
-        if (Mode == MarArchiveMode.Create) throw new NotSupportedException();
-        
-        ReadEntries();
-        return _entries[entryIndex];
     }
 
     private void ReadEntries()
@@ -131,9 +110,6 @@ public class MarArchive : IDisposable
     
     public void Dispose()
     {
-        if (_isDisposed) return;
-        _isDisposed = true;
-        
         if (!_leaveOpen)
         {
             _disposableStream.Dispose();

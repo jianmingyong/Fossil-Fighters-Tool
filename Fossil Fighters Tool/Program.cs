@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using Fossil_Fighters_Tool.Archive;
 using Fossil_Fighters_Tool.Header;
+using Fossil_Fighters_Tool.Image;
 using Fossil_Fighters_Tool.Motion;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -194,42 +195,44 @@ internal static class Program
     {
         var inputFileDirectory = Path.GetDirectoryName(inputFilePath)!;
 
-        using var testColor = new Fossil_Fighters_Tool.Image.ColorPaletteFileReader(File.OpenRead(Path.Combine(inputFileDirectory, "0.bin")));
-        var test = File.ReadAllBytes(inputFilePath);
+        using var colorPaletteFile = File.OpenRead(Path.Combine(inputFileDirectory, "1.bin"));
+        var colorPalette = ImageUtility.GetColorPalette(colorPaletteFile);
 
+        var colorIndexesFile = File.OpenRead(Path.Combine(inputFileDirectory, "2.bin"));
+        var colorIndexes = ImageUtility.GetColorIndexes(colorIndexesFile);
+        
         var width = 256;
-        var height = 32;
+        var height = 256;
         
         using var image = new Image<Rgba32>(width, height);
 
         var bitmapIndex = 0;
-        var gridX = 0;
-        var gridY = 0;
-        
-        while (bitmapIndex < width * height)
+
+        if (colorPalette.Length == 16)
         {
-            for (var y = 0; y < 8; y++)
+            for (var y = 0; y < height; y++)
             {
-                for (var x = 0; x < 8; x += 1)
+                for (var x = 0; x < width; x += 2)
                 {
-                    // TODO: Which color palette to use? God knows...
-                    //image[x + gridX * 8, y + gridY * 8] = testColor.ColorTable[test[bitmapIndex] & 0xF];
-                    //image[x + 1 + gridX * 8, y + gridY * 8] = testColor.ColorTable[test[bitmapIndex] >> 4];
-                    image[x + gridX * 8, y + gridY * 8] = testColor.ColorTable[test[bitmapIndex]];
-                        
+                    image[x, y] = colorPalette[colorIndexes[bitmapIndex] & 0xF];
+                    image[x, y] = colorPalette[colorIndexes[bitmapIndex] >> 4];
+
                     bitmapIndex++;
                 }
             }
-
-            gridX++;
-
-            if (gridX >= width / 8)
+        }
+        else
+        {
+            for (var y = 0; y < height; y++)
             {
-                gridX = 0;
-                gridY++;
+                for (var x = 0; x < width; x++)
+                {
+                    image[x, y] = colorPalette[colorIndexes[bitmapIndex]];
+                    bitmapIndex++;
+                }
             }
         }
-        
+
         image.SaveAsPng(Path.Combine(inputFileDirectory, "0.png"));
     }
 }

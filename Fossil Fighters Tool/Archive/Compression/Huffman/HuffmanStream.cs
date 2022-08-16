@@ -1,32 +1,9 @@
-﻿using System.Text;
+﻿using System.Buffers;
 
 namespace Fossil_Fighters_Tool.Archive.Compression.Huffman;
 
 public class HuffmanStream : Stream
 {
-    /*
-     * Data Header
-     * Bit 0-3  Data size in bit units (normally 4 or 8)
-     * Bit 4-7  Compressed type (must be 2 for Huffman)
-     * Bit 8-31 24bit size of decompressed data in bytes
-     *
-     * Tree Size
-     * Bit 0-7  Size of Tree Table/2-1
-     *
-     * Tree Table (list of 8bit nodes, starting with the root node)
-     * Root Node and Non-Data-Child Nodes are:
-     * Bit 0-5  Offset to next child node,
-     *          Next child node0 is at (CurrentAddr AND NOT 1)+Offset*2+2
-     *          Next child node1 is at (CurrentAddr AND NOT 1)+Offset*2+2+1
-     * Bit 6    Node1 End Flag (1=Next child node is data)
-     * Bit 7    Node0 End Flag (1=Next child node is data)
-     * Data nodes are (when End Flag was set in parent node):
-     * Bit 0-7  Data (upper bits should be zero if Data Size is less than 8)
-     *
-     * Compressed Bitstream (stored in units of 32bits)
-     * Bit 0-31 Node Bits (Bit31=First Bit)  (0=Node0, 1=Node1)
-     */
-    
     public override bool CanRead => false;
     public override bool CanSeek => false;
     public override bool CanWrite => true;
@@ -49,15 +26,14 @@ public class HuffmanStream : Stream
         }
     }
 
-    private readonly MemoryBinaryStream _inputStream;
-    private long _inputStreamRead;
-    private long _inputStreamWritten;
-    
     private readonly Stream _outputStream;
     private readonly HuffmanStreamMode _streamMode;
     private readonly bool _leaveOpen;
     
     // Shared between decompress and compress
+    private readonly IMemoryOwner<byte> _unusedMemoryOwner;
+    private ReadOnlyMemory<byte> _unusedBuffer = ReadOnlyMemory<byte>.Empty;
+    
     private HuffmanDataSize _dataSize;
     
     // Decompress
@@ -71,32 +47,34 @@ public class HuffmanStream : Stream
     private HuffmanNode? _currentNode;
     private bool _isHalfDataWritten;
     private byte _halfData;
-    private int _writtenLength;
+    private int _bytesWritten;
 
-    public HuffmanStream(Stream outputStream, HuffmanStreamMode streamMode, bool leaveOpen = false)
+    public HuffmanStream(Stream outputStream, HuffmanStreamMode streamMode, int maxSizePerChunk, bool leaveOpen = false)
     {
-        _inputStream = new MemoryBinaryStream(Encoding.ASCII);
         _outputStream = outputStream;
         _streamMode = streamMode;
         _leaveOpen = leaveOpen;
+        _unusedMemoryOwner = MemoryPool<byte>.Shared.Rent(maxSizePerChunk);
     }
     
     public override void Write(byte[] buffer, int offset, int count)
     {
-        _inputStream.Seek(_inputStreamWritten, SeekOrigin.Begin);
-        _inputStream.Write(buffer, offset, count);
-        _inputStream.Seek(_inputStreamRead, SeekOrigin.Begin);
-        
-        _inputStreamWritten += count;
-        
+        var firstSegment = new ReadOnlyMemorySegment<byte>(_unusedBuffer);
+        var lastSegment = firstSegment.Append(new ReadOnlyMemory<byte>(buffer, offset, count));
+        var sequenceReader = new SequenceReader<byte>(new ReadOnlySequence<byte>(firstSegment, 0, lastSegment, lastSegment.Memory.Length));
+
         if (_streamMode == HuffmanStreamMode.Decompress)
         {
-            Decompress();
+            Decompress(ref sequenceReader);
         }
         else
         {
-            Compress();
+            Compress(ref sequenceReader);
         }
+        
+        var unreadSequence = sequenceReader.UnreadSequence;
+        unreadSequence.CopyTo(_unusedMemoryOwner.Memory.Span);
+        _unusedBuffer = _unusedMemoryOwner.Memory[..(int) unreadSequence.Length];
     }
     
     public override int Read(byte[] buffer, int offset, int count)
@@ -118,65 +96,57 @@ public class HuffmanStream : Stream
     {
         _outputStream.Flush();
     }
+    
+    private void Compress(ref SequenceReader<byte> reader)
+    {
+        throw new NotImplementedException();
+    }
 
-    private void Decompress()
+    private void Decompress(ref SequenceReader<byte> reader)
     {
         if (!_hasDataHeader)
         {
-            if (_inputStream.Length - _inputStream.Position < 4) return;
-            
-            var rawDataHeader = _inputStream.ReadUInt32();
+            if (!reader.TryReadLittleEndian(out int rawData)) return;
+            if (((rawData >> 4) & 0xF) != 0x2) throw new InvalidDataException(string.Format(Localization.StreamIsNotCompressed, "Huffman"));
                 
-            if (((rawDataHeader >> 4) & 0xF) != 0x2)
-            {
-                throw new InvalidDataException("The contents of the stream is not in the huffman format.");
-            }
-                
-            _dataSize = (HuffmanDataSize) (rawDataHeader & 0xF);
-            _decompressLength = (int) (rawDataHeader >> 8);
-            _inputStreamRead += 4;
+            _dataSize = (HuffmanDataSize) (rawData & 0xF);
+            _decompressLength = (rawData >> 8) & 0xFFFFFF;
             
             _hasDataHeader = true;
         }
 
         if (_hasDataHeader && !_hasTreeSize)
         {
-            if (_inputStream.Length - _inputStream.Position < 1) return;
+            if (!reader.TryRead(out var rawData)) return;
 
-            _treeSize = _inputStream.ReadByte();
+            _treeSize = rawData;
             _treeNodeLength = (_treeSize + 1) * 2 - 1;
-            _inputStreamRead += 1;
-            
+
             _hasTreeSize = true;
         }
 
         if (_hasDataHeader && _hasTreeSize && !_hasTreeBuilt)
         {
-            if (_inputStream.Length - _inputStream.Position < _treeNodeLength) return;
+            if (reader.Length - reader.Consumed < _treeNodeLength) return;
             
-            var startOffset = _inputStream.Position;
-            
-            _rootNode = new HuffmanNode(_inputStream, _inputStream.Position, _dataSize, false);
+            _rootNode = new HuffmanNode(reader, reader.Consumed, _dataSize, false);
             _currentNode = _rootNode;
             
-            _inputStream.Seek(startOffset + _treeNodeLength, SeekOrigin.Begin);
-            _inputStreamRead = _inputStream.Position;
-            
+            reader.Advance(_treeNodeLength);
+
             _hasTreeBuilt = true;
         }
 
         if (_hasDataHeader && _hasTreeSize && _hasTreeBuilt)
         {
-            // Compressed Bitstream
-            while (_inputStream.Length - _inputStream.Position >= 4)
+            while (_bytesWritten < _decompressLength)
             {
-                var bitStream = _inputStream.ReadUInt32();
-                _inputStreamRead += 4;
-                
+                if (!reader.TryReadLittleEndian(out int bitStream)) return;
+
                 for (var index = 31; index >= 0; index--)
                 {
                     var direction = (bitStream >> index) & 0x01;
-
+                    
                     if (direction == 0)
                     {
                         _currentNode = _currentNode!.Left ?? throw new InvalidDataException("The contents of the stream contains invalid bitstream.");
@@ -193,8 +163,8 @@ public class HuffmanStream : Stream
                         if (_isHalfDataWritten)
                         {
                             _outputStream.WriteByte((byte) (_halfData | (_currentNode.Data.Value << 4)));
+                            _bytesWritten += 1;
                             _isHalfDataWritten = false;
-                            _writtenLength += 1;
                         }
                         else
                         {
@@ -207,25 +177,18 @@ public class HuffmanStream : Stream
                     else
                     {
                         _outputStream.WriteByte(_currentNode.Data.Value);
-                        _writtenLength += 1;
+                        _bytesWritten += 1;
                         _currentNode = _rootNode;
                     }
                     
-                    if (_writtenLength == _decompressLength) break;
+                    if (_bytesWritten == _decompressLength) break;
                 }
-                
-                if (_writtenLength == _decompressLength) break;
             }
             
             _outputStream.Flush();
         }
     }
-    
-    private void Compress()
-    {
-        throw new NotImplementedException();
-    }
-    
+
     protected override void Dispose(bool disposing)
     {
         if (disposing)
@@ -235,7 +198,7 @@ public class HuffmanStream : Stream
                 _outputStream.Dispose();
             }
 
-            _inputStream.Dispose();
+            _unusedMemoryOwner.Dispose();
         }
         
         base.Dispose(disposing);
