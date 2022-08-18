@@ -29,4 +29,7 @@
     <data name="FileExtracting" xml:space="preserve">
         <value>Extracting: {0}</value>
     </data>
+    <data name="StreamIsCorrupted" xml:space="preserve">
+        <value>The contents of the stream does not match the expected output size. The file may be corrupted.</value>
+    </data>
 </root>

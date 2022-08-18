@@ -27,7 +27,7 @@ public class McmFileStream : Stream
 
     // Shared between decompress and compress
     private IMemoryOwner<byte> _unusedMemoryOwner;
-    private ReadOnlyMemory<byte> _unusedBuffer;
+    private ReadOnlyMemory<byte> _unusedBuffer = ReadOnlyMemory<byte>.Empty;
 
     // Decompress
     private bool _hasFirstHeaderChunk;
@@ -36,10 +36,11 @@ public class McmFileStream : Stream
     private int _maxSizePerChunk;
     private McmCompressionType _decompressionType1;
     private McmCompressionType _decompressionType2;
-    private int[] _dataChunkOffsets;
+    private int[] _dataChunkOffsets = Array.Empty<int>();
     private int _dataChunkIndex;
     
     // Compress
+    private MemoryStream _compressDataBuffer = new();
     private int _originalFileSize;
     private int _numberOfChunks;
 
@@ -49,14 +50,12 @@ public class McmFileStream : Stream
         _mode = mode;
         _leaveOpen = leaveOpen;
         _unusedMemoryOwner = MemoryPool<byte>.Shared.Rent(20);
-        _unusedBuffer = ReadOnlyMemory<byte>.Empty;
-        _dataChunkOffsets = Array.Empty<int>();
     }
 
     public override void Write(byte[] buffer, int offset, int count)
     {
         var firstSegment = new ReadOnlyMemorySegment<byte>(_unusedBuffer);
-        var lastSegment = firstSegment.Append(new ReadOnlyMemory<byte>(buffer, offset, count));
+        var lastSegment = firstSegment.Add(new ReadOnlyMemory<byte>(buffer, offset, count));
         var sequenceReader = new SequenceReader<byte>(new ReadOnlySequence<byte>(firstSegment, 0, lastSegment, lastSegment.Memory.Length));
 
         if (_mode == McmFileStreamMode.Decompress)
@@ -164,25 +163,28 @@ public class McmFileStream : Stream
                     case McmCompressionType.Rle:
                     {
                         decompressStream = new RleStream(_outputStream, RleStreamMode.Decompress, _maxSizePerChunk, true);
+                        disposable = true;
                         break;
                     }
 
                     case McmCompressionType.Lzss:
                     {
                         decompressStream = new LzssStream(_outputStream, LzssStreamMode.Decompress, _maxSizePerChunk, true);
+                        disposable = true;
                         break;
                     }
 
                     case McmCompressionType.Huffman:
                     {
                         decompressStream = new HuffmanStream(_outputStream, HuffmanStreamMode.Decompress, _maxSizePerChunk, true);
+                        disposable = true;
                         break;
                     }
 
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
-                
+
                 switch (_decompressionType1)
                 {
                     case McmCompressionType.None:
@@ -195,18 +197,21 @@ public class McmFileStream : Stream
                     case McmCompressionType.Rle:
                     {
                         decompressStream = new RleStream(decompressStream, RleStreamMode.Decompress, _maxSizePerChunk, !disposable);
+                        disposable = true;
                         break;
                     }
 
                     case McmCompressionType.Lzss:
                     {
                         decompressStream = new LzssStream(decompressStream, LzssStreamMode.Decompress, _maxSizePerChunk, !disposable);
+                        disposable = true;
                         break;
                     }
 
                     case McmCompressionType.Huffman:
                     {
                         decompressStream = new HuffmanStream(decompressStream, HuffmanStreamMode.Decompress, _maxSizePerChunk, !disposable);
+                        disposable = true;
                         break;
                     }
 
@@ -236,7 +241,7 @@ public class McmFileStream : Stream
             
             _outputStream.Flush();
 
-            if (_outputStream.Length != _decompressionSize) throw new InvalidDataException();
+            if (_outputStream.Length != _decompressionSize) throw new InvalidDataException(Localization.StreamIsCorrupted);
         }
     }
 

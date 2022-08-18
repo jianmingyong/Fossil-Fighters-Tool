@@ -78,6 +78,15 @@ namespace Fossil_Fighters_Tool {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The contents of the stream does not match the expected output size. The file may be corrupted..
+        /// </summary>
+        internal static string StreamIsCorrupted {
+            get {
+                return ResourceManager.GetString("StreamIsCorrupted", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The contents of the stream is not {0} archive..
         /// </summary>
         internal static string StreamIsNotArchive {

@@ -24,7 +24,8 @@ public class LzssStream : Stream
     
     // Shared between decompress and compress
     private readonly IMemoryOwner<byte> _unusedMemoryOwner;
-    private ReadOnlyMemory<byte> _unusedBuffer = ReadOnlyMemory<byte>.Empty;
+    private readonly ReadOnlyMemorySegment<byte> _unusedSegment;
+    private readonly ReadOnlyMemorySegment<byte> _incomingSegment;
     
     // Decompress
     private bool _hasHeader;
@@ -42,15 +43,16 @@ public class LzssStream : Stream
         _mode = mode;
         _leaveOpen = leaveOpen;
         _unusedMemoryOwner = MemoryPool<byte>.Shared.Rent(maxSizePerChunk);
+        _unusedSegment = new ReadOnlyMemorySegment<byte>(ReadOnlyMemory<byte>.Empty);
+        _incomingSegment = _unusedSegment.Add(ReadOnlyMemory<byte>.Empty);
         _lookbackBuffer = mode == LzssStreamMode.Decompress ? ArrayPool<byte>.Shared.Rent(LookbackBufferSize) : Array.Empty<byte>();
     }
     
     public override void Write(byte[] buffer, int offset, int count)
     {
-        var firstSegment = new ReadOnlyMemorySegment<byte>(_unusedBuffer);
-        var lastSegment = firstSegment.Append(new ReadOnlyMemory<byte>(buffer, offset, count));
-        var sequenceReader = new SequenceReader<byte>(new ReadOnlySequence<byte>(firstSegment, 0, lastSegment, lastSegment.Memory.Length));
-        
+        _incomingSegment.Update(new ReadOnlyMemory<byte>(buffer, offset, count));
+        var sequenceReader = new SequenceReader<byte>(new ReadOnlySequence<byte>(_unusedSegment, 0, _incomingSegment, _incomingSegment.Memory.Length));
+
         if (_mode == LzssStreamMode.Decompress)
         {
             Decompress(ref sequenceReader);
@@ -63,7 +65,7 @@ public class LzssStream : Stream
         
         var unreadSequence = sequenceReader.UnreadSequence;
         unreadSequence.CopyTo(_unusedMemoryOwner.Memory.Span);
-        _unusedBuffer = _unusedMemoryOwner.Memory[..(int) unreadSequence.Length];
+        _unusedSegment.Update(_unusedMemoryOwner.Memory[..(int) unreadSequence.Length]);
     }
     
     public override int Read(byte[] buffer, int offset, int count)
