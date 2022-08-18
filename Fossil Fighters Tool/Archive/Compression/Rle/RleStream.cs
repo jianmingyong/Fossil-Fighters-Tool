@@ -50,15 +50,15 @@ public class RleStream : Stream
         _outputStream = outputStream;
         _mode = mode;
         _leaveOpen = leaveOpen;
+        
         _unusedMemoryOwner = MemoryPool<byte>.Shared.Rent(maxSizePerChunk);
         _unusedSegment = new ReadOnlyMemorySegment<byte>(ReadOnlyMemory<byte>.Empty);
         _incomingSegment = _unusedSegment.Add(ReadOnlyMemory<byte>.Empty);
 
-        if (mode == RleStreamMode.Compress)
-        {
-            _compressData = new MemoryStream();
-            _flagDataBuffer = ArrayPool<byte>.Shared.Rent(maxSizePerChunk);
-        }
+        if (mode != RleStreamMode.Compress) return;
+        
+        _compressData = new MemoryStream();
+        _flagDataBuffer = ArrayPool<byte>.Shared.Rent(maxSizePerChunk);
     }
     
     public override void Write(byte[] buffer, int offset, int count)
