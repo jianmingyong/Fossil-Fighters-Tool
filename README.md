@@ -73,6 +73,8 @@ File Header
     ..    4     End of file (EOF) offset (Offset from MCM+0)
 ```
 
+<p align="right">(<a href="#top">back to top</a>)</p>
+
 ## Game File Headers
 
 ### ACL (Found in etc/add_contents_def)
@@ -173,10 +175,16 @@ File Header
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
-## Built With
+## Built Instructions
 
-This project is build with Dotnet Core which you can download below.
+This project is build with [dotnet 6.0](https://dotnet.microsoft.com/download/dotnet/6.0).
 
-* [dotnet 6.0](https://dotnet.microsoft.com/download/dotnet/6.0)
+1. Clone / Download the git repository source code. <br />
+Git CLI: `git clone https://github.com/jianmingyong/Fossil-Fighters-Tool.git`
+
+2. Build the program with dotnet CLI. <br />
+For windows: `dotnet publish -c Release -r win-x64 -o bin/win-x64` <br />
+For linux: `dotnet publish -c Release -r linux-x64 -o bin/linux-x64` <br />
+For macOS: `dotnet publish -c Release -r osx-x64 -o bin/osx-x64` <br />
 
 <p align="right">(<a href="#top">back to top</a>)</p>
