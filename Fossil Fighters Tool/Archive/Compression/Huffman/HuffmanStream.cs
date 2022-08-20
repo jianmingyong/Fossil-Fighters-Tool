@@ -137,6 +137,8 @@ public class HuffmanStream : Stream
                     {
                         _writer.Write(currentNode.Data.Value);
                     }
+
+                    currentNode = rootNode;
                     
                     if (_outputStream.Length >= decompressSize) break;
                 }
@@ -169,6 +171,14 @@ public class HuffmanStream : Stream
     
     public override void Flush()
     {
+        Debug.Assert(_inputStream != null, nameof(_inputStream) + " != null");
+        
+        if (_hasCompressed) return;
+        
+        _writer.Flush();
+        
+        _hasCompressed = true;
+        
         throw new NotImplementedException();
     }
 
