@@ -78,7 +78,34 @@ namespace Fossil_Fighters_Tool {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The contents of the stream does not match the expected output size. The file may be corrupted..
+        ///   Looks up a localized string similar to The contents of the stream contains invalid bitstream..
+        /// </summary>
+        internal static string HuffmanStreamInvalidBitstream {
+            get {
+                return ResourceManager.GetString("HuffmanStreamInvalidBitstream", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The contents of the stream contains invalid data node..
+        /// </summary>
+        internal static string HuffmanStreamInvalidDataNode {
+            get {
+                return ResourceManager.GetString("HuffmanStreamInvalidDataNode", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The contents of the stream have been compressed..
+        /// </summary>
+        internal static string StreamIsAlreadyCompressed {
+            get {
+                return ResourceManager.GetString("StreamIsAlreadyCompressed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The contents of the stream do not match the expected output size. The file may be corrupted..
         /// </summary>
         internal static string StreamIsCorrupted {
             get {
@@ -87,7 +114,7 @@ namespace Fossil_Fighters_Tool {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The contents of the stream is not {0} archive..
+        ///   Looks up a localized string similar to The contents of the stream are not {0} archive..
         /// </summary>
         internal static string StreamIsNotArchive {
             get {
@@ -96,11 +123,11 @@ namespace Fossil_Fighters_Tool {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The contents of the stream is not {0} compressed..
+        ///   Looks up a localized string similar to The contents of the stream are not {0} compressed..
         /// </summary>
-        internal static string StreamIsNotCompressed {
+        internal static string StreamIsNotCompressedBy {
             get {
-                return ResourceManager.GetString("StreamIsNotCompressed", resourceCulture);
+                return ResourceManager.GetString("StreamIsNotCompressedBy", resourceCulture);
             }
         }
     }

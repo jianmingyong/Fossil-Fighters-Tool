@@ -1,306 +1,273 @@
 ﻿using System.Buffers;
-using System.Buffers.Binary;
 using System.Diagnostics;
+using System.Text;
+using JetBrains.Annotations;
 
 namespace Fossil_Fighters_Tool.Archive.Compression.Rle;
 
 public class RleStream : Stream
 {
-    public override bool CanRead => false;
+    public override bool CanRead => Mode == RleStreamMode.Decompress && BaseStream.CanRead;
     public override bool CanSeek => false;
-    public override bool CanWrite => true;
+    public override bool CanWrite => Mode == RleStreamMode.Compress && BaseStream.CanWrite;
 
     public override long Length => throw new NotSupportedException();
     
-    public override long Position 
-    { 
+    public override long Position
+    {
         get => throw new NotSupportedException();
-        set => throw new NotSupportedException(); 
+        set => throw new NotSupportedException();
     }
     
-    private readonly Stream _outputStream;
-    private readonly RleStreamMode _mode;
-    private readonly bool _leaveOpen;
+    [PublicAPI]
+    public Stream BaseStream { get; }
 
-    // Shared between decompress and compress
-    private readonly IMemoryOwner<byte> _unusedMemoryOwner;
-    private readonly ReadOnlyMemorySegment<byte> _unusedSegment;
-    private readonly ReadOnlyMemorySegment<byte> _incomingSegment;
-
-    // Compress
+    [PublicAPI]
+    public RleStreamMode Mode { get; }
+    
     private const int MaxRawDataLength = (1 << 7) - 1 + 1;
     private const int MinCompressDataLength = 3;
     private const int MaxCompressDataLength = (1 << 7) - 1 + 3;
-
-    private int _decompressDataLength;
-    private MemoryStream? _compressData;
-    private byte[]? _flagDataBuffer;
-    private int _flagCount;
-
-    // Decompress
-    private bool _hasHeader;
-    private bool _hasFlag;
-    private int _decompressSize;
-    private int _bytesWritten;
-    private byte _flagDataLength;
-    private byte _flagType;
-
-    public RleStream(Stream outputStream, RleStreamMode mode, int maxSizePerChunk, bool leaveOpen = false)
-    {
-        _outputStream = outputStream;
-        _mode = mode;
-        _leaveOpen = leaveOpen;
-        
-        _unusedMemoryOwner = MemoryPool<byte>.Shared.Rent(maxSizePerChunk);
-        _unusedSegment = new ReadOnlyMemorySegment<byte>(ReadOnlyMemory<byte>.Empty);
-        _incomingSegment = _unusedSegment.Add(ReadOnlyMemory<byte>.Empty);
-
-        if (mode != RleStreamMode.Compress) return;
-        
-        _compressData = new MemoryStream();
-        _flagDataBuffer = ArrayPool<byte>.Shared.Rent(maxSizePerChunk);
-    }
     
-    public override void Write(byte[] buffer, int offset, int count)
-    {
-        _incomingSegment.Update(new ReadOnlyMemory<byte>(buffer, offset, count));
-        var sequenceReader = new SequenceReader<byte>(new ReadOnlySequence<byte>(_unusedSegment, 0, _incomingSegment, _incomingSegment.Memory.Length));
+    private MemoryStream? _inputStream;
+    private MemoryStream? _outputStream;
+    private readonly BinaryReader _reader;
+    private readonly BinaryWriter _writer;
 
-        if (_mode == RleStreamMode.Decompress)
+    private bool _hasDecompressed;
+    private bool _hasCompressed;
+
+    public RleStream(Stream stream, RleStreamMode mode, bool leaveOpen = false)
+    {
+        BaseStream = stream;
+        Mode = mode;
+        
+        if (mode == RleStreamMode.Decompress)
         {
-            Decompress(ref sequenceReader);
+            _outputStream = new MemoryStream();
+            _reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen);
+            _writer = new BinaryWriter(_outputStream);
         }
         else
         {
-            _decompressDataLength += count;
+            _inputStream = new MemoryStream();
+            _reader = new BinaryReader(_inputStream);
+            _writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen);
         }
-        
-        var unreadSequence = sequenceReader.UnreadSequence;
-        unreadSequence.CopyTo(_unusedMemoryOwner.Memory.Span);
-        _unusedSegment.Update(_unusedMemoryOwner.Memory[..(int) unreadSequence.Length]);
+    }
+
+    public override int ReadByte()
+    {
+        var buffer = ArrayPool<byte>.Shared.Rent(1);
+
+        try
+        {
+            return Read(buffer, 0, 1) > 0 ? buffer[0] : -1;
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
     }
 
     public override int Read(byte[] buffer, int offset, int count)
     {
-        throw new NotSupportedException(); 
+        Debug.Assert(_outputStream != null, nameof(_outputStream) + " != null");
+
+        if (!_hasDecompressed)
+        {
+            var rawHeaderData = _reader.ReadInt32();
+            if ((rawHeaderData & 0x30) != 0x30) throw new InvalidDataException(string.Format(Localization.StreamIsNotCompressedBy, "RLE"));
+
+            var decompressSize = (rawHeaderData >> 8) & 0xFFFFFF;
+            _outputStream.Capacity = decompressSize;
+            
+            while (_outputStream.Length < decompressSize)
+            {
+                var flagRawData = _reader.ReadByte();
+                var flagType = flagRawData >> 7;
+                var flagData = flagRawData & 0x7F;
+
+                if (flagType == 0)
+                {
+                    var repeatCount = flagData + 1;
+                    
+                    for (var i = repeatCount - 1; i >= 0; i--)
+                    {
+                        _writer.Write(_reader.ReadByte());
+                    }
+                }
+                else
+                {
+                    var repeatCount = flagData + 3;
+                    var repeatData = _reader.ReadByte();
+
+                    for (var i = repeatCount - 1; i >= 0; i--)
+                    {
+                        _writer.Write(repeatData);
+                    }
+                }
+            }
+
+            _outputStream.Seek(0, SeekOrigin.Begin);
+            _hasDecompressed = true;
+        }
+
+        return _outputStream.Read(buffer, offset, count);
+    }
+
+    public override void WriteByte(byte value)
+    {
+        Debug.Assert(_inputStream != null, nameof(_inputStream) + " != null");
+        
+        if (_hasCompressed) throw new IOException(Localization.StreamIsAlreadyCompressed);
+        
+        _inputStream.WriteByte(value);
+    }
+
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        Debug.Assert(_inputStream != null, nameof(_inputStream) + " != null");
+
+        if (_hasCompressed) throw new IOException(Localization.StreamIsAlreadyCompressed);
+        
+        _inputStream.Write(buffer, offset, count);
+    }
+    
+    public override void Flush()
+    {
+        Debug.Assert(_inputStream != null, nameof(_inputStream) + " != null");
+
+        if (_hasCompressed) return;
+
+        int GetNextRepeatCount(Span<byte> buffer)
+        {
+            Debug.Assert(_inputStream != null, nameof(_inputStream) + " != null");
+
+            if (_inputStream.Position >= _inputStream.Length) return 0;
+                
+            var bytesWritten = 0;
+            var dataToCheck = _reader.ReadByte();
+                
+            buffer[bytesWritten++] = dataToCheck;
+                
+            while (bytesWritten < MaxCompressDataLength && _inputStream.Position < _inputStream.Length)
+            {
+                if (dataToCheck != _reader.ReadByte()) break;
+                buffer[bytesWritten++] = dataToCheck;
+            }
+
+            _inputStream.Seek(-1, SeekOrigin.Current);
+
+            return bytesWritten;
+        }
+            
+        void WriteCompressed(byte data, int count)
+        {
+            _writer.Write((byte) (1 << 7 | (count - 3)));
+            _writer.Write(data);
+        }
+            
+        void WriteUncompressed(ReadOnlySpan<byte> buffer)
+        {
+            _writer.Write((byte) (buffer.Length - 1));
+            _writer.Write(buffer);
+        }
+            
+        _inputStream.Seek(0, SeekOrigin.Begin);
+            
+        _writer.Write((uint) (0x30 | _inputStream.Length << 8));
+
+        var tempBuffer = ArrayPool<byte>.Shared.Rent(MaxCompressDataLength);
+        var rawDataBuffer = ArrayPool<byte>.Shared.Rent(MaxRawDataLength);
+            
+        try
+        {
+            int tempBufferLength;
+            var rawDataLength = 0;
+
+            while ((tempBufferLength = GetNextRepeatCount(tempBuffer)) > 0)
+            {
+                if (tempBufferLength >= MinCompressDataLength)
+                {
+                    if (rawDataLength > 0)
+                    {
+                        WriteUncompressed(rawDataBuffer.AsSpan(0, rawDataLength));
+                        rawDataLength = 0;
+                    }
+                        
+                    WriteCompressed(tempBuffer[0], tempBufferLength);
+                }
+                else
+                {
+                    var rawDataSpaceRemaining = MaxRawDataLength - rawDataLength;
+
+                    if (rawDataSpaceRemaining == 0)
+                    {
+                        WriteUncompressed(rawDataBuffer.AsSpan(0, rawDataLength));
+                        rawDataLength = 0;
+                            
+                        tempBuffer.AsSpan(0, tempBufferLength).CopyTo(rawDataBuffer.AsSpan(rawDataLength));
+                        rawDataLength += tempBufferLength;
+                    }
+                    else
+                    {
+                        if (tempBufferLength > rawDataSpaceRemaining)
+                        {
+                            tempBuffer.AsSpan(0, rawDataSpaceRemaining).CopyTo(rawDataBuffer.AsSpan(rawDataLength));
+                            rawDataLength += rawDataSpaceRemaining;
+                            
+                            WriteUncompressed(rawDataBuffer.AsSpan(0, rawDataLength));
+                            rawDataLength = 0;
+                            
+                            tempBuffer.AsSpan(rawDataSpaceRemaining, tempBufferLength - rawDataSpaceRemaining).CopyTo(rawDataBuffer.AsSpan(rawDataLength));
+                            rawDataLength += tempBufferLength - rawDataSpaceRemaining;
+                        }
+                        else
+                        {
+                            tempBuffer.AsSpan(0, tempBufferLength).CopyTo(rawDataBuffer.AsSpan(rawDataLength));
+                            rawDataLength += rawDataSpaceRemaining;
+                        }
+                    }
+                }
+            }
+                
+            if (rawDataLength > 0)
+            {
+                WriteUncompressed(rawDataBuffer.AsSpan(0, rawDataLength));
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(tempBuffer);
+            ArrayPool<byte>.Shared.Return(rawDataBuffer);
+        }
+            
+        _writer.Flush();
+
+        _hasCompressed = true;
     }
 
     public override long Seek(long offset, SeekOrigin origin)
     {
-        throw new NotSupportedException(); 
+        throw new NotSupportedException();
     }
 
     public override void SetLength(long value)
     {
-        throw new NotSupportedException(); 
+        throw new NotSupportedException();
     }
 
-    public override void Flush()
-    {
-        if (_mode == RleStreamMode.Compress)
-        {
-            Debug.Assert(_compressData != null, nameof(_compressData) + " != null");
-
-            if (_unusedSegment.Memory.Length > 0)
-            {
-                Compress(new SequenceReader<byte>(new ReadOnlySequence<byte>(_unusedSegment.Memory)));
-            
-                var temp = ArrayPool<byte>.Shared.Rent(4);
-            
-                try
-                {
-                    BinaryPrimitives.WriteInt32LittleEndian(temp.AsSpan(0, 4), (3 << 4) | (_decompressDataLength << 8));
-                    _outputStream.Write(temp, 0, 4);
-                    _compressData.Seek(0, SeekOrigin.Begin);
-                    _compressData.CopyTo(_outputStream);
-                }
-                finally
-                {
-                    ArrayPool<byte>.Shared.Return(temp);
-                }
-            }
-            
-            _unusedSegment.Update(ReadOnlyMemory<byte>.Empty);
-            _incomingSegment.Update(ReadOnlyMemory<byte>.Empty);
-            _compressData.Seek(0, SeekOrigin.Begin);
-            _compressData.SetLength(0);
-        }
-        
-        _outputStream.Flush();
-    }
-
-    private void Compress(SequenceReader<byte> reader)
-    {
-        Debug.Assert(_compressData != null, nameof(_compressData) + " != null");
-        Debug.Assert(_flagDataBuffer != null, nameof(_flagDataBuffer) + " != null");
-
-        int RepeatCount(byte compareData, SequenceReader<byte> temp)
-        {
-            var count = 0;
-            
-            while (temp.TryRead(out var nextData) && compareData == nextData)
-            {
-                count++;
-            }
-            
-            return count;
-        }
-
-        void WriteCompressed(byte data, int count)
-        {
-            Debug.Assert(_compressData != null, nameof(_compressData) + " != null");
-            
-            _compressData.WriteByte((byte) ((1 << 7) + count - 3));
-            _compressData.WriteByte(data);
-        }
-
-        void WriteUncompressed(byte[] data, int offset, int length)
-        {
-            Debug.Assert(_compressData != null, nameof(_compressData) + " != null");
-            
-            _compressData.WriteByte((byte) (length - 1));
-            _compressData.Write(data, offset, length);
-        }
-        
-        while (reader.TryRead(out var rawData))
-        {
-            var repeatCount = RepeatCount(rawData, reader) + 1;
-
-            if (repeatCount >= MinCompressDataLength)
-            {
-                reader.Advance(repeatCount - 1);
-
-                for (var i = 0; i < _flagCount; i += MaxRawDataLength)
-                {
-                    WriteUncompressed(_flagDataBuffer, i, Math.Min(_flagCount - i, MaxRawDataLength));
-                }
-
-                _flagCount = 0;
-                
-                while (repeatCount >= MinCompressDataLength)
-                {
-                    var temp = Math.Min(repeatCount, MaxCompressDataLength);
-                    WriteCompressed(rawData, temp);
-                    repeatCount -= temp;
-                }
-                    
-                _flagDataBuffer.AsSpan(_flagCount, repeatCount).Fill(rawData);
-                _flagCount += repeatCount;
-            }
-            else
-            {
-                _flagDataBuffer[_flagCount++] = rawData;
-                repeatCount -= 1;
-                    
-                reader.TryCopyTo(_flagDataBuffer.AsSpan(_flagCount, repeatCount));
-                reader.Advance(repeatCount);
-                _flagCount += repeatCount;
-            }
-        }
-        
-        for (var i = 0; i < _flagCount; i += MaxRawDataLength)
-        {
-            WriteUncompressed(_flagDataBuffer, i, Math.Min(_flagCount - i, MaxRawDataLength));
-        }
-
-        _flagCount = 0;
-    }
-    
-    private void Decompress(ref SequenceReader<byte> reader)
-    {
-        if (!_hasHeader)
-        {
-            if (!reader.TryReadLittleEndian(out int rawData)) return;
-            if ((rawData & 0x30) != 0x30) throw new InvalidDataException(string.Format(Localization.StreamIsNotCompressed, "RLE"));
-
-            _decompressSize = (rawData >> 8) & 0xFFFFFF;
-            
-            _hasHeader = true;
-        }
-
-        if (_hasHeader)
-        {
-            while (_bytesWritten < _decompressSize)
-            {
-                if (!_hasFlag)
-                {
-                    if (!reader.TryRead(out var rawData)) return;
-
-                    _flagDataLength = (byte) (rawData & 0x7F);
-                    _flagType = (byte) (rawData >> 7);
-                   
-                    _hasFlag = true;
-                }
-
-                if (_hasFlag)
-                {
-                    if (_flagType == 0)
-                    {
-                        var bytesToRead = _flagDataLength + 1;
-                        var buffer = ArrayPool<byte>.Shared.Rent(bytesToRead);
-
-                        try
-                        {
-                            if (!reader.TryCopyTo(buffer.AsSpan(0, bytesToRead))) return;
-                            reader.Advance(bytesToRead);
-                            _outputStream.Write(buffer, 0, bytesToRead);
-                        }
-                        finally
-                        {
-                            ArrayPool<byte>.Shared.Return(buffer);
-                        }
-                        
-                        _bytesWritten += bytesToRead;
-                    }
-                    else
-                    {
-                        var bufferLength = _flagDataLength + 3;
-                        var buffer = ArrayPool<byte>.Shared.Rent(bufferLength);
-
-                        try
-                        {
-                            if (!reader.TryRead(out var rawData)) return;
-                            buffer.AsSpan(0, bufferLength).Fill(rawData);
-                            _outputStream.Write(buffer, 0, bufferLength);
-                        }
-                        finally
-                        {
-                            ArrayPool<byte>.Shared.Return(buffer);
-                        }
-                        
-                        _bytesWritten += bufferLength;
-                    }
-                    
-                    _hasFlag = false;
-                }
-            }
-            
-            _outputStream.Flush();
-        }
-    }
-    
     protected override void Dispose(bool disposing)
     {
-        Flush();
-        
-        if (!_leaveOpen)
+        if (disposing)
         {
-            _outputStream.Dispose();
-        }
-        
-        _unusedMemoryOwner.Dispose();
-        _unusedSegment.Update(ReadOnlyMemory<byte>.Empty);
-        _incomingSegment.Update(ReadOnlyMemory<byte>.Empty);
-
-        if (_mode == RleStreamMode.Compress)
-        {
-            Debug.Assert(_compressData != null, nameof(_compressData) + " != null");
-            Debug.Assert(_flagDataBuffer != null, nameof(_flagDataBuffer) + " != null");
+            Flush();
             
-            _compressData.Dispose();
-            ArrayPool<byte>.Shared.Return(_flagDataBuffer);
+            _reader.Dispose();
+            _writer.Dispose();
         }
-        
+
         base.Dispose(disposing);
     }
 }

@@ -17,11 +17,11 @@
     <resheader name="writer">
         <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
     </resheader>
-    <data name="StreamIsNotCompressed" xml:space="preserve">
-        <value>The contents of the stream is not {0} compressed.</value>
+    <data name="StreamIsNotCompressedBy" xml:space="preserve">
+        <value>The contents of the stream are not {0} compressed.</value>
     </data>
     <data name="StreamIsNotArchive" xml:space="preserve">
-        <value>The contents of the stream is not {0} archive.</value>
+        <value>The contents of the stream are not {0} archive.</value>
     </data>
     <data name="FileExtracted" xml:space="preserve">
         <value>Extracted: {0}</value>
@@ -30,6 +30,15 @@
         <value>Extracting: {0}</value>
     </data>
     <data name="StreamIsCorrupted" xml:space="preserve">
-        <value>The contents of the stream does not match the expected output size. The file may be corrupted.</value>
+        <value>The contents of the stream do not match the expected output size. The file may be corrupted.</value>
+    </data>
+    <data name="StreamIsAlreadyCompressed" xml:space="preserve">
+        <value>The contents of the stream have been compressed.</value>
+    </data>
+    <data name="HuffmanStreamInvalidDataNode" xml:space="preserve">
+        <value>The contents of the stream contains invalid data node.</value>
+    </data>
+    <data name="HuffmanStreamInvalidBitstream" xml:space="preserve">
+        <value>The contents of the stream contains invalid bitstream.</value>
     </data>
 </root>

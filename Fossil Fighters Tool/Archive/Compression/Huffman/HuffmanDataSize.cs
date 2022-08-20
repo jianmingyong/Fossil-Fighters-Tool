@@ -2,6 +2,7 @@
 
 public enum HuffmanDataSize
 {
+    Auto = 0,
     FourBits = 4,
     EightBits = 8
 }

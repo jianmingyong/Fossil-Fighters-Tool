@@ -105,7 +105,7 @@ public class McmFileStream : Stream
 
             reader.TryReadLittleEndian(out int rawData);
             
-            if (rawData != Id) throw new InvalidDataException(string.Format(Localization.StreamIsNotCompressed, "MCM"));
+            if (rawData != Id) throw new InvalidDataException(string.Format(Localization.StreamIsNotCompressedBy, "MCM"));
 
             reader.TryReadLittleEndian(out _decompressionSize);
             reader.TryReadLittleEndian(out _maxSizePerChunk);
@@ -162,21 +162,21 @@ public class McmFileStream : Stream
 
                     case McmCompressionType.Rle:
                     {
-                        decompressStream = new RleStream(_outputStream, RleStreamMode.Decompress, _maxSizePerChunk, true);
+                        decompressStream = new OldRleStream(_outputStream, RleStreamMode.Decompress, _maxSizePerChunk, true);
                         disposable = true;
                         break;
                     }
 
                     case McmCompressionType.Lzss:
                     {
-                        decompressStream = new LzssStream(_outputStream, LzssStreamMode.Decompress, _maxSizePerChunk, true);
+                        decompressStream = new OldLzssStream(_outputStream, LzssStreamMode.Decompress, _maxSizePerChunk, true);
                         disposable = true;
                         break;
                     }
 
                     case McmCompressionType.Huffman:
                     {
-                        decompressStream = new HuffmanStream(_outputStream, HuffmanStreamMode.Decompress, _maxSizePerChunk, true);
+                        decompressStream = new OldHuffmanStream(_outputStream, HuffmanStreamMode.Decompress, _maxSizePerChunk, true);
                         disposable = true;
                         break;
                     }
@@ -196,21 +196,21 @@ public class McmFileStream : Stream
                     
                     case McmCompressionType.Rle:
                     {
-                        decompressStream = new RleStream(decompressStream, RleStreamMode.Decompress, _maxSizePerChunk, !disposable);
+                        decompressStream = new OldRleStream(decompressStream, RleStreamMode.Decompress, _maxSizePerChunk, !disposable);
                         disposable = true;
                         break;
                     }
 
                     case McmCompressionType.Lzss:
                     {
-                        decompressStream = new LzssStream(decompressStream, LzssStreamMode.Decompress, _maxSizePerChunk, !disposable);
+                        decompressStream = new OldLzssStream(decompressStream, LzssStreamMode.Decompress, _maxSizePerChunk, !disposable);
                         disposable = true;
                         break;
                     }
 
                     case McmCompressionType.Huffman:
                     {
-                        decompressStream = new HuffmanStream(decompressStream, HuffmanStreamMode.Decompress, _maxSizePerChunk, !disposable);
+                        decompressStream = new OldHuffmanStream(decompressStream, HuffmanStreamMode.Decompress, _maxSizePerChunk, !disposable);
                         disposable = true;
                         break;
                     }
