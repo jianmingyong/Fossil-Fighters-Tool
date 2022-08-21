@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using Fossil_Fighters_Tool.Archive;
+using Fossil_Fighters_Tool.Archive.Compression.Huffman;
 using Fossil_Fighters_Tool.Header;
 using Fossil_Fighters_Tool.Image;
 using Fossil_Fighters_Tool.Motion;
@@ -12,6 +13,21 @@ internal static class Program
 {
     public static void Main(string[] args)
     {
+        var huffman = new HuffmanStream(File.Open("C:\\Users\\jianmingyong\\Desktop\\Rom Hacking Tools\\2.bin", FileMode.Create), HuffmanStreamMode.Compress);
+        File.OpenRead("C:\\Users\\jianmingyong\\Desktop\\Rom Hacking Tools\\0.bin").CopyTo(huffman);
+        huffman.Flush();
+        huffman.Dispose();
+
+        var test = new HuffmanStream(File.OpenRead("C:\\Users\\jianmingyong\\Desktop\\Rom Hacking Tools\\2.bin"), HuffmanStreamMode.Decompress);
+        var test2 = File.Open("C:\\Users\\jianmingyong\\Desktop\\Rom Hacking Tools\\4.bin", FileMode.Create);
+        test.CopyTo(test2);
+        test2.Flush();
+        
+        //var huffman = new HuffmanStream(File.OpenRead("C:\\Users\\jianmingyong\\Desktop\\Rom Hacking Tools\\3.bin"), HuffmanStreamMode.Decompress);
+        //huffman.CopyTo(new MemoryStream());
+        
+        return;
+        
         if (args.Length < 1) return;
 
         var inputFilePath = args[0];

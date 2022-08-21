@@ -1,15 +1,28 @@
-﻿using System.Buffers;
+﻿using System.Diagnostics;
 
 namespace Fossil_Fighters_Tool.Archive.Compression.Huffman;
 
 public class HuffmanNode
 {
-    public HuffmanNode? Left { get; }
+    //[DebuggerBrowsable(DebuggerBrowsableState.Never)]
+    public HuffmanNode? Parent { get; set; }
     
-    public HuffmanNode? Right { get; }
+    public HuffmanNode? Left { get; set; }
     
-    public byte? Data { get; }
+    public HuffmanNode? Right { get; set; }
+    
+    public byte? Data { get; set; }
+    
+    //[DebuggerBrowsable(DebuggerBrowsableState.Never)]
+    public int? Value { get; set; }
+    
+    [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+    public long Position { get; set; } = 5;
 
+    public HuffmanNode()
+    {
+    }
+    
     public HuffmanNode(BinaryReader reader, long position, long endPosition, HuffmanDataSize dataSize, bool isData)
     {
         reader.BaseStream.Seek(position, SeekOrigin.Begin);
@@ -24,6 +37,7 @@ public class HuffmanNode
         else
         {
             var offset = rawByte & 0x3F;
+
             var leftOffset = (position & ~1L) + offset * 2 + 2;
             var rightOffset = (position & ~1L) + offset * 2 + 2 + 1;
 
@@ -36,26 +50,6 @@ public class HuffmanNode
             {
                 Right = new HuffmanNode(reader, rightOffset, endPosition, dataSize, (rawByte & 0x40) > 0);
             }
-        }
-    }
-
-    [Obsolete("To be removed in v1.3.")]
-    public HuffmanNode(SequenceReader<byte> reader, long position, HuffmanDataSize dataSize, bool isData)
-    {
-        reader.Advance(position - reader.Consumed);
-        reader.TryRead(out var rawByte);
-        
-        if (isData)
-        {
-            if (dataSize == HuffmanDataSize.FourBits && (rawByte & 0xF0) > 0) throw new InvalidDataException(Localization.HuffmanStreamInvalidDataNode);
-            Data = rawByte;
-        }
-        else
-        {
-            var offset = rawByte & 0x3F;
-            
-            Left = new HuffmanNode(reader, (position & ~1L) + offset * 2 + 2, dataSize, (rawByte & 0x80) > 0);
-            Right = new HuffmanNode(reader, (position & ~1L) + offset * 2 + 2 + 1, dataSize, (rawByte & 0x40) > 0);
         }
     }
 }

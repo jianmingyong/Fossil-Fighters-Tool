@@ -78,6 +78,15 @@ namespace Fossil_Fighters_Tool {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The contents of the stream is too small to generate a proper huffman tree..
+        /// </summary>
+        internal static string HuffmanStreamDatasetTooSmall {
+            get {
+                return ResourceManager.GetString("HuffmanStreamDatasetTooSmall", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The contents of the stream contains invalid bitstream..
         /// </summary>
         internal static string HuffmanStreamInvalidBitstream {

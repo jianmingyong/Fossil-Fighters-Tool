@@ -269,7 +269,10 @@ public class LzssStream : Stream
     {
         if (disposing)
         {
-            Flush();
+            if (Mode == LzssStreamMode.Compress)
+            {
+                Flush();
+            }
             
             _reader.Dispose();
             _writer.Dispose();

@@ -41,4 +41,7 @@
     <data name="HuffmanStreamInvalidBitstream" xml:space="preserve">
         <value>The contents of the stream contains invalid bitstream.</value>
     </data>
+    <data name="HuffmanStreamDatasetTooSmall" xml:space="preserve">
+        <value>The contents of the stream is too small to generate a proper huffman tree.</value>
+    </data>
 </root>

@@ -150,7 +150,7 @@ public class McmFileStream : Stream
                 
                 Stream decompressStream;
                 var disposable = true;
-                
+                /*
                 switch (_decompressionType2)
                 {
                     case McmCompressionType.None:
@@ -237,6 +237,7 @@ public class McmFileStream : Stream
                 {
                     decompressStream.Dispose();
                 }
+                */
             }
             
             _outputStream.Flush();

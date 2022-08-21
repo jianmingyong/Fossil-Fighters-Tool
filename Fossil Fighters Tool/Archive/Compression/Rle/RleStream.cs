@@ -262,7 +262,10 @@ public class RleStream : Stream
     {
         if (disposing)
         {
-            Flush();
+            if (Mode == RleStreamMode.Compress)
+            {
+                Flush();
+            }
             
             _reader.Dispose();
             _writer.Dispose();
