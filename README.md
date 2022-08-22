@@ -2,14 +2,12 @@
 
 # Fossil Fighters Assets Extractor
 
-<details>
-    <summary>Table of Contents</summary>
-    <ol>
-        <li><a href="#about-the-project">About The Project</a></li>
-        <li><a href="#game-file-headers">Game File Headers</a></li>
-        <li><a href="#built-instructions">Built Instructions</a></li>
-    </ol>
-</details>
+<summary>Table of Contents</summary>
+<ol>
+    <li><a href="#about-the-project">About The Project</a></li>
+    <li><a href="#game-file-headers">Game File Headers</a></li>
+    <li><a href="#built-instructions">Built Instructions</a></li>
+</ol>
 
 ## About The Project
 
