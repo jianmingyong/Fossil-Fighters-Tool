@@ -4,7 +4,6 @@ namespace Fossil_Fighters_Tool.Archive.Compression.Huffman;
 
 public class HuffmanNode
 {
-    //[DebuggerBrowsable(DebuggerBrowsableState.Never)]
     public HuffmanNode? Parent { get; set; }
     
     public HuffmanNode? Left { get; set; }
@@ -12,12 +11,14 @@ public class HuffmanNode
     public HuffmanNode? Right { get; set; }
     
     public byte? Data { get; set; }
+
+    public int Value { get; set; }
     
-    //[DebuggerBrowsable(DebuggerBrowsableState.Never)]
-    public int? Value { get; set; }
-    
-    [DebuggerBrowsable(DebuggerBrowsableState.Never)]
     public long Position { get; set; } = 5;
+
+    public int BitstreamValue { get; set; }
+
+    public int BitstreamLength { get; set; }
 
     public HuffmanNode()
     {

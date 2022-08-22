@@ -1,5 +1,4 @@
 ﻿using System.Buffers;
-using System.Collections;
 using System.Diagnostics;
 using System.Text;
 using JetBrains.Annotations;
@@ -240,46 +239,7 @@ public class HuffmanStream : Stream
             
             return result;
         }
-
-        IReadOnlyList<HuffmanNode> BuildHuffmanNodes(IReadOnlyList<HuffmanNode> nodes)
-        {
-            var subNodes = new List<HuffmanNode>();
-            var index = 0;
         
-            while (index < nodes.Count)
-            {
-                if (index + 1 < nodes.Count)
-                {
-                    var nodeA = nodes[index++];
-                    var nodeB = nodes[index++];
-                    var currentWorkingNode = new HuffmanNode { Left = nodeA, Right = nodeB, Value = nodeA.Value + nodeB.Value };
-
-                    nodeA.Parent = currentWorkingNode;
-                    nodeB.Parent = currentWorkingNode;
-                    
-                    while (index < nodes.Count)
-                    {
-                        if (!(currentWorkingNode.Value <= nodes[^1].Value)) break;
-
-                        var nodeC = nodes[index++];
-                        var nodeD = currentWorkingNode;
-                        currentWorkingNode = new HuffmanNode { Left = nodeC, Right = nodeD, Value = nodeC.Value + nodeD.Value };
-                        nodeC.Parent = currentWorkingNode;
-                        nodeD.Parent = currentWorkingNode;
-                    }
-                    
-                    subNodes.Add(currentWorkingNode);
-                }
-                else
-                {
-                    var nodeA = nodes[index++];
-                    subNodes.Add(nodeA);
-                }
-            }
-
-            return subNodes.OrderBy(node => node.Value).ToList();
-        }
-
         int NodesCount(HuffmanNode node)
         {
             if (node.Left != null && node.Right != null) return 1 + NodesCount(node.Left) + NodesCount(node.Right);
@@ -291,8 +251,8 @@ public class HuffmanStream : Stream
         void UpdateHuffmanNodes(HuffmanNode node)
         {
             var position = 5;
-            
-            for (var bits = 0; bits < 16; bits++)
+       
+            for (var bits = 0; bits < 32; bits++)
             {
                 if (bits == 0)
                 {
@@ -315,6 +275,12 @@ public class HuffmanStream : Stream
 
                     if (currentNode != null)
                     {
+                        if (currentNode.Data.HasValue)
+                        {
+                            currentNode.BitstreamValue = value;
+                            currentNode.BitstreamLength = bits;
+                        }
+                        
                         currentNode.Position = position++;
                         hasNodes = true;
                     }
@@ -324,12 +290,12 @@ public class HuffmanStream : Stream
             }
         }
 
-        void WriteHuffmanNodes(HuffmanNode node, BinaryWriter writer)
+        void WriteHuffmanNodes(HuffmanNode node)
         {
             if (node.Data.HasValue)
             {
-                writer.BaseStream.Seek(node.Position, SeekOrigin.Begin);
-                writer.Write(node.Data.Value);
+                _writer.BaseStream.Seek(node.Position, SeekOrigin.Begin);
+                _writer.Write(node.Data.Value);
             }
             else
             {
@@ -346,132 +312,104 @@ public class HuffmanStream : Stream
                     flag |= 1;
                 }
                 
-                writer.BaseStream.Seek(node.Position, SeekOrigin.Begin);
-                writer.Write((byte) (offset | (uint) (flag << 6)));
+                _writer.BaseStream.Seek(node.Position, SeekOrigin.Begin);
+                _writer.Write((byte) (offset | (uint) (flag << 6)));
 
                 if (node.Left != null)
                 {
-                    WriteHuffmanNodes(node.Left, writer);
+                    WriteHuffmanNodes(node.Left);
                 }
                 
                 if (node.Right != null)
                 {
-                    WriteHuffmanNodes(node.Right, writer);
+                    WriteHuffmanNodes(node.Right);
                 }
             }
         }
 
-        void WriteHuffmanBitstream(BinaryReader reader, BinaryWriter writer, List<HuffmanNode> nodes)
+        void WriteHuffmanBitstream(IReadOnlyDictionary<byte, HuffmanNode> nodes)
         {
-            reader.BaseStream.Seek(0, SeekOrigin.Begin);
+            _reader.BaseStream.Seek(0, SeekOrigin.Begin);
 
             var bitStream = 0u;
             var bitsLeft = 32;
-            var buffer = ArrayPool<byte>.Shared.Rent(256);
-
-            try
+            
+            while (_reader.BaseStream.Position < _reader.BaseStream.Length)
             {
-                while (reader.BaseStream.Position < reader.BaseStream.Length)
+                var value = _reader.ReadByte();
+
+                if (_dataSize == HuffmanDataSize.FourBits)
                 {
-                    var value = reader.ReadByte();
+                    var firstValue = nodes[(byte) (value & 0xF)];
+                    var secondValue = nodes[(byte) ((value >> 4) & 0xF)];
 
-                    if (_dataSize == HuffmanDataSize.FourBits)
+                    for (var i = firstValue.BitstreamLength - 1; i >= 0; i--)
                     {
-                        var firstValue = value & 0xF;
-                        var secondValue = (value >> 4) & 0xF;
+                        var bitValue = (byte) ((firstValue.BitstreamValue >> i) & 0x1);
                         
-                        TransverseValue(nodes.Find(node => node.Data == firstValue), buffer, out var length);
-                        buffer.AsSpan(0, length).Reverse();
-                        
-                        for (var i = 0; i < length; i++)
+                        if (bitsLeft > 0)
                         {
-                            if (bitsLeft > 0)
-                            {
-                                bitStream <<= 1;
-                                bitStream |= buffer[i];
-                                bitsLeft--;
-                            }
-
-                            if (bitsLeft == 0)
-                            {
-                                writer.Write(bitStream);
-                                bitsLeft = 32;
-                            }
+                            bitStream <<= 1;
+                            bitStream |= bitValue;
+                            bitsLeft--;
                         }
                         
-                        TransverseValue(nodes.Find(node => node.Data == secondValue), buffer, out var length2);
-                        buffer.AsSpan(0, length2).Reverse();
-
-                        for (var i = 0; i < length2; i++)
+                        if (bitsLeft == 0)
                         {
-                            if (bitsLeft > 0)
-                            {
-                                bitStream <<= 1;
-                                bitStream |= buffer[i];
-                                bitsLeft--;
-                            }
-                            
-                            if (bitsLeft == 0)
-                            {
-                                writer.Write(bitStream);
-                                bitsLeft = 32;
-                            }
+                            _writer.Write(bitStream);
+                            bitsLeft = 32;
                         }
                     }
-                    else
+                    
+                    for (var i = secondValue.BitstreamLength - 1; i >= 0; i--)
                     {
-                        TransverseValue(nodes.Find(node => node.Data == value), buffer, out var length);
-                        buffer.AsSpan(0, length).Reverse();
-
-                        for (var i = 0; i < length; i++)
+                        var bitValue = (byte) ((secondValue.BitstreamValue >> i) & 0x1);
+                        
+                        if (bitsLeft > 0)
                         {
-                            if (bitsLeft > 0)
-                            {
-                                bitStream <<= 1;
-                                bitStream |= buffer[i];
-                                bitsLeft--;
-                            }
-                            
-                            if (bitsLeft == 0)
-                            {
-                                writer.Write(bitStream);
-                                bitsLeft = 32;
-                            }
+                            bitStream <<= 1;
+                            bitStream |= bitValue;
+                            bitsLeft--;
+                        }
+                        
+                        if (bitsLeft == 0)
+                        {
+                            _writer.Write(bitStream);
+                            bitsLeft = 32;
                         }
                     }
                 }
-
-                if (bitsLeft > 0)
+                else
                 {
-                    bitStream <<= bitsLeft;
-                    writer.Write(bitStream);
+                    var firstValue = nodes[value];
+
+                    for (var i = firstValue.BitstreamLength - 1; i >= 0; i--)
+                    {
+                        var bitValue = (byte) ((firstValue.BitstreamValue >> i) & 0x1);
+                        
+                        if (bitsLeft > 0)
+                        {
+                            bitStream <<= 1;
+                            bitStream |= bitValue;
+                            bitsLeft--;
+                        }
+                        
+                        if (bitsLeft == 0)
+                        {
+                            _writer.Write(bitStream);
+                            bitsLeft = 32;
+                        }
+                    }
                 }
             }
-            finally
+
+            if (bitsLeft > 0)
             {
-                ArrayPool<byte>.Shared.Return(buffer);
+                bitStream <<= bitsLeft;
+                _writer.Write(bitStream);
             }
         }
 
-        void TransverseValue(HuffmanNode? node, Span<byte> buffer, out int length)
-        {
-            var index = 0;
-            
-            while (node != null)
-            {
-                var parentNode = node.Parent;
-
-                if (parentNode != null)
-                {
-                    buffer[index++] = parentNode.Left == node ? (byte) 0 : (byte) 1;
-                }
-
-                node = node.Parent;
-            }
-            
-            length = index;
-        }
-        
         Dictionary<byte, int> huffmanFrequencyTable;
 
         switch (_dataSize)
@@ -508,15 +446,29 @@ public class HuffmanStream : Stream
 
         if (huffmanFrequencyTable.Count < 2) throw new InvalidDataException(Localization.HuffmanStreamDatasetTooSmall);
 
-        var dataNodes = huffmanFrequencyTable.OrderBy(pair => pair.Value).Select(pair => new HuffmanNode { Data = pair.Key, Value = pair.Value }).ToList();
-        var subNodes = BuildHuffmanNodes(dataNodes);
+        var nodes = new PriorityQueue<HuffmanNode, int>();
+        var dataNodes = new Dictionary<byte, HuffmanNode>();
 
-        while (subNodes.Count > 1)
+        foreach (var table in huffmanFrequencyTable)
         {
-            subNodes = BuildHuffmanNodes(subNodes);
+            var node = new HuffmanNode { Data = table.Key, Value = table.Value };
+            nodes.Enqueue(node, table.Value);
+            dataNodes.Add(table.Key, node);
         }
 
-        var rootNode = subNodes[0];
+        while (nodes.Count > 1)
+        {
+            var nodeA = nodes.Dequeue();
+            var nodeB = nodes.Dequeue();
+
+            var nodeC = new HuffmanNode { Left = nodeA, Right = nodeB, Value = nodeA.Value + nodeB.Value };
+            nodeA.Parent = nodeC;
+            nodeB.Parent = nodeC;
+            
+            nodes.Enqueue(nodeC, nodeC.Value);
+        }
+        
+        var rootNode = nodes.Dequeue();
         var nodesCount = NodesCount(rootNode);
         
         UpdateHuffmanNodes(rootNode);
@@ -524,8 +476,8 @@ public class HuffmanStream : Stream
         _writer.Write((uint) _dataSize | (uint) 0x2 << 4 | (uint) _inputStream.Length << 8);
         _writer.Write((byte) ((nodesCount - 1) / 2));
         
-        WriteHuffmanNodes(rootNode, _writer);
-        WriteHuffmanBitstream(_reader, _writer, dataNodes);
+        WriteHuffmanNodes(rootNode);
+        WriteHuffmanBitstream(dataNodes);
 
         _writer.Flush();
         

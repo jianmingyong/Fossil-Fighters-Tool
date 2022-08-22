@@ -13,21 +13,6 @@ internal static class Program
 {
     public static void Main(string[] args)
     {
-        var huffman = new HuffmanStream(File.Open("C:\\Users\\jianmingyong\\Desktop\\Rom Hacking Tools\\2.bin", FileMode.Create), HuffmanStreamMode.Compress);
-        File.OpenRead("C:\\Users\\jianmingyong\\Desktop\\Rom Hacking Tools\\0.bin").CopyTo(huffman);
-        huffman.Flush();
-        huffman.Dispose();
-
-        var test = new HuffmanStream(File.OpenRead("C:\\Users\\jianmingyong\\Desktop\\Rom Hacking Tools\\2.bin"), HuffmanStreamMode.Decompress);
-        var test2 = File.Open("C:\\Users\\jianmingyong\\Desktop\\Rom Hacking Tools\\4.bin", FileMode.Create);
-        test.CopyTo(test2);
-        test2.Flush();
-        
-        //var huffman = new HuffmanStream(File.OpenRead("C:\\Users\\jianmingyong\\Desktop\\Rom Hacking Tools\\3.bin"), HuffmanStreamMode.Decompress);
-        //huffman.CopyTo(new MemoryStream());
-        
-        return;
-        
         if (args.Length < 1) return;
 
         var inputFilePath = args[0];
@@ -89,9 +74,9 @@ internal static class Program
 
             using (var outputStream = new FileStream(outputFile, FileMode.Create, FileAccess.Write))
             {
-                using var mcmFileStream = new McmFileStream(outputStream, McmFileStreamMode.Decompress);
-                using var inputStream = marEntries[i].Open();
-                inputStream.CopyTo(mcmFileStream);
+                using var mcmFileStream = new McmFileStream(marEntries[i].Open(), McmFileStreamMode.Decompress, true);
+                mcmFileStream.CopyTo(outputStream);
+                outputStream.Flush();
             }
 
             using var fileStream = new FileStream(outputFile, FileMode.Open, FileAccess.Read);

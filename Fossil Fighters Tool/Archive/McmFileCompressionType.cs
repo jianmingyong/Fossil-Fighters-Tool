@@ -1,6 +1,6 @@
 ﻿namespace Fossil_Fighters_Tool.Archive;
 
-public enum McmCompressionType
+public enum McmFileCompressionType
 {
     None = 0,
     Rle = 1,
