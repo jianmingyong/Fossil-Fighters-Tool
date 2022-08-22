@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Diagnostics;
+using System.Text;
 
 namespace Fossil_Fighters_Tool.Archive;
 
@@ -19,7 +20,7 @@ public class MarArchive : IDisposable
 
     internal readonly Stream ArchiveStream;
     
-    private readonly BinaryReader? _archiveReader;
+    private readonly BinaryReader? _reader;
     private readonly Stream _disposableStream;
     private readonly bool _leaveOpen;
 
@@ -55,21 +56,16 @@ public class MarArchive : IDisposable
                     _entriesRead = true;
                     break;
 
-                case MarArchiveMode.Update:
-                    if (!stream.CanRead || !stream.CanWrite || !stream.CanSeek) throw new ArgumentException("Update mode requires a stream with read, write, and seek capabilities.");
-                    break;
-
                 default:
                     throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
             }
 
-            _archiveReader = mode == MarArchiveMode.Create ? null : new BinaryReader(ArchiveStream, Encoding.ASCII, leaveOpen);
+            _reader = mode == MarArchiveMode.Create ? null : new BinaryReader(ArchiveStream, Encoding.UTF8, leaveOpen);
             
             switch (mode)
             {
                 case MarArchiveMode.Read:
-                case MarArchiveMode.Update:
-                    if (_archiveReader!.ReadUInt32() != Id) throw new InvalidDataException(string.Format(Localization.StreamIsNotArchive, "MAR"));
+                    if (_reader!.ReadUInt32() != Id) throw new InvalidDataException(string.Format(Localization.StreamIsNotArchive, "MAR"));
                     break;
 
                 case MarArchiveMode.Create:
@@ -88,23 +84,23 @@ public class MarArchive : IDisposable
 
     private void ReadEntries()
     {
-        if (!_entriesRead)
+        if (_entriesRead) return;
+        _entriesRead = true;
+
+        Debug.Assert(_reader != null, nameof(_reader) + " != null");
+        
+        var expectedFileLength = _reader.ReadInt32();
+        var offsets = new List<(int offset, int dataSize)>();
+
+        for (var i = 0; i < expectedFileLength; i++)
         {
-            _entriesRead = true;
-            
-            var expectedFileLength = _archiveReader!.ReadUInt32();
-            var offsets = new List<(int offset, int dataSize)>();
+            offsets.Add((_reader.ReadInt32(), _reader.ReadInt32()));
+        }
 
-            for (var i = 0; i < expectedFileLength; i++)
-            {
-                offsets.Add(((int) _archiveReader!.ReadUInt32(), (int) _archiveReader!.ReadUInt32()));
-            }
-
-            for (var i = 0; i < expectedFileLength; i++)
-            {
-                var endingOffset = i + 1 < expectedFileLength ? offsets[i + 1].offset : _archiveReader!.BaseStream.Length;
-                _entries.Add(new MarArchiveEntry(this, offsets[i].offset, endingOffset - offsets[i].offset));
-            }
+        for (var i = 0; i < expectedFileLength; i++)
+        {
+            var endingOffset = i + 1 < expectedFileLength ? offsets[i + 1].offset : _reader.BaseStream.Length;
+            _entries.Add(new MarArchiveEntry(this, offsets[i].offset, (int) (endingOffset - offsets[i].offset)));
         }
     }
     
@@ -115,6 +111,6 @@ public class MarArchive : IDisposable
             _disposableStream.Dispose();
         }
         
-        _archiveReader?.Dispose();
+        _reader?.Dispose();
     }
 }

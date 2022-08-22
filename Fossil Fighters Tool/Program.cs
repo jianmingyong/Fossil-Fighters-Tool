@@ -1,6 +1,5 @@
 ﻿using System.Text;
 using Fossil_Fighters_Tool.Archive;
-using Fossil_Fighters_Tool.Archive.Compression.Huffman;
 using Fossil_Fighters_Tool.Header;
 using Fossil_Fighters_Tool.Image;
 using Fossil_Fighters_Tool.Motion;
@@ -74,7 +73,7 @@ internal static class Program
 
             using (var outputStream = new FileStream(outputFile, FileMode.Create, FileAccess.Write))
             {
-                using var mcmFileStream = new McmFileStream(marEntries[i].Open(), McmFileStreamMode.Decompress, true);
+                using var mcmFileStream = new McmFileStream(marEntries[i].Open(), McmFileStreamMode.Decompress);
                 mcmFileStream.CopyTo(outputStream);
                 outputStream.Flush();
             }
@@ -299,50 +298,5 @@ internal static class Program
                 }
             }
         }
-    }
-    
-    private static void TestFile(string inputFilePath)
-    {
-        var inputFileDirectory = Path.GetDirectoryName(inputFilePath)!;
-
-        using var colorPaletteFile = File.OpenRead(Path.Combine(inputFileDirectory, "1.bin"));
-        var colorPalette = ImageUtility.GetColorPalette(colorPaletteFile);
-
-        var colorIndexesFile = File.OpenRead(Path.Combine(inputFileDirectory, "2.bin"));
-        var colorIndexes = ImageUtility.GetBitmap(colorIndexesFile);
-        
-        var width = 256;
-        var height = 256;
-        
-        using var image = new Image<Rgba32>(width, height);
-
-        var bitmapIndex = 0;
-
-        if (colorPalette.Length == 16)
-        {
-            for (var y = 0; y < height; y++)
-            {
-                for (var x = 0; x < width; x += 2)
-                {
-                    image[x, y] = colorPalette[colorIndexes[bitmapIndex] & 0xF];
-                    image[x, y] = colorPalette[colorIndexes[bitmapIndex] >> 4];
-
-                    bitmapIndex++;
-                }
-            }
-        }
-        else
-        {
-            for (var y = 0; y < height; y++)
-            {
-                for (var x = 0; x < width; x++)
-                {
-                    image[x, y] = colorPalette[colorIndexes[bitmapIndex]];
-                    bitmapIndex++;
-                }
-            }
-        }
-
-        image.SaveAsPng(Path.Combine(inputFileDirectory, "0.png"));
     }
 }

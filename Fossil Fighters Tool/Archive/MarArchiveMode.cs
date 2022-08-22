@@ -10,10 +10,5 @@ public enum MarArchiveMode
     /// <summary>
     /// Only creating new archive entries is permitted.
     /// </summary>
-    Create,
-    
-    /// <summary>
-    /// Both read and write operations are permitted for archive entries.
-    /// </summary>
-    Update
+    Create
 }

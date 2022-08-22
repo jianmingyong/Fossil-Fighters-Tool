@@ -28,6 +28,15 @@ public class McmFileStream : Stream
     [PublicAPI]
     public McmFileStreamMode Mode { get; }
 
+    [PublicAPI]
+    public int MaxSizePerChunk { get; set; } = 0x2000;
+    
+    [PublicAPI]
+    public McmFileCompressionType CompressionType1 { get; set; }
+    
+    [PublicAPI]
+    public McmFileCompressionType CompressionType2 { get; set; }
+
     private const int HeaderId = 0x004D434D;
     
     private MemoryStream? _inputStream;
@@ -77,62 +86,73 @@ public class McmFileStream : Stream
 
         if (!_hasDecompressed)
         {
-            var fileHeaderId = _reader.ReadUInt32();
+            var fileHeaderId = _reader.ReadInt32();
             if (fileHeaderId != HeaderId) throw new InvalidDataException(string.Format(Localization.StreamIsNotCompressedBy, "MCM"));
 
-            var decompressFileSize = _reader.ReadUInt32();
-            var maxSizePerChunk = _reader.ReadUInt32();
-            var numberOfChunk = _reader.ReadUInt32();
+            var decompressFileSize = _reader.ReadInt32();
+            MaxSizePerChunk = _reader.ReadInt32();
+            var numberOfChunk = _reader.ReadInt32();
             
-            var dataChunkOffsets = new uint[numberOfChunk + 1];
-            var compressionType1 = (McmFileCompressionType) _reader.ReadByte();
-            var compressionType2 = (McmFileCompressionType) _reader.ReadByte();
+            var dataChunkOffsets = new int[numberOfChunk + 1];
+            CompressionType1 = (McmFileCompressionType) _reader.ReadByte();
+            CompressionType2 = (McmFileCompressionType) _reader.ReadByte();
 
             _reader.ReadInt16();
 
             for (var i = 0; i < dataChunkOffsets.Length; i++)
             {
-                dataChunkOffsets[i] = _reader.ReadUInt32();
+                dataChunkOffsets[i] = _reader.ReadInt32();
             }
 
             for (var i = 0; i < dataChunkOffsets.Length - 1; i++)
             {
                 var requiredLength = dataChunkOffsets[i + 1] - dataChunkOffsets[i];
+                var tempBuffer = ArrayPool<byte>.Shared.Rent(requiredLength);
 
-                Stream dataChunk = new ReadOnlyStream(BaseStream, dataChunkOffsets[i], requiredLength, true);
-
-                var compressedStream = compressionType2 switch
+                try
                 {
-                    McmFileCompressionType.None => dataChunk,
-                    McmFileCompressionType.Rle => new RleStream(dataChunk, RleStreamMode.Decompress, true),
-                    McmFileCompressionType.Lzss => new LzssStream(dataChunk, LzssStreamMode.Decompress, true),
-                    McmFileCompressionType.Huffman => new HuffmanStream(dataChunk, HuffmanStreamMode.Decompress, true),
-                    var _ => throw new ArgumentOutOfRangeException()
-                };
+                    Stream dataChunk = new MemoryStream(tempBuffer, 0, requiredLength);
+                    
+                    BaseStream.Seek(dataChunkOffsets[i], SeekOrigin.Begin);
+                    if (BaseStream.Read(tempBuffer, 0, requiredLength) < requiredLength) throw new EndOfStreamException();
 
-                switch (compressionType1)
-                {
-                    case McmFileCompressionType.None:
-                        break;
+                    var compressedStream = CompressionType1 switch
+                    {
+                        McmFileCompressionType.None => dataChunk,
+                        McmFileCompressionType.Rle => new RleStream(dataChunk, RleStreamMode.Decompress),
+                        McmFileCompressionType.Lzss => new LzssStream(dataChunk, LzssStreamMode.Decompress),
+                        McmFileCompressionType.Huffman => new HuffmanStream(dataChunk, HuffmanStreamMode.Decompress),
+                        var _ => throw new ArgumentOutOfRangeException(null)
+                    };
 
-                    case McmFileCompressionType.Rle:
-                        compressedStream = new RleStream(compressedStream, RleStreamMode.Decompress, true);
-                        break;
+                    switch (CompressionType2)
+                    {
+                        case McmFileCompressionType.None:
+                            break;
 
-                    case McmFileCompressionType.Lzss:
-                        compressedStream = new LzssStream(compressedStream, LzssStreamMode.Decompress, true);
-                        break;
+                        case McmFileCompressionType.Rle:
+                            compressedStream = new RleStream(compressedStream, RleStreamMode.Decompress);
+                            break;
 
-                    case McmFileCompressionType.Huffman:
-                        compressedStream = new HuffmanStream(compressedStream, HuffmanStreamMode.Decompress, true);
-                        break;
+                        case McmFileCompressionType.Lzss:
+                            compressedStream = new LzssStream(compressedStream, LzssStreamMode.Decompress);
+                            break;
 
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
+                        case McmFileCompressionType.Huffman:
+                            compressedStream = new HuffmanStream(compressedStream, HuffmanStreamMode.Decompress);
+                            break;
+
+                        default:
+                            throw new ArgumentOutOfRangeException(null);
+                    }
                 
-                compressedStream.CopyTo(_outputStream);
-                compressedStream.Dispose();
+                    compressedStream.CopyTo(_outputStream);
+                    compressedStream.Dispose();
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(tempBuffer);
+                }
             }
             
             if (_outputStream.Length != decompressFileSize) throw new InvalidDataException(Localization.StreamIsCorrupted);
@@ -164,7 +184,90 @@ public class McmFileStream : Stream
     
     public override void Flush()
     {
-        throw new NotImplementedException();
+        if (_hasCompressed) return;
+        
+        _reader.BaseStream.Seek(0, SeekOrigin.Begin);
+        
+        _writer.Write(HeaderId);
+        _writer.Write((int) _reader.BaseStream.Length);
+        _writer.Write(MaxSizePerChunk);
+
+        var numberOfChunks = (int) Math.Ceiling((double) _reader.BaseStream.Length / MaxSizePerChunk);
+        _writer.Write(numberOfChunks);
+        _writer.Write((byte) CompressionType1);
+        _writer.Write((byte) CompressionType2);
+        _writer.Write((short) 0);
+        
+        _writer.Write((int) _writer.BaseStream.Position + 4 * numberOfChunks + 4);
+
+        var chunkOffset = _writer.BaseStream.Position;
+        var dataOffset = chunkOffset + 4 * numberOfChunks;
+
+        for (var i = 0; i < numberOfChunks; i++)
+        {
+            var chunkSize = Math.Min(_reader.BaseStream.Length - MaxSizePerChunk * i, MaxSizePerChunk);
+            var buffer = ArrayPool<byte>.Shared.Rent((int) chunkSize);
+
+            try
+            {
+                using var tempBuffer = new MemoryStream();
+
+                Stream compressStream = CompressionType2 switch
+                {
+                    McmFileCompressionType.None => tempBuffer,
+                    McmFileCompressionType.Rle => new RleStream(tempBuffer, RleStreamMode.Compress),
+                    McmFileCompressionType.Lzss => new LzssStream(tempBuffer, LzssStreamMode.Compress),
+                    McmFileCompressionType.Huffman => new HuffmanStream(tempBuffer, HuffmanStreamMode.Compress),
+                    var _ => throw new ArgumentOutOfRangeException()
+                };
+
+                switch (CompressionType1)
+                {
+                    case McmFileCompressionType.None:
+                        break;
+
+                    case McmFileCompressionType.Rle:
+                        compressStream = new RleStream(compressStream, RleStreamMode.Compress);
+                        break;
+
+                    case McmFileCompressionType.Lzss:
+                        compressStream = new LzssStream(compressStream, LzssStreamMode.Compress);
+                        break;
+
+                    case McmFileCompressionType.Huffman:
+                        compressStream = new HuffmanStream(compressStream, HuffmanStreamMode.Compress);
+                        break;
+
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+                
+                using var stream = new MemoryStream(buffer, 0, (int) chunkSize);
+                if (_reader.BaseStream.Read(buffer, 0, (int) chunkSize) < chunkSize) throw new EndOfStreamException();
+
+                stream.CopyTo(compressStream);
+                compressStream.Flush();
+                compressStream.Dispose();
+
+                var dataLength = tempBuffer.Length;
+                
+                _writer.Seek((int) chunkOffset + 4 * i, SeekOrigin.Begin);
+                _writer.Write((int) dataLength);
+                
+                _writer.Seek((int) dataOffset, SeekOrigin.Begin);
+                tempBuffer.CopyTo(_writer.BaseStream);
+
+                dataOffset += dataLength;
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
+        }
+        
+        _writer.Flush();
+
+        _hasCompressed = true;
     }
 
     public override long Seek(long offset, SeekOrigin origin)
@@ -175,5 +278,16 @@ public class McmFileStream : Stream
     public override void SetLength(long value)
     {
         throw new NotSupportedException();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _reader.Dispose();
+            _writer.Dispose();
+        }
+
+        base.Dispose(disposing);
     }
 }
