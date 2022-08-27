@@ -2,46 +2,61 @@
 
 namespace Fossil_Fighters_Tool.Archive;
 
-public class MarArchiveEntry
+public class MarArchiveEntry : IDisposable
 {
-    private readonly MarArchive _archive;
-    private readonly int _fileLength;
-    private readonly int _fileOffset;
+    public int DataFileSize => _mcmFileStream?.DecompressFileSize ?? 0;
+    
+    internal readonly MemoryStream MemoryStream;
+    
+    private McmFileStream? _mcmFileStream;
 
-    public MarArchiveEntry(MarArchive archive, int fileOffset, int fileLength)
+    public MarArchiveEntry()
     {
-        _archive = archive;
-        _fileLength = fileLength;
-        _fileOffset = fileOffset;
+        MemoryStream = new MemoryStream();
+    }
+    
+    public MarArchiveEntry(BinaryReader reader, int fileOffset, int fileLength)
+    {
+        MemoryStream = new MemoryStream(Math.Max(0, fileLength));
+        reader.BaseStream.Seek(fileOffset, SeekOrigin.Begin);
+
+        var buffer = ArrayPool<byte>.Shared.Rent(4096);
+        var fileRemaining = fileLength;
+
+        try
+        {
+            while (fileRemaining > 0)
+            {
+                var read = reader.Read(buffer, 0, 4096);
+                if (read == 0) throw new EndOfStreamException();
+
+                MemoryStream.Write(buffer, 0, read > fileRemaining ? fileRemaining : read);
+                fileRemaining -= read;
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
     }
 
-    public Stream Open()
+    public McmFileStream OpenRead()
     {
-        if (_archive.Mode == MarArchiveMode.Read)
-        {
-            if (_archive.ArchiveStream is MemoryStream memoryStream)
-            {
-                return new MemoryStream(memoryStream.GetBuffer(), _fileOffset, _fileLength);
-            }
+        MemoryStream.Seek(0, SeekOrigin.Begin);
+        _mcmFileStream = new McmFileStream(MemoryStream, McmFileStreamMode.Decompress, true);
+        return _mcmFileStream;
+    }
+    
+    public McmFileStream OpenWrite()
+    {
+        MemoryStream.Seek(0, SeekOrigin.Begin);
+        MemoryStream.SetLength(0);
+        _mcmFileStream = new McmFileStream(MemoryStream, McmFileStreamMode.Compress, true);
+        return _mcmFileStream;
+    }
 
-            var stream = new MemoryStream(_fileLength);
-            var buffer = ArrayPool<byte>.Shared.Rent(_fileLength);
-
-            try
-            {
-                _archive.ArchiveStream.Seek(_fileOffset, SeekOrigin.Begin);
-                if (_archive.ArchiveStream.Read(buffer, 0, _fileLength) < _fileLength) throw new EndOfStreamException();
-                stream.Write(buffer, 0, _fileLength);
-                stream.Seek(0, SeekOrigin.Begin);
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(buffer);
-            }
-
-            return stream;
-        }
-        
-        throw new NotImplementedException();
+    public void Dispose()
+    {
+        MemoryStream.Dispose();
     }
 }

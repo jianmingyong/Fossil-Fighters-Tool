@@ -73,7 +73,7 @@ internal static class Program
 
             using (var outputStream = new FileStream(outputFile, FileMode.Create, FileAccess.Write))
             {
-                using var mcmFileStream = new McmFileStream(marEntries[i].Open(), McmFileStreamMode.Decompress);
+                using var mcmFileStream = marEntries[i].OpenRead();
                 mcmFileStream.CopyTo(outputStream);
                 outputStream.Flush();
             }

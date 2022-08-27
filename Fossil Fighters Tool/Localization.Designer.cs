@@ -123,7 +123,7 @@ namespace Fossil_Fighters_Tool {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The contents of the stream are not {0} archive..
+        ///   Looks up a localized string similar to The contents of the stream is not a {0} archive..
         /// </summary>
         internal static string StreamIsNotArchive {
             get {
@@ -132,11 +132,29 @@ namespace Fossil_Fighters_Tool {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The contents of the stream are not {0} compressed..
+        ///   Looks up a localized string similar to The contents of the stream is not {0} compressed..
         /// </summary>
         internal static string StreamIsNotCompressedBy {
             get {
                 return ResourceManager.GetString("StreamIsNotCompressedBy", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The stream provided is not readable..
+        /// </summary>
+        internal static string StreamIsNotReadable {
+            get {
+                return ResourceManager.GetString("StreamIsNotReadable", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The stream provided is not writeable..
+        /// </summary>
+        internal static string StreamIsNotWriteable {
+            get {
+                return ResourceManager.GetString("StreamIsNotWriteable", resourceCulture);
             }
         }
     }
