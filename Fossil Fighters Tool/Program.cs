@@ -1,5 +1,9 @@
-﻿using System.Text;
+﻿using System.CommandLine;
+using System.CommandLine.Builder;
+using System.CommandLine.Parsing;
+using System.Text;
 using Fossil_Fighters_Tool.Archive;
+using Fossil_Fighters_Tool.Command;
 using Fossil_Fighters_Tool.Header;
 using Fossil_Fighters_Tool.Image;
 using Fossil_Fighters_Tool.Motion;
@@ -10,44 +14,40 @@ namespace Fossil_Fighters_Tool;
 
 internal static class Program
 {
-    public static void Main(string[] args)
+    public static async Task<int> Main(string[] args)
     {
-        if (args.Length < 1) return;
+        var rootCommand = new RootCommand(Localization.FossilFightersToolDescription);
+        rootCommand.AddCommand(new DecompressCommand());
+        rootCommand.AddCommand(new CompressCommand());
 
-        var inputFilePath = args[0];
+        var validCommand = new List<string>();
+        var hasValidCommand = false;
 
-        if (Directory.Exists(inputFilePath))
+        foreach (var subcommand in rootCommand.Subcommands)
         {
-            foreach (var file in Directory.EnumerateFiles(inputFilePath, "*", SearchOption.AllDirectories))
+            foreach (var alias in subcommand.Aliases)
             {
-                try
-                {
-                    if (Array.Exists(Path.GetDirectoryName(file)!.Split(Path.DirectorySeparatorChar), s => s.Equals("bin"))) continue;
-                    ExtractMarArchive(file);
-                }
-                catch (Exception ex)
-                {
-                    Console.Error.WriteLine(ex.ToString());
-                }
+                validCommand.Add(alias);
             }
-            
-            return;
         }
 
-        if (!File.Exists(inputFilePath))
+        foreach (var command in validCommand)
         {
-            Console.WriteLine("File does not exist.");
-            return;
+            if (args[0].Equals(command, StringComparison.OrdinalIgnoreCase))
+            {
+                hasValidCommand = true;
+                break;
+            }
         }
 
-        try
+        if (!hasValidCommand)
         {
-            ExtractMarArchive(inputFilePath);
+            var newArgs = new List<string>(args);
+            newArgs.Insert(0, "decompress");
+            args = newArgs.ToArray();
         }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine(ex.ToString());
-        }
+        
+        return await new CommandLineBuilder(rootCommand).UseDefaults().Build().InvokeAsync(args);
     }
     
     private static void ExtractMarArchive(string inputFilePath)

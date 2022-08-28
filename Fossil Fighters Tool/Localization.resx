@@ -50,4 +50,19 @@
     <data name="StreamIsNotWriteable" xml:space="preserve">
         <value>The stream provided is not writeable.</value>
     </data>
+    <data name="FossilFightersToolDescription" xml:space="preserve">
+        <value>This program is used to decompress and compress MAR archives used in Fossil Fighters game.</value>
+    </data>
+    <data name="DecompressCommandDescription" xml:space="preserve">
+        <value>Decompress MAR archives into raw binary files.</value>
+    </data>
+    <data name="InputDoesNotExists" xml:space="preserve">
+        <value>"{0}" does not exists.</value>
+    </data>
+    <data name="FileIsNotArchive" xml:space="preserve">
+        <value>Error: File is not a {0} archive.</value>
+    </data>
+    <data name="CompressCommandDescription" xml:space="preserve">
+        <value>Compress files into MAR archive.</value>
+    </data>
 </root>

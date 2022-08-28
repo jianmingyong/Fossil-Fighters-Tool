@@ -60,6 +60,24 @@ namespace Fossil_Fighters_Tool {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Compress files into MAR archive..
+        /// </summary>
+        internal static string CompressCommandDescription {
+            get {
+                return ResourceManager.GetString("CompressCommandDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Decompress MAR archives into raw binary files..
+        /// </summary>
+        internal static string DecompressCommandDescription {
+            get {
+                return ResourceManager.GetString("DecompressCommandDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Extracted: {0}.
         /// </summary>
         internal static string FileExtracted {
@@ -74,6 +92,24 @@ namespace Fossil_Fighters_Tool {
         internal static string FileExtracting {
             get {
                 return ResourceManager.GetString("FileExtracting", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Error: File is not a {0} archive..
+        /// </summary>
+        internal static string FileIsNotArchive {
+            get {
+                return ResourceManager.GetString("FileIsNotArchive", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This program is used to decompress and compress MAR archives used in Fossil Fighters game..
+        /// </summary>
+        internal static string FossilFightersToolDescription {
+            get {
+                return ResourceManager.GetString("FossilFightersToolDescription", resourceCulture);
             }
         }
         
@@ -101,6 +137,15 @@ namespace Fossil_Fighters_Tool {
         internal static string HuffmanStreamInvalidDataNode {
             get {
                 return ResourceManager.GetString("HuffmanStreamInvalidDataNode", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to &quot;{0}&quot; does not exists..
+        /// </summary>
+        internal static string InputDoesNotExists {
+            get {
+                return ResourceManager.GetString("InputDoesNotExists", resourceCulture);
             }
         }
         

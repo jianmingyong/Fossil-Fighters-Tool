@@ -157,16 +157,16 @@ public class McmFileStream : Stream
             {
                 using var tempBuffer = new MemoryStream();
 
-                Stream compressStream = CompressionType2 switch
+                Stream compressStream = CompressionType1 switch
                 {
                     McmFileCompressionType.None => tempBuffer,
-                    McmFileCompressionType.Rle => new RleStream(tempBuffer, RleStreamMode.Compress),
-                    McmFileCompressionType.Lzss => new LzssStream(tempBuffer, LzssStreamMode.Compress),
-                    McmFileCompressionType.Huffman => new HuffmanStream(tempBuffer, HuffmanStreamMode.Compress),
+                    McmFileCompressionType.Rle => new RleStream(tempBuffer, RleStreamMode.Compress, true),
+                    McmFileCompressionType.Lzss => new LzssStream(tempBuffer, LzssStreamMode.Compress, true),
+                    McmFileCompressionType.Huffman => new HuffmanStream(tempBuffer, HuffmanStreamMode.Compress, true),
                     var _ => throw new ArgumentOutOfRangeException()
                 };
 
-                switch (CompressionType1)
+                switch (CompressionType2)
                 {
                     case McmFileCompressionType.None:
                         break;
@@ -192,14 +192,15 @@ public class McmFileStream : Stream
 
                 stream.CopyTo(compressStream);
                 compressStream.Flush();
-                compressStream.Dispose();
-
+                if (compressStream is not MemoryStream) compressStream.Dispose();
+                
                 var dataLength = tempBuffer.Length;
                 
                 _writer.Seek((int) chunkOffset + 4 * i, SeekOrigin.Begin);
                 _writer.Write((int) dataLength);
                 
                 _writer.Seek((int) dataOffset, SeekOrigin.Begin);
+                tempBuffer.Seek(0, SeekOrigin.Begin);
                 tempBuffer.CopyTo(_writer.BaseStream);
 
                 dataOffset += dataLength;
