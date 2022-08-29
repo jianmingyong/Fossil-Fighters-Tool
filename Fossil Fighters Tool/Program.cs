@@ -20,33 +20,36 @@ internal static class Program
         rootCommand.AddCommand(new DecompressCommand());
         rootCommand.AddCommand(new CompressCommand());
 
-        var validCommand = new List<string>();
-        var hasValidCommand = false;
-
-        foreach (var subcommand in rootCommand.Subcommands)
+        if (args.Length > 0)
         {
-            foreach (var alias in subcommand.Aliases)
+            var validCommand = new List<string>();
+            var hasValidCommand = false;
+
+            foreach (var subcommand in rootCommand.Subcommands)
             {
-                validCommand.Add(alias);
+                foreach (var alias in subcommand.Aliases)
+                {
+                    validCommand.Add(alias);
+                }
+            }
+
+            foreach (var command in validCommand)
+            {
+                if (args[0].Equals(command, StringComparison.OrdinalIgnoreCase))
+                {
+                    hasValidCommand = true;
+                    break;
+                }
+            }
+
+            if (!hasValidCommand)
+            {
+                var newArgs = new List<string>(args);
+                newArgs.Insert(0, "decompress");
+                args = newArgs.ToArray();
             }
         }
 
-        foreach (var command in validCommand)
-        {
-            if (args[0].Equals(command, StringComparison.OrdinalIgnoreCase))
-            {
-                hasValidCommand = true;
-                break;
-            }
-        }
-
-        if (!hasValidCommand)
-        {
-            var newArgs = new List<string>(args);
-            newArgs.Insert(0, "decompress");
-            args = newArgs.ToArray();
-        }
-        
         return await new CommandLineBuilder(rootCommand).UseDefaults().Build().InvokeAsync(args);
     }
     

@@ -15,7 +15,7 @@ public class CompressCommand : System.CommandLine.Command
 
         var includeOption = new Option<string[]>(new[] { "--include", "-i" }, () => new[] { "*.bin" }, "Include files to be compressed. You can use wildcard (*) to specify one or more files.") { Arity = ArgumentArity.OneOrMore, IsRequired = false };
 
-        var compressionTypeOption = new Option<McmFileCompressionType[]>(new[] { "--compress-type", "-c" }, () => new[] { McmFileCompressionType.None }, "Compression to use. (Maximum 2) E.g \"-c Lzss -c Huffman\" Make sure to put huffman last for better compression ratio.") { Arity = new ArgumentArity(1, 2), IsRequired = false };
+        var compressionTypeOption = new Option<McmFileCompressionType[]>(new[] { "--compress-type", "-c" }, () => new[] { McmFileCompressionType.None }, "Type of compression to be used. (Maximum 2) E.g \"-c Huffman -c Lzss\" Compression is done in reverse order. Make sure to put huffman first for better compression ratio.") { Arity = new ArgumentArity(1, 2), IsRequired = false };
         compressionTypeOption.AddCompletions(Enum.GetNames<McmFileCompressionType>());
         
         var maxSizePerChunkOption = new Option<int>(new[] { "--max-size-per-chunk", "-m" }, () => 0x2000, "Split each file into chunks of <size> bytes when compressing.") { Arity = ArgumentArity.ExactlyOne, IsRequired = false, ArgumentHelpName = "size" };

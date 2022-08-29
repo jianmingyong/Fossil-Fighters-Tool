@@ -1,6 +1,4 @@
-﻿using System.Diagnostics;
-
-namespace Fossil_Fighters_Tool.Archive.Compression.Huffman;
+﻿namespace Fossil_Fighters_Tool.Archive.Compression.Huffman;
 
 public class HuffmanNode
 {

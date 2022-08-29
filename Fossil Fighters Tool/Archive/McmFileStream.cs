@@ -160,9 +160,9 @@ public class McmFileStream : Stream
                 Stream compressStream = CompressionType1 switch
                 {
                     McmFileCompressionType.None => tempBuffer,
-                    McmFileCompressionType.Rle => new RleStream(tempBuffer, RleStreamMode.Compress, true),
-                    McmFileCompressionType.Lzss => new LzssStream(tempBuffer, LzssStreamMode.Compress, true),
-                    McmFileCompressionType.Huffman => new HuffmanStream(tempBuffer, HuffmanStreamMode.Compress, true),
+                    McmFileCompressionType.Rle => new RleStream(tempBuffer, CompressibleStreamMode.Compress, true),
+                    McmFileCompressionType.Lzss => new LzssStream(tempBuffer, CompressibleStreamMode.Compress, true),
+                    McmFileCompressionType.Huffman => new HuffmanStream(tempBuffer, CompressibleStreamMode.Compress, true),
                     var _ => throw new ArgumentOutOfRangeException()
                 };
 
@@ -172,15 +172,15 @@ public class McmFileStream : Stream
                         break;
 
                     case McmFileCompressionType.Rle:
-                        compressStream = new RleStream(compressStream, RleStreamMode.Compress);
+                        compressStream = new RleStream(compressStream, CompressibleStreamMode.Compress);
                         break;
 
                     case McmFileCompressionType.Lzss:
-                        compressStream = new LzssStream(compressStream, LzssStreamMode.Compress);
+                        compressStream = new LzssStream(compressStream, CompressibleStreamMode.Compress);
                         break;
 
                     case McmFileCompressionType.Huffman:
-                        compressStream = new HuffmanStream(compressStream, HuffmanStreamMode.Compress);
+                        compressStream = new HuffmanStream(compressStream, CompressibleStreamMode.Compress);
                         break;
 
                     default:
@@ -197,7 +197,7 @@ public class McmFileStream : Stream
                 var dataLength = tempBuffer.Length;
                 
                 _writer.Seek((int) chunkOffset + 4 * i, SeekOrigin.Begin);
-                _writer.Write((int) dataLength);
+                _writer.Write((uint) (dataOffset + dataLength));
                 
                 _writer.Seek((int) dataOffset, SeekOrigin.Begin);
                 tempBuffer.Seek(0, SeekOrigin.Begin);
@@ -253,9 +253,9 @@ public class McmFileStream : Stream
                 var compressedStream = CompressionType1 switch
                 {
                     McmFileCompressionType.None => dataChunk,
-                    McmFileCompressionType.Rle => new RleStream(dataChunk, RleStreamMode.Decompress),
-                    McmFileCompressionType.Lzss => new LzssStream(dataChunk, LzssStreamMode.Decompress),
-                    McmFileCompressionType.Huffman => new HuffmanStream(dataChunk, HuffmanStreamMode.Decompress),
+                    McmFileCompressionType.Rle => new RleStream(dataChunk, CompressibleStreamMode.Decompress),
+                    McmFileCompressionType.Lzss => new LzssStream(dataChunk, CompressibleStreamMode.Decompress),
+                    McmFileCompressionType.Huffman => new HuffmanStream(dataChunk, CompressibleStreamMode.Decompress),
                     var _ => throw new ArgumentOutOfRangeException(null)
                 };
 
@@ -265,15 +265,15 @@ public class McmFileStream : Stream
                         break;
 
                     case McmFileCompressionType.Rle:
-                        compressedStream = new RleStream(compressedStream, RleStreamMode.Decompress);
+                        compressedStream = new RleStream(compressedStream, CompressibleStreamMode.Decompress);
                         break;
 
                     case McmFileCompressionType.Lzss:
-                        compressedStream = new LzssStream(compressedStream, LzssStreamMode.Decompress);
+                        compressedStream = new LzssStream(compressedStream, CompressibleStreamMode.Decompress);
                         break;
 
                     case McmFileCompressionType.Huffman:
-                        compressedStream = new HuffmanStream(compressedStream, HuffmanStreamMode.Decompress);
+                        compressedStream = new HuffmanStream(compressedStream, CompressibleStreamMode.Decompress);
                         break;
 
                     default:

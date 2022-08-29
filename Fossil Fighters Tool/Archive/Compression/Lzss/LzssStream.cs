@@ -1,200 +1,115 @@
 ﻿using System.Buffers;
-using System.Diagnostics;
-using System.Text;
-using JetBrains.Annotations;
 
 namespace Fossil_Fighters_Tool.Archive.Compression.Lzss;
 
-public class LzssStream : Stream
+public class LzssStream : CompressibleStream
 {
-    public override bool CanRead => Mode == LzssStreamMode.Decompress && BaseStream.CanRead;
-    public override bool CanSeek => false;
-    public override bool CanWrite => Mode == LzssStreamMode.Compress && BaseStream.CanWrite;
+    private const int CompressHeader = 0x10;
     
-    public override long Length => throw new NotSupportedException();
-    
-    public override long Position
-    {
-        get => throw new NotSupportedException();
-        set => throw new NotSupportedException();
-    }
-    
-    [PublicAPI]
-    public Stream BaseStream { get; }
-    
-    [PublicAPI]
-    public LzssStreamMode Mode { get; }
-
     private const int MinDisplacement = 0x1 + 1;
     private const int MaxDisplacement = 0xFFF + 1;
     
     private const int MinBytesToCopy = 3;
     private const int MaxBytesToCopy = 0xF + 3;
-    
-    private MemoryStream? _inputStream;
-    private MemoryStream? _outputStream;
-    private readonly BinaryReader _reader;
-    private readonly BinaryWriter _writer;
 
-    private bool _hasDecompressed;
-    private bool _hasCompressed;
-
-    public LzssStream(Stream stream, LzssStreamMode mode, bool leaveOpen = false)
+    public LzssStream(Stream stream, CompressibleStreamMode mode, bool leaveOpen = false) : base(stream, mode, leaveOpen)
     {
-        BaseStream = stream;
-        Mode = mode;
-        
-        if (mode == LzssStreamMode.Decompress)
-        {
-            _outputStream = new MemoryStream();
-            _reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen);
-            _writer = new BinaryWriter(_outputStream);
-        }
-        else
-        {
-            _inputStream = new MemoryStream();
-            _reader = new BinaryReader(_inputStream);
-            _writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen);
-        }
     }
     
-    public override int ReadByte()
+    protected override void Decompress(BinaryReader reader, BinaryWriter writer, Stream inputStream, MemoryStream outputStream)
     {
-        var buffer = ArrayPool<byte>.Shared.Rent(1);
+        var rawHeaderData = reader.ReadInt32();
+        if ((rawHeaderData & CompressHeader) != CompressHeader) throw new InvalidDataException(string.Format(Localization.StreamIsNotCompressedBy, "LZSS"));
 
-        try
+        var decompressSize = (rawHeaderData >> 8) & 0xFFFFFF;
+
+        if (outputStream.Capacity < decompressSize)
         {
-            return Read(buffer, 0, 1) > 0 ? buffer[0] : -1;
+            outputStream.Capacity = decompressSize;
         }
-        finally
-        {
-            ArrayPool<byte>.Shared.Return(buffer);
-        }
-    }
-    
-    public override int Read(byte[] buffer, int offset, int count)
-    {
-        Debug.Assert(_outputStream != null, nameof(_outputStream) + " != null");
 
-        if (!_hasDecompressed)
+        while (outputStream.Length < decompressSize)
         {
-            var rawHeaderData = _reader.ReadInt32();
-            if ((rawHeaderData & 0x10) != 0x10) throw new InvalidDataException(string.Format(Localization.StreamIsNotCompressedBy, "LZSS"));
+            var flagData = reader.ReadByte();
 
-            var decompressSize = (rawHeaderData >> 8) & 0xFFFFFF;
-            _outputStream.Capacity = decompressSize;
-            
-            while (_outputStream.Length < decompressSize)
+            for (var i = 7; i >= 0; i--)
             {
-                var flagData = _reader.ReadByte();
+                var blockType = (flagData >> i) & 0x1;
 
-                for (var i = 7; i >= 0; i--)
+                if (blockType == 0)
                 {
-                    var blockType = (flagData >> i) & 0x1;
-
-                    if (blockType == 0)
-                    {
-                        _writer.Write(_reader.ReadByte());
-                    }
-                    else
-                    {
-                        var compressHeader = _reader.ReadInt16();
-                        var copyCount = ((compressHeader >> 4) & 0xF) + 3;
-                        var displacement = (((compressHeader & 0xF) << 8) | ((compressHeader >> 8) & 0xFF)) + 1;
-                        var lookbackBuffer = _outputStream.GetBuffer().AsSpan((int) (_outputStream.Position - displacement));
-
-                        for (var j = 0; j < copyCount; j++)
-                        {
-                            _writer.Write(lookbackBuffer[j]);
-                        }
-                    }
-                    
-                    if (_outputStream.Length >= decompressSize) break;
+                    writer.Write(reader.ReadByte());
                 }
+                else
+                {
+                    var compressHeader = reader.ReadUInt16();
+                    var copyCount = ((compressHeader >> 4) & 0xF) + 3;
+                    var displacement = (((compressHeader & 0xF) << 8) | ((compressHeader >> 8) & 0xFF)) + 1;
+                    var lookbackBuffer = outputStream.GetBuffer().AsSpan((int) (outputStream.Position - displacement));
+
+                    for (var j = 0; j < copyCount; j++)
+                    {
+                        writer.Write(lookbackBuffer[j]);
+                    }
+                }
+                    
+                if (outputStream.Length >= decompressSize) break;
             }
-            
-            _outputStream.Seek(0, SeekOrigin.Begin);
-            _hasDecompressed = true;
         }
-
-        return _outputStream.Read(buffer, offset, count);
     }
-    
-    public override void WriteByte(byte value)
-    {
-        Debug.Assert(_inputStream != null, nameof(_inputStream) + " != null");
-        
-        if (_hasCompressed) throw new IOException(Localization.StreamIsAlreadyCompressed);
-        
-        _inputStream.WriteByte(value);
-    }
-    
-    public override void Write(byte[] buffer, int offset, int count)
-    {
-        Debug.Assert(_inputStream != null, nameof(_inputStream) + " != null");
 
-        if (_hasCompressed) throw new IOException(Localization.StreamIsAlreadyCompressed);
-        
-        _inputStream.Write(buffer, offset, count);
-    }
-    
-    public override void Flush()
+    protected override void Compress(BinaryReader reader, BinaryWriter writer, MemoryStream inputStream, MemoryStream outputStream)
     {
-        Debug.Assert(_inputStream != null, nameof(_inputStream) + " != null");
-        
-        if (_hasCompressed) return;
-
         (int displacement, int bytesToCopy) SearchForNextToken(ReadOnlySpan<byte> buffer)
         {
-            Debug.Assert(_inputStream != null, nameof(_inputStream) + " != null");
-            
             if (buffer.Length < MinDisplacement) return (0, 0);
-            
-            var searchOffset = _inputStream.Position;
+
+            var searchOffset = inputStream.Position;
             var biggestDisplacement = 0;
             var biggestToCopy = 0;
-            
-            for (var i = 0; i < buffer.Length - 1; i++)
+
+            for (var i = buffer.Length - MinDisplacement; i >= 0; i--)
             {
-                _inputStream.Seek(searchOffset, SeekOrigin.Begin);
+                inputStream.Seek(searchOffset, SeekOrigin.Begin);
 
                 var repeatCount = GetNextRepeatCount(buffer[i..]);
-                
                 if (repeatCount < MinBytesToCopy) continue;
+                if (repeatCount <= biggestToCopy) continue;
                 
-                if (repeatCount > biggestToCopy)
-                {
-                    biggestToCopy = repeatCount;
-                    biggestDisplacement = buffer.Length - i;
-                }
+                biggestToCopy = repeatCount;
+                biggestDisplacement = buffer.Length - i;
             }
 
-            _inputStream.Seek(searchOffset + biggestToCopy, SeekOrigin.Begin);
+            inputStream.Seek(searchOffset + biggestToCopy, SeekOrigin.Begin);
 
             return (biggestDisplacement, biggestToCopy);
         }
-        
+
         int GetNextRepeatCount(ReadOnlySpan<byte> buffer)
         {
-            Debug.Assert(_inputStream != null, nameof(_inputStream) + " != null");
+            if (inputStream.Position == inputStream.Length) return 0;
 
-            if (_inputStream.Position >= _inputStream.Length) return 0;
-            
             var bufferIndex = 0;
-                
-            while (bufferIndex < MaxBytesToCopy && _inputStream.Position < _inputStream.Length)
+
+            while (bufferIndex < MaxBytesToCopy && inputStream.Position < inputStream.Length)
             {
-                if (buffer[bufferIndex % buffer.Length] != _reader.ReadByte()) break;
+                if (bufferIndex < buffer.Length)
+                {
+                    if (buffer[bufferIndex] != reader.ReadByte()) break;
+                }
+                else
+                {
+                    if (0 != reader.ReadByte()) break;
+                }
+                
                 bufferIndex++;
             }
-            
+
             return bufferIndex;
         }
-
-        _inputStream.Seek(0, SeekOrigin.Begin);
-            
-        _writer.Write((uint) (0x10 | _inputStream.Length << 8));
         
+        writer.Write((uint) (CompressHeader | inputStream.Length << 8));
+
         var tempBuffer = ArrayPool<byte>.Shared.Rent(16);
         var tempBufferSize = 0;
 
@@ -203,17 +118,16 @@ public class LzssStream : Stream
 
         try
         {
-            while (_inputStream.Position < _inputStream.Length)
+            while (inputStream.Position < inputStream.Length)
             {
-                var startIndex = _inputStream.Position - MaxDisplacement;
-                startIndex = startIndex < 0 ? 0 : startIndex;
-                var length = _inputStream.Position - startIndex;
-            
-                var nextToken = SearchForNextToken(_inputStream.GetBuffer().AsSpan((int) startIndex, (int) length));
+                var startIndex = Math.Max(0, inputStream.Position - MaxDisplacement);
+                var length = inputStream.Position - startIndex;
+
+                var nextToken = SearchForNextToken(inputStream.GetBuffer().AsSpan((int) startIndex, (int) length));
 
                 if (nextToken.displacement < MinDisplacement || nextToken.bytesToCopy < MinBytesToCopy)
                 {
-                    var dataToWrite = _reader.ReadByte();
+                    var dataToWrite = reader.ReadByte();
                     tempBuffer[tempBufferSize++] = dataToWrite;
                 }
                 else
@@ -225,59 +139,28 @@ public class LzssStream : Stream
 
                     flagData |= 1 << flagIndex;
                 }
-            
+
                 flagIndex--;
 
-                if (flagIndex < 0)
-                {
-                    _writer.Write((byte) flagData);
-                    _writer.Write(tempBuffer.AsSpan(0, tempBufferSize));
+                if (flagIndex >= 0) continue;
+                
+                writer.Write((byte) flagData);
+                writer.Write(tempBuffer.AsSpan(0, tempBufferSize));
 
-                    tempBufferSize = 0;
-                    flagData = 0;
-                    flagIndex = 7;
-                }
+                tempBufferSize = 0;
+                flagData = 0;
+                flagIndex = 7;
             }
 
             if (flagIndex < 7)
             {
-                _writer.Write((byte) flagData);
-                _writer.Write(tempBuffer.AsSpan(0, tempBufferSize));
+                writer.Write((byte) flagData);
+                writer.Write(tempBuffer.AsSpan(0, tempBufferSize));
             }
         }
         finally
         {
             ArrayPool<byte>.Shared.Return(tempBuffer);
         }
-        
-        _writer.Flush();
-        
-        _hasCompressed = true;
-    }
-
-    public override long Seek(long offset, SeekOrigin origin)
-    {
-        throw new NotSupportedException();
-    }
-
-    public override void SetLength(long value)
-    {
-        throw new NotSupportedException();
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            if (Mode == LzssStreamMode.Compress)
-            {
-                Flush();
-            }
-            
-            _reader.Dispose();
-            _writer.Dispose();
-        }
-
-        base.Dispose(disposing);
     }
 }
