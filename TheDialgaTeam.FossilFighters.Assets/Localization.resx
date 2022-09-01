@@ -24,7 +24,22 @@
     <data name="StreamIsNotWriteable" xml:space="preserve">
         <value>The stream provided is not writeable.</value>
     </data>
+    <data name="StreamIsNotArchive" xml:space="preserve">
+        <value>The contents of the stream is not a {0} archive.</value>
+    </data>
     <data name="StreamIsNotCompressedBy" xml:space="preserve">
         <value>The contents of the stream is not {0} compressed.</value>
+    </data>
+    <data name="StreamIsCorrupted" xml:space="preserve">
+        <value>The contents of the stream do not match the expected output size. The file may be corrupted.</value>
+    </data>
+    <data name="HuffmanStreamInvalidDataNode" xml:space="preserve">
+        <value>The contents of the stream contains invalid data node.</value>
+    </data>
+    <data name="HuffmanStreamInvalidBitstream" xml:space="preserve">
+        <value>The contents of the stream contains invalid bitstream.</value>
+    </data>
+    <data name="HuffmanStreamDatasetTooSmall" xml:space="preserve">
+        <value>The contents of the stream is too small to generate a proper huffman tree.</value>
     </data>
 </root>

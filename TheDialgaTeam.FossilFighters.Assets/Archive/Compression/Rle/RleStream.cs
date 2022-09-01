@@ -1,16 +1,19 @@
 ﻿using System.Buffers;
-using JetBrains.Annotations;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Archive.Compression.Rle;
 
-[PublicAPI]
 public class RleStream : CompressibleStream
 {
-    private const int CompressionHeader = 0x30;
+    private const int CompressionHeader = 3 << 4;
     
-    private const int MaxRawDataLength = (1 << 7) - 1 + 1;
+    private const int CompressFlag = 1 << 7;
+    
+    private const int MaxFlagDataLength = CompressFlag - 1;
+
+    private const int MinUncompressDataLength = 1;
+    private const int MaxRawDataLength = MaxFlagDataLength + MinUncompressDataLength;
     private const int MinCompressDataLength = 3;
-    private const int MaxCompressDataLength = (1 << 7) - 1 + 3;
+    private const int MaxCompressDataLength = MaxFlagDataLength + MinCompressDataLength;
     
     public RleStream(Stream stream, CompressibleStreamMode mode, bool leaveOpen = false) : base(stream, mode, leaveOpen)
     {
@@ -28,7 +31,7 @@ public class RleStream : CompressibleStream
         {
             var flagRawData = reader.ReadByte();
             var flagType = flagRawData >> 7;
-            var flagData = flagRawData & 0x7F;
+            var flagData = flagRawData & MaxFlagDataLength;
 
             if (flagType == 0)
             {
@@ -79,13 +82,13 @@ public class RleStream : CompressibleStream
             
         void WriteCompressed(byte data, int count)
         {
-            writer.Write((byte) (1 << 7 | (count - 3)));
+            writer.Write((byte) (CompressFlag | (count - MinCompressDataLength)));
             writer.Write(data);
         }
             
         void WriteUncompressed(ReadOnlySpan<byte> buffer)
         {
-            writer.Write((byte) (buffer.Length - 1));
+            writer.Write((byte) (buffer.Length - MinUncompressDataLength));
             writer.Write(buffer);
         }
         

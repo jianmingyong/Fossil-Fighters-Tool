@@ -57,10 +57,8 @@ public abstract class CompressibleStream : Stream
     
     public override int ReadByte()
     {
-        if (_hasDisposed) throw new ObjectDisposedException(nameof(CompressibleStream));
-        
         var buffer = ArrayPool<byte>.Shared.Rent(1);
-
+        
         try
         {
             return Read(buffer, 0, 1) > 0 ? buffer[0] : -1;
@@ -73,6 +71,7 @@ public abstract class CompressibleStream : Stream
     
     public override int Read(byte[] buffer, int offset, int count)
     {
+        if (Mode == CompressibleStreamMode.Compress) throw new NotSupportedException();
         if (_hasDisposed) throw new ObjectDisposedException(nameof(CompressibleStream));
         
         if (!_hasDecompressed)
@@ -101,6 +100,7 @@ public abstract class CompressibleStream : Stream
 
     public override void WriteByte(byte value)
     {
+        if (Mode == CompressibleStreamMode.Decompress) throw new NotSupportedException();
         if (_hasDisposed) throw new ObjectDisposedException(nameof(CompressibleStream));
         
         _inputStream!.WriteByte(value);
@@ -108,6 +108,7 @@ public abstract class CompressibleStream : Stream
     
     public override void Write(byte[] buffer, int offset, int count)
     {
+        if (Mode == CompressibleStreamMode.Decompress) throw new NotSupportedException();
         if (_hasDisposed) throw new ObjectDisposedException(nameof(CompressibleStream));
         
         _inputStream!.Write(buffer, offset, count);
@@ -115,9 +116,8 @@ public abstract class CompressibleStream : Stream
     
     public override void Flush()
     {
-        if (_hasDisposed) throw new ObjectDisposedException(nameof(CompressibleStream));
-        
         if (Mode == CompressibleStreamMode.Decompress) return;
+        if (_hasDisposed) throw new ObjectDisposedException(nameof(CompressibleStream));
         if (_inputStream!.Length == 0) return;
         
         _inputStream.Seek(0, SeekOrigin.Begin);
