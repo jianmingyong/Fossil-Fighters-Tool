@@ -1,7 +1,9 @@
-﻿using SixLabors.ImageSharp.PixelFormats;
+﻿using JetBrains.Annotations;
+using SixLabors.ImageSharp.PixelFormats;
 
-namespace Fossil_Fighters_Tool.Motion;
+namespace TheDialgaTeam.FossilFighters.Assets.Motion;
 
+[PublicAPI]
 public readonly struct ColorPalette
 {
     public ColorPaletteType Type { get; }

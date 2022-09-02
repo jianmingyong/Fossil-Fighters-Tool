@@ -2,7 +2,7 @@
 using Microsoft.Extensions.FileSystemGlobbing;
 using TheDialgaTeam.FossilFighters.Assets.Archive;
 
-namespace Fossil_Fighters_Tool.Command;
+namespace TheDialgaTeam.FossilFighters.Tool.Cli.Command;
 
 public class CompressCommand : System.CommandLine.Command
 {

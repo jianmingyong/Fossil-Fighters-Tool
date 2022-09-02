@@ -7,7 +7,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace Fossil_Fighters_Tool {
+namespace TheDialgaTeam.FossilFighters.Tool.Cli {
     using System;
     
     
@@ -38,7 +38,7 @@ namespace Fossil_Fighters_Tool {
         internal static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("Fossil_Fighters_Tool.Localization", typeof(Localization).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("TheDialgaTeam.FossilFighters.Tool.Cli.Localization", typeof(Localization).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;

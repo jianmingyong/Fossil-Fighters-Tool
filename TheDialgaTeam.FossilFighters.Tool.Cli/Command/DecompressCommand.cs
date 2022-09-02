@@ -1,8 +1,13 @@
 ﻿using System.CommandLine;
+using System.Text;
 using Microsoft.Extensions.FileSystemGlobbing;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Png;
 using TheDialgaTeam.FossilFighters.Assets.Archive;
+using TheDialgaTeam.FossilFighters.Assets.Header;
+using TheDialgaTeam.FossilFighters.Assets.Motion;
 
-namespace Fossil_Fighters_Tool.Command;
+namespace TheDialgaTeam.FossilFighters.Tool.Cli.Command;
 
 public class DecompressCommand : System.CommandLine.Command
 {
@@ -58,6 +63,11 @@ public class DecompressCommand : System.CommandLine.Command
 
             output = Path.Combine(directoryName, "bin", fileName);
         }
+        else
+        {
+            var fileName = Path.GetFileName(input);
+            output = Path.Combine(output, fileName);
+        }
         
         if (!Directory.Exists(output))
         {
@@ -73,11 +83,70 @@ public class DecompressCommand : System.CommandLine.Command
             {
                 var outputFile = Path.Combine(output, $"{i}.bin");
 
-                using var outputStream = new FileStream(outputFile, FileMode.Create, FileAccess.Write);
-                using var mcmFileStream = marEntries[i].OpenRead();
-                mcmFileStream.CopyTo(outputStream);
-
+                using (var outputStream = new FileStream(outputFile, FileMode.Create, FileAccess.Write))
+                {
+                    using (var mcmFileStream = marEntries[i].OpenRead())
+                    {
+                        mcmFileStream.CopyTo(outputStream);
+                    }
+                }
+                
                 Console.WriteLine(Localization.FileExtracted, outputFile);
+                
+                // Handle Add-Ons (Image)
+                using (var fileStream = new FileStream(outputFile, FileMode.Open, FileAccess.Read))
+                {
+                    using (var reader = new BinaryReader(fileStream, Encoding.UTF8))
+                    {
+                        switch (reader.ReadInt32())
+                        {
+                            case MmsHeader.FileHeader:
+                            {
+                                fileStream.Seek(0, SeekOrigin.Begin);
+                                var mmsHeader = MmsHeader.GetHeaderFromStream(fileStream);
+                                var colorPalettes = new ColorPalette[mmsHeader.ColorPaletteFileCount];
+                                
+                                for (var j = 0; j < mmsHeader.ColorPaletteFileCount; j++)
+                                {
+                                    var colorPaletteFile = Path.Combine(output, "..", mmsHeader.ColorPaletteFileName, $"{mmsHeader.ColorPaletteFileIndexes[j]}.bin");
+
+                                    if (!File.Exists(colorPaletteFile))
+                                    {
+                                        Decompress(Path.Combine(Path.GetDirectoryName(input)!, mmsHeader.ColorPaletteFileName), Path.Combine(output, ".."));
+                                    }
+
+                                    using var colorPaletteFileStream = new FileStream(colorPaletteFile, FileMode.Open, FileAccess.Read);
+                                    colorPalettes[j] = MotionUtility.GetColorPalette(colorPaletteFileStream);
+                                }
+
+                                for (var j = 0; j < mmsHeader.BitmapFileCount; j++)
+                                {
+                                    var bitmapFile = Path.Combine(output, "..", mmsHeader.BitmapFileName, $"{mmsHeader.BitmapFileIndexes[j]}.bin");
+
+                                    if (!File.Exists(bitmapFile))
+                                    {
+                                        Decompress(Path.Combine(Path.GetDirectoryName(input)!, mmsHeader.BitmapFileName), Path.Combine(output, ".."));
+                                    }
+
+                                    using var bitmapFileStream = new FileStream(bitmapFile, FileMode.Open, FileAccess.Read);
+                                    var bitmap = MotionUtility.GetBitmap(bitmapFileStream);
+                                    
+                                    // TODO: Which color palette to use? God knows...
+                                    for (var k = 0; k < colorPalettes.Length; k++)
+                                    {
+                                        using var image = MotionUtility.GetImage(colorPalettes[k], bitmap);
+                                        var imageOutputFilePath = Path.Combine(output, $"{mmsHeader.BitmapFileIndexes[j]}_{k}.png");
+                                        image.SaveAsPng(imageOutputFilePath);
+
+                                        Console.WriteLine(Localization.FileExtracted, imageOutputFilePath);
+                                    }
+                                }
+                                
+                                break;
+                            }
+                        }
+                    }
+                }
             }
         }
         catch (Exception ex)

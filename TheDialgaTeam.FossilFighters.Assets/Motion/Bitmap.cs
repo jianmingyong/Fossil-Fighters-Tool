@@ -1,5 +1,8 @@
-﻿namespace Fossil_Fighters_Tool.Motion;
+﻿using JetBrains.Annotations;
 
+namespace TheDialgaTeam.FossilFighters.Assets.Motion;
+
+[PublicAPI]
 public readonly struct Bitmap
 {
     public int Width { get; }

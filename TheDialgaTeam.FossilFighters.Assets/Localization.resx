@@ -42,4 +42,7 @@
     <data name="HuffmanStreamDatasetTooSmall" xml:space="preserve">
         <value>The contents of the stream is too small to generate a proper huffman tree.</value>
     </data>
+    <data name="StreamIsNotFormat" xml:space="preserve">
+        <value>The contents of the stream is not a {0} file.</value>
+    </data>
 </root>

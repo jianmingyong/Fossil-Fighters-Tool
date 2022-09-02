@@ -2,7 +2,7 @@
 using System.Buffers.Binary;
 using SixLabors.ImageSharp.PixelFormats;
 
-namespace Fossil_Fighters_Tool.Image;
+namespace TheDialgaTeam.FossilFighters.Tool.Cli.Image;
 
 public static class ImageUtility
 {

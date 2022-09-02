@@ -1,8 +1,11 @@
 ﻿using System.Text;
+using JetBrains.Annotations;
+using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
-namespace Fossil_Fighters_Tool.Motion;
+namespace TheDialgaTeam.FossilFighters.Assets.Motion;
 
+[PublicAPI]
 public static class MotionUtility
 {
     public static ColorPalette GetColorPalette(Stream stream)
@@ -55,7 +58,7 @@ public static class MotionUtility
                 width = 32;
                 height = 8;
                 break;
-            
+
             case 0x06:
                 width = 8;
                 height = 32;
@@ -90,19 +93,76 @@ public static class MotionUtility
                 width = 32;
                 height = 64;
                 break;
-            
+
             default:
                 throw new InvalidDataException();
         }
-        
+
         var colorPaletteType = (ColorPaletteType) ((rawData >> 16) & 0x1);
         var colorPaletteIndexes = new List<byte>();
 
-        while (reader.BaseStream.Position < reader.BaseStream.Length)
+        while (stream.Position < stream.Length)
         {
             colorPaletteIndexes.Add(reader.ReadByte());
         }
 
         return new Bitmap(width, height, colorPaletteType, colorPaletteIndexes.ToArray());
+    }
+
+    public static Image<Rgba32> GetImage(ColorPalette colorPalette, Bitmap bitmap, int gridSize = 8)
+    {
+        var image = new Image<Rgba32>(bitmap.Width, bitmap.Height);
+
+        var bitmapIndex = 0;
+        var gridX = 0;
+        var gridY = 0;
+
+        if (bitmap.ColorPaletteType == ColorPaletteType.Color16)
+        {
+            while (bitmapIndex * 2 < bitmap.Width * bitmap.Height)
+            {
+                for (var y = 0; y < gridSize; y++)
+                {
+                    for (var x = 0; x < gridSize; x += 2)
+                    {
+                        image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[bitmap.ColorPaletteIndexes[bitmapIndex] >> 4];
+                        image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[bitmap.ColorPaletteIndexes[bitmapIndex] & 0xF];
+
+                        bitmapIndex++;
+                    }
+                }
+
+                gridX++;
+
+                if (gridX >= bitmap.Width / gridSize)
+                {
+                    gridX = 0;
+                    gridY++;
+                }
+            }
+        }
+        else if (bitmap.ColorPaletteType == ColorPaletteType.Color256)
+        {
+            while (bitmapIndex < bitmap.Width * bitmap.Height)
+            {
+                for (var y = 0; y < gridSize; y++)
+                {
+                    for (var x = 0; x < gridSize; x++)
+                    {
+                        image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[bitmap.ColorPaletteIndexes[bitmapIndex++]];
+                    }
+                }
+
+                gridX++;
+
+                if (gridX >= bitmap.Width / gridSize)
+                {
+                    gridX = 0;
+                    gridY++;
+                }
+            }
+        }
+
+        return image;
     }
 }

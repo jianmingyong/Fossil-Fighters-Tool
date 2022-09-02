@@ -1,10 +1,12 @@
 ﻿using System.Text;
+using JetBrains.Annotations;
 
-namespace TheDialgaTeam.FossilFighters.Tool.Cli.Header;
+namespace TheDialgaTeam.FossilFighters.Assets.Header;
 
-public record MpmHeader
+[PublicAPI]
+public class MpmHeader
 {
-    public const int Id = 0x004D504D;
+    public const int FileHeader = 0x004D504D;
     
     public int Unknown1 { get; init; }
     
@@ -37,7 +39,9 @@ public record MpmHeader
     public static MpmHeader GetHeaderFromStream(Stream stream)
     {
         using var reader = new BinaryReader(stream, Encoding.UTF8, true);
-
+        
+        if (reader.ReadInt32() != FileHeader) throw new InvalidDataException(string.Format(Localization.StreamIsNotFormat, "MPM"));
+        
         var unknown1 = reader.ReadInt32();
         var unknown2 = reader.ReadInt32();
         var unknown3 = reader.ReadInt32();
@@ -80,8 +84,8 @@ public record MpmHeader
                 unknown8String.Append(reader.ReadChar());
             }
         }
-
-        var header = new MpmHeader
+        
+        return new MpmHeader
         {
             Unknown1 = unknown1,
             Unknown2 = unknown2,
@@ -98,7 +102,5 @@ public record MpmHeader
             Unknown7 = unknown7,
             Unknown8 = unknown8String.ToString()
         };
-
-        return header;
     }
 }

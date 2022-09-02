@@ -114,6 +114,15 @@ namespace TheDialgaTeam.FossilFighters.Assets {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The contents of the stream is not a {0} file..
+        /// </summary>
+        internal static string StreamIsNotFormat {
+            get {
+                return ResourceManager.GetString("StreamIsNotFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The stream provided is not readable..
         /// </summary>
         internal static string StreamIsNotReadable {
