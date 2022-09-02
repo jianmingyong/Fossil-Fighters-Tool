@@ -2,13 +2,13 @@
 using System.CommandLine.Builder;
 using System.CommandLine.Parsing;
 using System.Text;
-using Fossil_Fighters_Tool.Archive;
 using Fossil_Fighters_Tool.Command;
 using Fossil_Fighters_Tool.Header;
 using Fossil_Fighters_Tool.Image;
 using Fossil_Fighters_Tool.Motion;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
+using TheDialgaTeam.FossilFighters.Assets.Archive;
 
 namespace Fossil_Fighters_Tool;
 

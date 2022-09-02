@@ -96,15 +96,6 @@ namespace Fossil_Fighters_Tool {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Error: File is not a {0} archive..
-        /// </summary>
-        internal static string FileIsNotArchive {
-            get {
-                return ResourceManager.GetString("FileIsNotArchive", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to This program is used to decompress and compress MAR archives used in Fossil Fighters game..
         /// </summary>
         internal static string FossilFightersToolDescription {
@@ -114,92 +105,11 @@ namespace Fossil_Fighters_Tool {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The contents of the stream is too small to generate a proper huffman tree..
-        /// </summary>
-        internal static string HuffmanStreamDatasetTooSmall {
-            get {
-                return ResourceManager.GetString("HuffmanStreamDatasetTooSmall", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to The contents of the stream contains invalid bitstream..
-        /// </summary>
-        internal static string HuffmanStreamInvalidBitstream {
-            get {
-                return ResourceManager.GetString("HuffmanStreamInvalidBitstream", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to The contents of the stream contains invalid data node..
-        /// </summary>
-        internal static string HuffmanStreamInvalidDataNode {
-            get {
-                return ResourceManager.GetString("HuffmanStreamInvalidDataNode", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to &quot;{0}&quot; does not exists..
         /// </summary>
         internal static string InputDoesNotExists {
             get {
                 return ResourceManager.GetString("InputDoesNotExists", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to The contents of the stream have been compressed..
-        /// </summary>
-        internal static string StreamIsAlreadyCompressed {
-            get {
-                return ResourceManager.GetString("StreamIsAlreadyCompressed", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to The contents of the stream do not match the expected output size. The file may be corrupted..
-        /// </summary>
-        internal static string StreamIsCorrupted {
-            get {
-                return ResourceManager.GetString("StreamIsCorrupted", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to The contents of the stream is not a {0} archive..
-        /// </summary>
-        internal static string StreamIsNotArchive {
-            get {
-                return ResourceManager.GetString("StreamIsNotArchive", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to The contents of the stream is not {0} compressed..
-        /// </summary>
-        internal static string StreamIsNotCompressedBy {
-            get {
-                return ResourceManager.GetString("StreamIsNotCompressedBy", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to The stream provided is not readable..
-        /// </summary>
-        internal static string StreamIsNotReadable {
-            get {
-                return ResourceManager.GetString("StreamIsNotReadable", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to The stream provided is not writeable..
-        /// </summary>
-        internal static string StreamIsNotWriteable {
-            get {
-                return ResourceManager.GetString("StreamIsNotWriteable", resourceCulture);
             }
         }
     }

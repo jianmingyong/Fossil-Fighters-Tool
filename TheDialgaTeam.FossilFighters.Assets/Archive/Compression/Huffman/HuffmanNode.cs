@@ -3,15 +3,15 @@
 public class HuffmanNode
 {
     public HuffmanNode? Parent { get; set; }
-    
+
     public HuffmanNode? Left { get; set; }
-    
+
     public HuffmanNode? Right { get; set; }
-    
+
     public byte? Data { get; set; }
 
     public int Value { get; set; }
-    
+
     public long Position { get; set; } = 5;
 
     public int BitstreamValue { get; set; }
@@ -21,13 +21,13 @@ public class HuffmanNode
     public HuffmanNode()
     {
     }
-    
+
     public HuffmanNode(BinaryReader reader, long position, long endPosition, HuffmanDataSize dataSize, bool isData)
     {
         reader.BaseStream.Seek(position, SeekOrigin.Begin);
 
         var rawByte = reader.ReadByte();
-        
+
         if (isData)
         {
             if (dataSize == HuffmanDataSize.FourBits && (rawByte & 0xF0) > 0) throw new InvalidDataException(Localization.HuffmanStreamInvalidDataNode);

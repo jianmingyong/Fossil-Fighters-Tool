@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Fossil Fighters Tool", "Fossil Fighters Tool\Fossil Fighters Tool.csproj", "{BE7E123C-32B4-4D1D-9BCB-02C2A48D346B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TheDialgaTeam.FossilFighters.Tool.Cli", "TheDialgaTeam.FossilFighters.Tool.Cli\TheDialgaTeam.FossilFighters.Tool.Cli.csproj", "{BE7E123C-32B4-4D1D-9BCB-02C2A48D346B}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TheDialgaTeam.FossilFighters.Assets", "TheDialgaTeam.FossilFighters.Assets\TheDialgaTeam.FossilFighters.Assets.csproj", "{40711701-F092-48D2-8914-E069C8D08741}"
 EndProject

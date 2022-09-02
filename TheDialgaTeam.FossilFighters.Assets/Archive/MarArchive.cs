@@ -4,15 +4,13 @@ using JetBrains.Annotations;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Archive;
 
-public class MarArchive : IDisposable
+[PublicAPI]
+public sealed class MarArchive : IDisposable
 {
-    [PublicAPI]
     public Stream BaseStream { get; }
-    
-    [PublicAPI]
+
     public MarArchiveMode Mode { get; }
 
-    [PublicAPI]
     public IReadOnlyList<MarArchiveEntry> Entries
     {
         get
@@ -21,21 +19,21 @@ public class MarArchive : IDisposable
             return _entries;
         }
     }
-    
+
     private const int HeaderId = 0x0052414D;
-    
+
     private readonly BinaryReader? _reader;
     private readonly BinaryWriter? _writer;
 
     private readonly List<MarArchiveEntry> _entries = new();
 
     private bool _hasEntriesRead;
-    
+
     public MarArchive(Stream stream, MarArchiveMode mode = MarArchiveMode.Read, bool leaveOpen = false)
     {
         BaseStream = stream;
         Mode = mode;
-        
+
         Stream? inputStream = null;
 
         switch (mode)
@@ -46,7 +44,7 @@ public class MarArchive : IDisposable
                 if (stream.CanSeek)
                 {
                     inputStream = stream;
-                    
+
                     _reader = new BinaryReader(inputStream, Encoding.UTF8, leaveOpen);
                 }
                 else
@@ -62,19 +60,20 @@ public class MarArchive : IDisposable
                         inputStream?.Dispose();
                         throw;
                     }
-                    
+
                     _reader = new BinaryReader(inputStream);
                 }
+
                 break;
 
             case MarArchiveMode.Update:
                 if (!stream.CanRead) throw new ArgumentException(Localization.StreamIsNotReadable, nameof(stream));
                 if (!stream.CanWrite) throw new ArgumentException(Localization.StreamIsNotWriteable, nameof(stream));
-                
+
                 if (stream.CanSeek)
                 {
                     inputStream = stream;
-                    
+
                     _reader = new BinaryReader(inputStream, Encoding.UTF8, leaveOpen);
                     _writer = new BinaryWriter(inputStream, Encoding.UTF8, leaveOpen);
                 }
@@ -90,10 +89,11 @@ public class MarArchive : IDisposable
                         inputStream?.Dispose();
                         throw;
                     }
-                    
+
                     _reader = new BinaryReader(inputStream);
                     _writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen);
                 }
+
                 break;
 
             case MarArchiveMode.Create:
@@ -108,7 +108,6 @@ public class MarArchive : IDisposable
         }
     }
 
-    [PublicAPI]
     public MarArchiveEntry CreateEntry()
     {
         var temp = new MarArchiveEntry();
@@ -116,7 +115,6 @@ public class MarArchive : IDisposable
         return temp;
     }
 
-    [PublicAPI]
     public MarArchiveEntry CreateOrUpdateEntry(int fileIndex)
     {
         if (fileIndex < _entries.Count) return _entries[fileIndex];
@@ -125,25 +123,23 @@ public class MarArchive : IDisposable
         _entries.Add(temp);
         return temp;
     }
-    
-    [PublicAPI]
+
     public MarArchiveEntry InsertEntry(int fileIndex)
     {
         var temp = new MarArchiveEntry();
         _entries.Insert(fileIndex, temp);
         return temp;
     }
-    
-    [PublicAPI]
+
     public void DeleteEntry(int fileIndex)
     {
         _entries.RemoveAt(fileIndex);
     }
-    
+
     private void Flush()
     {
         if (Mode == MarArchiveMode.Read) return;
-        
+
         Debug.Assert(_writer != null, nameof(_writer) + " != null");
 
         if (_writer.BaseStream.CanSeek)
@@ -151,7 +147,7 @@ public class MarArchive : IDisposable
             _writer.BaseStream.Seek(0, SeekOrigin.Begin);
             _writer.BaseStream.SetLength(0);
         }
-        
+
         _writer.Write(HeaderId);
         _writer.Write(_entries.Count);
 
@@ -160,17 +156,16 @@ public class MarArchive : IDisposable
         foreach (var entry in _entries)
         {
             _writer.Write(startingIndex);
-            _writer.Write(entry.DataFileSize);
-            startingIndex += entry.DataFileSize;
+            _writer.Write(entry.GetDecompressedDataSize());
+            startingIndex += (int) entry.MemoryStream.Length;
         }
 
         foreach (var entry in _entries)
         {
-            entry.MemoryStream.Seek(0, SeekOrigin.Begin);
-            entry.MemoryStream.CopyTo(_writer.BaseStream);
+            entry.MemoryStream.WriteTo(_writer.BaseStream);
         }
     }
-    
+
     private void ReadEntries()
     {
         if (_hasEntriesRead) return;
@@ -180,7 +175,7 @@ public class MarArchive : IDisposable
 
         var header = _reader.ReadInt32();
         if (header != HeaderId) throw new InvalidDataException(string.Format(Localization.StreamIsNotArchive, "MAR"));
-        
+
         var numberOfFiles = _reader.ReadInt32();
         var offsets = new List<(int offset, int dataSize)>(numberOfFiles);
 
@@ -195,11 +190,11 @@ public class MarArchive : IDisposable
             _entries.Add(new MarArchiveEntry(_reader, offsets[i].offset, (int) (endingOffset - offsets[i].offset)));
         }
     }
-    
+
     public void Dispose()
     {
         Flush();
-        
+
         _reader?.Dispose();
         _writer?.Dispose();
 

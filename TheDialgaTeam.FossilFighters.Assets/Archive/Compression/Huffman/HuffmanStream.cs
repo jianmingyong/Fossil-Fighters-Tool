@@ -2,9 +2,9 @@
 
 namespace TheDialgaTeam.FossilFighters.Assets.Archive.Compression.Huffman;
 
-public class HuffmanStream : CompressibleStream
+[PublicAPI]
+public sealed class HuffmanStream : CompressibleStream
 {
-    [PublicAPI]
     public HuffmanDataSize DataSize
     {
         get => _dataSize;
@@ -15,9 +15,9 @@ public class HuffmanStream : CompressibleStream
         }
     }
 
-    private HuffmanDataSize _dataSize;
-
     private const int CompressionHeader = 2 << 4;
+
+    private HuffmanDataSize _dataSize;
 
     public HuffmanStream(Stream stream, CompressibleStreamMode mode, bool leaveOpen = false) : base(stream, mode, leaveOpen)
     {
@@ -380,7 +380,7 @@ public class HuffmanStream : CompressibleStream
         var nodesCount = NodesCount(rootNode);
 
         UpdateHuffmanNodes(rootNode);
-        
+
         writer.Write((uint) _dataSize | CompressionHeader | ((uint) inputStream.Length << 8));
 
         var treeSize = (nodesCount - 1) / 2;
@@ -389,10 +389,10 @@ public class HuffmanStream : CompressibleStream
         var rootPosition = outputStream.Position;
 
         WriteHuffmanNodes(rootNode);
-        
+
         var treeNodeLength = (treeSize + 1) * 2 - 1;
         writer.Seek((int) (rootPosition + treeNodeLength), SeekOrigin.Begin);
-        
+
         WriteHuffmanBitstream(dataNodes);
     }
 }

@@ -1,6 +1,6 @@
 ﻿using System.CommandLine;
-using Fossil_Fighters_Tool.Archive;
 using Microsoft.Extensions.FileSystemGlobbing;
+using TheDialgaTeam.FossilFighters.Assets.Archive;
 
 namespace Fossil_Fighters_Tool.Command;
 
@@ -11,13 +11,13 @@ public class DecompressCommand : System.CommandLine.Command
         var inputArgument = new Argument<string[]>("input", "List of folders or files to extract.") { Arity = ArgumentArity.OneOrMore };
         var outputOption = new Option<string>(new[] { "--output", "-o" }, () => string.Empty, "Output folder to place the extracted contents.") { Arity = ArgumentArity.ExactlyOne, IsRequired = false };
         if (outputOption == null) throw new ArgumentNullException(nameof(outputOption));
-        var ExcludeOption = new Option<string[]>(new[] { "--exclude", "-e" }, () => new[] { "**/bin/**/*" }, "Exclude files to be decompressed. You can use wildcard (*) to specify one or more folders.") { Arity = ArgumentArity.OneOrMore, IsRequired = false };
+        var excludeOption = new Option<string[]>(new[] { "--exclude", "-e" }, () => new[] { "**/bin/**/*" }, "Exclude files to be decompressed. You can use wildcard (*) to specify one or more folders.") { Arity = ArgumentArity.OneOrMore, IsRequired = false };
 
         AddArgument(inputArgument);
         AddOption(outputOption);
-        AddOption(ExcludeOption);
+        AddOption(excludeOption);
 
-        this.SetHandler(Invoke, inputArgument, outputOption, ExcludeOption);
+        this.SetHandler(Invoke, inputArgument, outputOption, excludeOption);
     }
 
     private void Invoke(string[] inputs, string output, string[] excludes)
@@ -76,8 +76,7 @@ public class DecompressCommand : System.CommandLine.Command
                 using var outputStream = new FileStream(outputFile, FileMode.Create, FileAccess.Write);
                 using var mcmFileStream = marEntries[i].OpenRead();
                 mcmFileStream.CopyTo(outputStream);
-                outputStream.Flush();
-            
+
                 Console.WriteLine(Localization.FileExtracted, outputFile);
             }
         }

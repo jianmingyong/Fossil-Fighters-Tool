@@ -1,21 +1,23 @@
 ﻿using System.Buffers;
+using JetBrains.Annotations;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Archive.Compression.Lzss;
 
-public class LzssStream : CompressibleStream
+[PublicAPI]
+public sealed class LzssStream : CompressibleStream
 {
     private const int CompressHeader = 1 << 4;
-    
+
     private const int MinDisplacement = 0x1 + 1;
     private const int MaxDisplacement = 0xFFF + 1;
-    
+
     private const int MinBytesToCopy = 3;
     private const int MaxBytesToCopy = 0xF + MinBytesToCopy;
 
     public LzssStream(Stream stream, CompressibleStreamMode mode, bool leaveOpen = false) : base(stream, mode, leaveOpen)
     {
     }
-    
+
     protected override void Decompress(BinaryReader reader, BinaryWriter writer, Stream inputStream, MemoryStream outputStream)
     {
         var rawHeaderData = reader.ReadInt32();
@@ -52,7 +54,7 @@ public class LzssStream : CompressibleStream
                         writer.Write(lookbackBuffer[j]);
                     }
                 }
-                    
+
                 if (outputStream.Length >= decompressSize) break;
             }
         }
@@ -75,7 +77,7 @@ public class LzssStream : CompressibleStream
                 var repeatCount = GetNextRepeatCount(buffer[i..]);
                 if (repeatCount < MinBytesToCopy) continue;
                 if (repeatCount <= biggestToCopy) continue;
-                
+
                 biggestToCopy = repeatCount;
                 biggestDisplacement = buffer.Length - i;
             }
@@ -101,14 +103,14 @@ public class LzssStream : CompressibleStream
                 {
                     if (0 != reader.ReadByte()) break;
                 }
-                
+
                 bufferIndex++;
             }
 
             return bufferIndex;
         }
-        
-        writer.Write((uint) (CompressHeader | inputStream.Length << 8));
+
+        writer.Write((uint) (CompressHeader | (inputStream.Length << 8)));
 
         var tempBuffer = ArrayPool<byte>.Shared.Rent(16);
         var tempBufferSize = 0;
@@ -134,7 +136,7 @@ public class LzssStream : CompressibleStream
                 {
                     var newDisplacement = nextToken.displacement - 1;
                     var newBytesToCopy = nextToken.bytesToCopy - 3;
-                    tempBuffer[tempBufferSize++] = (byte) ((newDisplacement & 0xF00) >> 8 | newBytesToCopy << 4);
+                    tempBuffer[tempBufferSize++] = (byte) (((newDisplacement & 0xF00) >> 8) | (newBytesToCopy << 4));
                     tempBuffer[tempBufferSize++] = (byte) (newDisplacement & 0xFF);
 
                     flagData |= 1 << flagIndex;
@@ -143,7 +145,7 @@ public class LzssStream : CompressibleStream
                 flagIndex--;
 
                 if (flagIndex >= 0) continue;
-                
+
                 writer.Write((byte) flagData);
                 writer.Write(tempBuffer.AsSpan(0, tempBufferSize));
 

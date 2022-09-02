@@ -1,6 +1,6 @@
 ﻿using System.CommandLine;
-using Fossil_Fighters_Tool.Archive;
 using Microsoft.Extensions.FileSystemGlobbing;
+using TheDialgaTeam.FossilFighters.Assets.Archive;
 
 namespace Fossil_Fighters_Tool.Command;
 
@@ -68,9 +68,6 @@ public class CompressCommand : System.CommandLine.Command
             
             using var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read);
             fileStream.CopyTo(mcmFileStream);
-            mcmFileStream.Flush();
         }
-        
-        marArchive.Flush();
     }
 }

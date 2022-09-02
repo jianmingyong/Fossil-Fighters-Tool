@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <AssemblyName>fftool</AssemblyName>
-        <RootNamespace>Fossil_Fighters_Tool</RootNamespace>
+        <RootNamespace>TheDialgaTeam.FossilFighters.Tool.Cli</RootNamespace>
         <OutputType>Exe</OutputType>
         <TargetFramework>net6.0</TargetFramework>
         
@@ -15,6 +15,8 @@
         <Description>This program is used to decompress and compress MAR archives used in Fossil Fighters game.</Description>
         <RepositoryUrl>https://github.com/jianmingyong/Fossil-Fighters-Tool</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
+        <PackageProjectUrl>https://github.com/jianmingyong/Fossil-Fighters-Tool</PackageProjectUrl>
+        <PackageId>TheDialgaTeam.FossilFighters.Tool.Cli</PackageId>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
@@ -45,6 +47,10 @@
         <AutoGen>True</AutoGen>
         <DependentUpon>Localization.resx</DependentUpon>
       </Compile>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\TheDialgaTeam.FossilFighters.Assets\TheDialgaTeam.FossilFighters.Assets.csproj" />
     </ItemGroup>
 
 </Project>

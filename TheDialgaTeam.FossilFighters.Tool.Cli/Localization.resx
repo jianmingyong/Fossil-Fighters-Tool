@@ -17,38 +17,11 @@
     <resheader name="writer">
         <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
     </resheader>
-    <data name="StreamIsNotCompressedBy" xml:space="preserve">
-        <value>The contents of the stream is not {0} compressed.</value>
-    </data>
-    <data name="StreamIsNotArchive" xml:space="preserve">
-        <value>The contents of the stream is not a {0} archive.</value>
-    </data>
     <data name="FileExtracted" xml:space="preserve">
         <value>Extracted: {0}</value>
     </data>
     <data name="FileExtracting" xml:space="preserve">
         <value>Extracting: {0}</value>
-    </data>
-    <data name="StreamIsCorrupted" xml:space="preserve">
-        <value>The contents of the stream do not match the expected output size. The file may be corrupted.</value>
-    </data>
-    <data name="StreamIsAlreadyCompressed" xml:space="preserve">
-        <value>The contents of the stream have been compressed.</value>
-    </data>
-    <data name="HuffmanStreamInvalidDataNode" xml:space="preserve">
-        <value>The contents of the stream contains invalid data node.</value>
-    </data>
-    <data name="HuffmanStreamInvalidBitstream" xml:space="preserve">
-        <value>The contents of the stream contains invalid bitstream.</value>
-    </data>
-    <data name="HuffmanStreamDatasetTooSmall" xml:space="preserve">
-        <value>The contents of the stream is too small to generate a proper huffman tree.</value>
-    </data>
-    <data name="StreamIsNotReadable" xml:space="preserve">
-        <value>The stream provided is not readable.</value>
-    </data>
-    <data name="StreamIsNotWriteable" xml:space="preserve">
-        <value>The stream provided is not writeable.</value>
     </data>
     <data name="FossilFightersToolDescription" xml:space="preserve">
         <value>This program is used to decompress and compress MAR archives used in Fossil Fighters game.</value>
@@ -58,9 +31,6 @@
     </data>
     <data name="InputDoesNotExists" xml:space="preserve">
         <value>"{0}" does not exists.</value>
-    </data>
-    <data name="FileIsNotArchive" xml:space="preserve">
-        <value>Error: File is not a {0} archive.</value>
     </data>
     <data name="CompressCommandDescription" xml:space="preserve">
         <value>Compress files into MAR archive.</value>
