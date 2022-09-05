@@ -4,7 +4,9 @@ using Microsoft.Extensions.FileSystemGlobbing;
 using SixLabors.ImageSharp;
 using TheDialgaTeam.FossilFighters.Assets.Archive;
 using TheDialgaTeam.FossilFighters.Assets.Header;
+using TheDialgaTeam.FossilFighters.Assets.Image;
 using TheDialgaTeam.FossilFighters.Assets.Motion;
+using ColorPalette = TheDialgaTeam.FossilFighters.Assets.Motion.ColorPalette;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Cli.Command;
 
@@ -100,7 +102,6 @@ public class DecompressCommand : System.CommandLine.Command
                         {
                             case MmsHeader.FileHeader:
                             {
-                                fileStream.Seek(0, SeekOrigin.Begin);
                                 var mmsHeader = MmsHeader.GetHeaderFromStream(fileStream);
                                 var colorPalettes = new ColorPalette[mmsHeader.ColorPaletteFileCount];
                                 
@@ -139,6 +140,38 @@ public class DecompressCommand : System.CommandLine.Command
                                     }
                                 }
                                 
+                                break;
+                            }
+
+                            case MpmHeader.FileHeader:
+                            {
+                                var mpmHeader = MpmHeader.GetHeaderFromStream(fileStream);
+                                
+                                var colorPaletteFile = Path.Combine(output, "..", mpmHeader.ColorPaletteFileName, $"{mpmHeader.ColorPaletteFileIndex}.bin");
+
+                                if (!File.Exists(colorPaletteFile))
+                                {
+                                    Decompress(Path.Combine(Path.GetDirectoryName(input)!, mpmHeader.ColorPaletteFileName), Path.Combine(output, ".."));
+                                }
+
+                                using var colorPaletteFileStream = new FileStream(colorPaletteFile, FileMode.Open, FileAccess.Read);
+                                var colorPalette = ImageUtility.GetColorPalette(colorPaletteFileStream);
+                                
+                                var bitmapFile = Path.Combine(output, "..", mpmHeader.BitmapFileName, $"{mpmHeader.BitmapFileIndex}.bin");
+
+                                if (!File.Exists(bitmapFile))
+                                {
+                                    Decompress(Path.Combine(Path.GetDirectoryName(input)!, mpmHeader.BitmapFileName), Path.Combine(output, ".."));
+                                }
+
+                                using var bitmapFileStream = new FileStream(bitmapFile, FileMode.Open, FileAccess.Read);
+                                var bitmap = ImageUtility.GetBitmap(bitmapFileStream);
+                                    
+                                using var image = ImageUtility.GetImage(mpmHeader, colorPalette, bitmap);
+                                var imageOutputFilePath = Path.Combine(output, $"{mpmHeader.BitmapFileIndex}.png");
+                                image.SaveAsPng(imageOutputFilePath);
+
+                                Console.WriteLine(Localization.FileExtracted, imageOutputFilePath);
                                 break;
                             }
                         }
