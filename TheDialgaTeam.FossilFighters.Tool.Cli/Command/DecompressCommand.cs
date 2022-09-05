@@ -2,7 +2,6 @@
 using System.Text;
 using Microsoft.Extensions.FileSystemGlobbing;
 using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Png;
 using TheDialgaTeam.FossilFighters.Assets.Archive;
 using TheDialgaTeam.FossilFighters.Assets.Header;
 using TheDialgaTeam.FossilFighters.Assets.Motion;
@@ -15,7 +14,6 @@ public class DecompressCommand : System.CommandLine.Command
     {
         var inputArgument = new Argument<string[]>("input", "List of folders or files to extract.") { Arity = ArgumentArity.OneOrMore };
         var outputOption = new Option<string>(new[] { "--output", "-o" }, () => string.Empty, "Output folder to place the extracted contents.") { Arity = ArgumentArity.ExactlyOne, IsRequired = false };
-        if (outputOption == null) throw new ArgumentNullException(nameof(outputOption));
         var excludeOption = new Option<string[]>(new[] { "--exclude", "-e" }, () => new[] { "**/bin/**/*" }, "Exclude files to be decompressed. You can use wildcard (*) to specify one or more folders.") { Arity = ArgumentArity.OneOrMore, IsRequired = false };
 
         AddArgument(inputArgument);
@@ -131,7 +129,6 @@ public class DecompressCommand : System.CommandLine.Command
                                     using var bitmapFileStream = new FileStream(bitmapFile, FileMode.Open, FileAccess.Read);
                                     var bitmap = MotionUtility.GetBitmap(bitmapFileStream);
                                     
-                                    // TODO: Which color palette to use? God knows...
                                     for (var k = 0; k < colorPalettes.Length; k++)
                                     {
                                         using var image = MotionUtility.GetImage(colorPalettes[k], bitmap);
