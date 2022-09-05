@@ -1,5 +1,6 @@
 ﻿using System.Buffers;
 using System.Buffers.Binary;
+using System.Text;
 using JetBrains.Annotations;
 using SixLabors.ImageSharp.PixelFormats;
 using TheDialgaTeam.FossilFighters.Assets.Header;
@@ -44,13 +45,43 @@ public static class ImageUtility
         stream.CopyTo(memoryStream);
         return memoryStream.ToArray();
     }
+
+    public static ChunkBitmap GetChunkBitmap(ColorPalette colorPalette, Stream bitmap, Stream bitmapIndex)
+    {
+        var result = new ChunkBitmap();
+
+        using (var reader = new BinaryReader(bitmap, Encoding.UTF8, true))
+        {
+            while (bitmap.Position < bitmap.Length)
+            {
+                var chunk = new byte[colorPalette.Type == ColorPaletteType.Color16 ? 4 * 8 : 8 * 8];
+
+                for (var i = 0; i < chunk.Length; i++)
+                {
+                    chunk[i] = reader.ReadByte();
+                }
+                
+                result.ColorPaletteIndexes.Add(chunk);
+            }
+        }
+
+        using (var reader = new BinaryReader(bitmapIndex, Encoding.UTF8, true))
+        {
+            while (bitmapIndex.Position < bitmapIndex.Length)
+            {
+                result.BitmapIndices.Add(reader.ReadUInt16());
+            }
+        }
+
+        return result;
+    }
     
     public static SixLabors.ImageSharp.Image<Rgba32> GetImage(MpmHeader header, ColorPalette colorPalette, byte[] bitmap, int gridSize = 8)
     {
         var image = new SixLabors.ImageSharp.Image<Rgba32>(header.Width, header.Height);
         var bitmapIndex = 0;
         
-        if (header.Unknown7 != 0)
+        if (header.BitmapIndexFileIndex != 0)
         {
             var gridX = 0;
             var gridY = 0;
@@ -128,6 +159,61 @@ public static class ImageUtility
             }
         }
         
+        return image;
+    }
+
+    public static SixLabors.ImageSharp.Image<Rgba32> GetImage(MpmHeader header, ColorPalette colorPalette, ChunkBitmap chunkBitmap)
+    {
+        const int gridSize = 8;
+        
+        var image = new SixLabors.ImageSharp.Image<Rgba32>(header.Width, header.Height);
+        var gridX = 0;
+        var gridY = 0;
+
+        foreach (var bitmapIndex in chunkBitmap.BitmapIndices)
+        {
+            var index = 0;
+
+            if (colorPalette.Type == ColorPaletteType.Color16)
+            {
+                for (var y = 0; y < gridSize; y++)
+                {
+                    for (var x = 0; x < gridSize; x += 2)
+                    {
+                        if (bitmapIndex < chunkBitmap.ColorPaletteIndexes.Count)
+                        {
+                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[chunkBitmap.ColorPaletteIndexes[bitmapIndex][index] >> 4];
+                            image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[chunkBitmap.ColorPaletteIndexes[bitmapIndex][index] & 0xF];
+                            index++;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                for (var y = 0; y < gridSize; y++)
+                {
+                    for (var x = 0; x < gridSize; x++)
+                    {
+                        if (bitmapIndex < chunkBitmap.ColorPaletteIndexes.Count)
+                        {
+                            var colorPaletteIndex = chunkBitmap.ColorPaletteIndexes[bitmapIndex][index];
+                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[colorPaletteIndex];
+                            index++;
+                        }
+                    }
+                }
+            }
+            
+            gridX++;
+
+            if (gridX >= header.Width / gridSize)
+            {
+                gridX = 0;
+                gridY++;
+            }
+        }
+
         return image;
     }
 }

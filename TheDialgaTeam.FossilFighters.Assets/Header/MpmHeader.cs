@@ -32,9 +32,9 @@ public class MpmHeader
     
     public string BitmapFileName { get; init; }  = string.Empty;
     
-    public int Unknown7 { get; init; }
+    public int BitmapIndexFileIndex { get; init; }
     
-    public string Unknown8 { get; init; }  = string.Empty;
+    public string BitmapIndexFileName { get; init; }  = string.Empty;
 
     public static MpmHeader GetHeaderFromStream(Stream stream)
     {
@@ -54,7 +54,7 @@ public class MpmHeader
         var colorPaletteFileOffset = reader.ReadInt32();
         var bitmapFileIndex = reader.ReadInt32();
         var bitmapFileOffset = reader.ReadInt32();
-        var unknown7 = reader.ReadInt32();
+        var bitmapIndexFileIndex = reader.ReadInt32();
         var unknown8 = reader.ReadInt32();
 
         var colorPaletteFile = new StringBuilder();
@@ -73,7 +73,7 @@ public class MpmHeader
             bitmapFile.Append(reader.ReadChar());
         }
         
-        var unknown8String = new StringBuilder();
+        var bitmapIndexFile = new StringBuilder();
 
         if (unknown8 != 0)
         {
@@ -81,7 +81,7 @@ public class MpmHeader
             
             while (reader.PeekChar() != '\0')
             {
-                unknown8String.Append(reader.ReadChar());
+                bitmapIndexFile.Append(reader.ReadChar());
             }
         }
         
@@ -99,8 +99,8 @@ public class MpmHeader
             ColorPaletteFileName = colorPaletteFile.ToString(),
             BitmapFileIndex = bitmapFileIndex,
             BitmapFileName = bitmapFile.ToString(),
-            Unknown7 = unknown7,
-            Unknown8 = unknown8String.ToString()
+            BitmapIndexFileIndex = bitmapIndexFileIndex,
+            BitmapIndexFileName = bitmapIndexFile.ToString()
         };
     }
 }

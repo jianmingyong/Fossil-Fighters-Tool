@@ -102,6 +102,7 @@ public class DecompressCommand : System.CommandLine.Command
                         {
                             case MmsHeader.FileHeader:
                             {
+                                fileStream.Seek(0, SeekOrigin.Begin);
                                 var mmsHeader = MmsHeader.GetHeaderFromStream(fileStream);
                                 var colorPalettes = new ColorPalette[mmsHeader.ColorPaletteFileCount];
                                 
@@ -145,6 +146,7 @@ public class DecompressCommand : System.CommandLine.Command
 
                             case MpmHeader.FileHeader:
                             {
+                                fileStream.Seek(0, SeekOrigin.Begin);
                                 var mpmHeader = MpmHeader.GetHeaderFromStream(fileStream);
                                 
                                 var colorPaletteFile = Path.Combine(output, "..", mpmHeader.ColorPaletteFileName, $"{mpmHeader.ColorPaletteFileIndex}.bin");
@@ -164,14 +166,38 @@ public class DecompressCommand : System.CommandLine.Command
                                     Decompress(Path.Combine(Path.GetDirectoryName(input)!, mpmHeader.BitmapFileName), Path.Combine(output, ".."));
                                 }
 
-                                using var bitmapFileStream = new FileStream(bitmapFile, FileMode.Open, FileAccess.Read);
-                                var bitmap = ImageUtility.GetBitmap(bitmapFileStream);
+                                if (mpmHeader.BitmapIndexFileIndex == 0)
+                                {
+                                    using var bitmapFileStream = new FileStream(bitmapFile, FileMode.Open, FileAccess.Read);
+                                    var bitmap = ImageUtility.GetBitmap(bitmapFileStream);
                                     
-                                using var image = ImageUtility.GetImage(mpmHeader, colorPalette, bitmap);
-                                var imageOutputFilePath = Path.Combine(output, $"{mpmHeader.BitmapFileIndex}.png");
-                                image.SaveAsPng(imageOutputFilePath);
+                                    using var image = ImageUtility.GetImage(mpmHeader, colorPalette, bitmap);
+                                    var imageOutputFilePath = Path.Combine(output, $"{mpmHeader.BitmapFileIndex}.png");
+                                    image.SaveAsPng(imageOutputFilePath);
 
-                                Console.WriteLine(Localization.FileExtracted, imageOutputFilePath);
+                                    Console.WriteLine(Localization.FileExtracted, imageOutputFilePath);
+                                }
+                                else
+                                {
+                                    var bitmapIndexFile = Path.Combine(output, "..", mpmHeader.BitmapIndexFileName, $"{mpmHeader.BitmapIndexFileIndex}.bin");
+
+                                    if (!File.Exists(bitmapFile))
+                                    {
+                                        Decompress(Path.Combine(Path.GetDirectoryName(input)!, mpmHeader.BitmapIndexFileName), Path.Combine(output, ".."));
+                                    }
+                                    
+                                    using var bitmapFileStream = new FileStream(bitmapFile, FileMode.Open, FileAccess.Read);
+                                    using var bitmapIndexFileStream = new FileStream(bitmapIndexFile, FileMode.Open, FileAccess.Read);
+
+                                    var chunkBitmap = ImageUtility.GetChunkBitmap(colorPalette, bitmapFileStream, bitmapIndexFileStream);
+
+                                    using var image = ImageUtility.GetImage(mpmHeader, colorPalette, chunkBitmap);
+                                    var imageOutputFilePath = Path.Combine(output, $"{mpmHeader.BitmapFileIndex}.png");
+                                    image.SaveAsPng(imageOutputFilePath);
+
+                                    Console.WriteLine(Localization.FileExtracted, imageOutputFilePath);
+                                }
+
                                 break;
                             }
                         }
