@@ -2,10 +2,10 @@
 
     <PropertyGroup>
         <TargetFramework>net6.0</TargetFramework>
-        
+
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        
+
         <Title>Fossil Fighters Tool API</Title>
         <Authors>Yong Jian Ming</Authors>
         <Description>This library is used to decompress and compress MAR archives used in Fossil Fighters game.</Description>
@@ -15,27 +15,27 @@
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
-      <DebugType>none</DebugType>
+        <DebugType>none</DebugType>
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="JetBrains.Annotations" Version="2022.1.0" />
-      <PackageReference Include="SixLabors.ImageSharp" Version="2.1.3" />
+        <PackageReference Include="JetBrains.Annotations" Version="2022.1.0"/>
+        <PackageReference Include="SixLabors.ImageSharp" Version="2.1.3"/>
     </ItemGroup>
 
     <ItemGroup>
-      <EmbeddedResource Update="Localization.resx">
-        <Generator>ResXFileCodeGenerator</Generator>
-        <LastGenOutput>Localization.Designer.cs</LastGenOutput>
-      </EmbeddedResource>
+        <EmbeddedResource Update="Localization.resx">
+            <Generator>ResXFileCodeGenerator</Generator>
+            <LastGenOutput>Localization.Designer.cs</LastGenOutput>
+        </EmbeddedResource>
     </ItemGroup>
 
     <ItemGroup>
-      <Compile Update="Localization.Designer.cs">
-        <DesignTime>True</DesignTime>
-        <AutoGen>True</AutoGen>
-        <DependentUpon>Localization.resx</DependentUpon>
-      </Compile>
+        <Compile Update="Localization.Designer.cs">
+            <DesignTime>True</DesignTime>
+            <AutoGen>True</AutoGen>
+            <DependentUpon>Localization.resx</DependentUpon>
+        </Compile>
     </ItemGroup>
 
 </Project>

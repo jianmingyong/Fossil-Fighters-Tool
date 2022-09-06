@@ -1,4 +1,20 @@
-﻿using System.Buffers;
+﻿// Fossil Fighters Tool is used to decompress and compress MAR archives used in Fossil Fighters game.
+// Copyright (C) 2022 Yong Jian Ming
+// 
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+// 
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+// 
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+using System.Buffers;
 using System.Text;
 using JetBrains.Annotations;
 
@@ -7,22 +23,6 @@ namespace TheDialgaTeam.FossilFighters.Assets.Archive;
 [PublicAPI]
 public abstract class CompressibleStream : Stream
 {
-    public override bool CanRead => Mode == CompressibleStreamMode.Decompress && BaseStream.CanRead;
-    public override bool CanSeek => false;
-    public override bool CanWrite => Mode == CompressibleStreamMode.Compress && BaseStream.CanWrite;
-
-    public override long Length => throw new NotSupportedException();
-    
-    public Stream BaseStream { get; }
-    
-    public CompressibleStreamMode Mode { get; }
-
-    public override long Position
-    {
-        get => throw new NotSupportedException();
-        set => throw new NotSupportedException();
-    }
-
     private readonly MemoryStream? _inputStream;
     private readonly MemoryStream? _outputStream;
     private readonly BinaryReader _reader;
@@ -30,6 +30,21 @@ public abstract class CompressibleStream : Stream
 
     private bool _hasDecompressed;
     private bool _hasDisposed;
+    public override bool CanRead => Mode == CompressibleStreamMode.Decompress && BaseStream.CanRead;
+    public override bool CanSeek => false;
+    public override bool CanWrite => Mode == CompressibleStreamMode.Compress && BaseStream.CanWrite;
+
+    public override long Length => throw new NotSupportedException();
+
+    public Stream BaseStream { get; }
+
+    public CompressibleStreamMode Mode { get; }
+
+    public override long Position
+    {
+        get => throw new NotSupportedException();
+        set => throw new NotSupportedException();
+    }
 
     protected CompressibleStream(Stream stream, CompressibleStreamMode mode, bool leaveOpen = false)
     {

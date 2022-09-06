@@ -1,5 +1,22 @@
-﻿using System.Text;
+﻿// Fossil Fighters Tool is used to decompress and compress MAR archives used in Fossil Fighters game.
+// Copyright (C) 2022 Yong Jian Ming
+// 
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+// 
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+// 
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+using System.Text;
 using JetBrains.Annotations;
+using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using TheDialgaTeam.FossilFighters.Assets.Header;
 
@@ -10,7 +27,7 @@ public static class ImageUtility
 {
     private const int ColorPalette16FileSize = 16 * 2;
     private const int ColorPalette256FileSize = 256 * 2;
-    
+
     public static ColorPalette GetColorPalette(Stream stream)
     {
         if (!stream.CanRead) throw new ArgumentException(Localization.StreamIsNotReadable, nameof(stream));
@@ -18,11 +35,11 @@ public static class ImageUtility
         using var tempStream = new MemoryStream();
         stream.CopyTo(tempStream);
         tempStream.Seek(0, SeekOrigin.Begin);
-        
+
         using var reader = new BinaryReader(tempStream);
 
         var colorTable = new List<Rgba32>();
-        
+
         while (tempStream.Position < tempStream.Length)
         {
             var rawValue = reader.ReadUInt16();
@@ -55,7 +72,7 @@ public static class ImageUtility
                 {
                     chunk[i] = reader.ReadByte();
                 }
-                
+
                 result.ColorPaletteIndexes.Add(chunk);
             }
         }
@@ -70,12 +87,12 @@ public static class ImageUtility
 
         return result;
     }
-    
-    public static SixLabors.ImageSharp.Image<Rgba32> GetImage(MpmHeader header, ColorPalette colorPalette, byte[] bitmap, int gridSize = 8)
+
+    public static Image<Rgba32> GetImage(MpmHeader header, ColorPalette colorPalette, byte[] bitmap, int gridSize = 8)
     {
-        var image = new SixLabors.ImageSharp.Image<Rgba32>(header.Width, header.Height);
+        var image = new Image<Rgba32>(header.Width, header.Height);
         var bitmapIndex = 0;
-        
+
         if (colorPalette.Type == ColorPaletteType.Color16)
         {
             for (var y = 0; y < header.Height; y++)
@@ -99,15 +116,15 @@ public static class ImageUtility
                 }
             }
         }
-        
+
         return image;
     }
 
-    public static SixLabors.ImageSharp.Image<Rgba32> GetImage(MpmHeader header, ColorPalette colorPalette, ChunkBitmap chunkBitmap)
+    public static Image<Rgba32> GetImage(MpmHeader header, ColorPalette colorPalette, ChunkBitmap chunkBitmap)
     {
         const int gridSize = 8;
-        
-        var image = new SixLabors.ImageSharp.Image<Rgba32>(header.Width, header.Height);
+
+        var image = new Image<Rgba32>(header.Width, header.Height);
         var gridX = 0;
         var gridY = 0;
 
@@ -139,7 +156,7 @@ public static class ImageUtility
                     }
                 }
             }
-            
+
             gridX++;
 
             if (gridX >= header.Width / gridSize)

@@ -1,4 +1,20 @@
-﻿using System.CommandLine;
+﻿// Fossil Fighters Tool is used to decompress and compress MAR archives used in Fossil Fighters game.
+// Copyright (C) 2022 Yong Jian Ming
+// 
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+// 
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+// 
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+using System.CommandLine;
 using System.Text;
 using Microsoft.Extensions.FileSystemGlobbing;
 using SixLabors.ImageSharp;
@@ -68,7 +84,7 @@ public class DecompressCommand : System.CommandLine.Command
             var fileName = Path.GetFileName(input);
             output = Path.Combine(output, fileName);
         }
-        
+
         if (!Directory.Exists(output))
         {
             Directory.CreateDirectory(output);
@@ -90,9 +106,9 @@ public class DecompressCommand : System.CommandLine.Command
                         mcmFileStream.CopyTo(outputStream);
                     }
                 }
-                
+
                 Console.WriteLine(Localization.FileExtracted, outputFile);
-                
+
                 // Handle Add-Ons (Image)
                 using (var fileStream = new FileStream(outputFile, FileMode.Open, FileAccess.Read))
                 {
@@ -105,7 +121,7 @@ public class DecompressCommand : System.CommandLine.Command
                                 fileStream.Seek(0, SeekOrigin.Begin);
                                 var mmsHeader = MmsHeader.GetHeaderFromStream(fileStream);
                                 var colorPalettes = new ColorPalette[mmsHeader.ColorPaletteFileCount];
-                                
+
                                 for (var j = 0; j < mmsHeader.ColorPaletteFileCount; j++)
                                 {
                                     var colorPaletteFile = Path.Combine(output, "..", mmsHeader.ColorPaletteFileName, $"{mmsHeader.ColorPaletteFileIndexes[j]}.bin");
@@ -130,7 +146,7 @@ public class DecompressCommand : System.CommandLine.Command
 
                                     using var bitmapFileStream = new FileStream(bitmapFile, FileMode.Open, FileAccess.Read);
                                     var bitmap = MotionUtility.GetBitmap(bitmapFileStream);
-                                    
+
                                     for (var k = 0; k < colorPalettes.Length; k++)
                                     {
                                         using var image = MotionUtility.GetImage(colorPalettes[k], bitmap);
@@ -140,7 +156,7 @@ public class DecompressCommand : System.CommandLine.Command
                                         Console.WriteLine(Localization.FileExtracted, imageOutputFilePath);
                                     }
                                 }
-                                
+
                                 break;
                             }
 
@@ -148,7 +164,7 @@ public class DecompressCommand : System.CommandLine.Command
                             {
                                 fileStream.Seek(0, SeekOrigin.Begin);
                                 var mpmHeader = MpmHeader.GetHeaderFromStream(fileStream);
-                                
+
                                 var colorPaletteFile = Path.Combine(output, "..", mpmHeader.ColorPaletteFileName, $"{mpmHeader.ColorPaletteFileIndex}.bin");
 
                                 if (!File.Exists(colorPaletteFile))
@@ -158,7 +174,7 @@ public class DecompressCommand : System.CommandLine.Command
 
                                 using var colorPaletteFileStream = new FileStream(colorPaletteFile, FileMode.Open, FileAccess.Read);
                                 var colorPalette = ImageUtility.GetColorPalette(colorPaletteFileStream);
-                                
+
                                 var bitmapFile = Path.Combine(output, "..", mpmHeader.BitmapFileName, $"{mpmHeader.BitmapFileIndex}.bin");
 
                                 if (!File.Exists(bitmapFile))
@@ -170,7 +186,7 @@ public class DecompressCommand : System.CommandLine.Command
                                 {
                                     using var bitmapFileStream = new FileStream(bitmapFile, FileMode.Open, FileAccess.Read);
                                     var bitmap = ImageUtility.GetBitmap(bitmapFileStream);
-                                    
+
                                     using var image = ImageUtility.GetImage(mpmHeader, colorPalette, bitmap);
                                     var imageOutputFilePath = Path.Combine(output, $"{mpmHeader.BitmapFileIndex}.png");
                                     image.SaveAsPng(imageOutputFilePath);
@@ -185,7 +201,7 @@ public class DecompressCommand : System.CommandLine.Command
                                     {
                                         Decompress(Path.Combine(Path.GetDirectoryName(input)!, mpmHeader.BgMapFileName), Path.Combine(output, ".."));
                                     }
-                                    
+
                                     using var bitmapFileStream = new FileStream(bitmapFile, FileMode.Open, FileAccess.Read);
                                     using var bitmapIndexFileStream = new FileStream(bitmapIndexFile, FileMode.Open, FileAccess.Read);
 

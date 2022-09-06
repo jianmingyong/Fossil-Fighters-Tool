@@ -4,7 +4,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TheDialgaTeam.FossilFighter
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TheDialgaTeam.FossilFighters.Assets", "TheDialgaTeam.FossilFighters.Assets\TheDialgaTeam.FossilFighters.Assets.csproj", "{40711701-F092-48D2-8914-E069C8D08741}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TheDialgaTeam.FossilFighters.Tool.Gui", "TheDialgaTeam.FossilFighters.Tool.Gui\TheDialgaTeam.FossilFighters.Tool.Gui.csproj", "{51214419-0C5F-4297-8A13-E7567C2D2729}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TheDialgaTeam.FossilFighters.Tool.Gui", "TheDialgaTeam.FossilFighters.Tool.Gui\TheDialgaTeam.FossilFighters.Tool.Gui.csproj", "{4AEB70BB-2841-43B2-A6E6-8B724087C48A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,9 +21,9 @@ Global
 		{40711701-F092-48D2-8914-E069C8D08741}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{40711701-F092-48D2-8914-E069C8D08741}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{40711701-F092-48D2-8914-E069C8D08741}.Release|Any CPU.Build.0 = Release|Any CPU
-		{51214419-0C5F-4297-8A13-E7567C2D2729}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{51214419-0C5F-4297-8A13-E7567C2D2729}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{51214419-0C5F-4297-8A13-E7567C2D2729}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{51214419-0C5F-4297-8A13-E7567C2D2729}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4AEB70BB-2841-43B2-A6E6-8B724087C48A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4AEB70BB-2841-43B2-A6E6-8B724087C48A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4AEB70BB-2841-43B2-A6E6-8B724087C48A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4AEB70BB-2841-43B2-A6E6-8B724087C48A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

@@ -1,4 +1,20 @@
-﻿using System.Buffers;
+﻿// Fossil Fighters Tool is used to decompress and compress MAR archives used in Fossil Fighters game.
+// Copyright (C) 2022 Yong Jian Ming
+// 
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+// 
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+// 
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+using System.Buffers;
 using JetBrains.Annotations;
 using TheDialgaTeam.FossilFighters.Assets.Archive.Compression.Huffman;
 using TheDialgaTeam.FossilFighters.Assets.Archive.Compression.Lzss;
@@ -9,6 +25,12 @@ namespace TheDialgaTeam.FossilFighters.Assets.Archive;
 [PublicAPI]
 public sealed class McmFileStream : CompressibleStream
 {
+    private const int HeaderId = 0x004D434D;
+
+    private int _maxSizePerChunk = 0x2000;
+    private McmFileCompressionType _compressionType1;
+    private McmFileCompressionType _compressionType2;
+
     public int MaxSizePerChunk
     {
         get => _maxSizePerChunk;
@@ -38,12 +60,6 @@ public sealed class McmFileStream : CompressibleStream
             _compressionType2 = value;
         }
     }
-
-    private const int HeaderId = 0x004D434D;
-
-    private int _maxSizePerChunk = 0x2000;
-    private McmFileCompressionType _compressionType1;
-    private McmFileCompressionType _compressionType2;
 
     public McmFileStream(Stream stream, CompressibleStreamMode mode, bool leaveOpen = false) : base(stream, mode, leaveOpen)
     {
@@ -134,7 +150,7 @@ public sealed class McmFileStream : CompressibleStream
         writer.Write((byte) CompressionType1);
         writer.Write((byte) CompressionType2);
         writer.Write((short) 0);
-        
+
         writer.Write((int) outputStream.Position + 4 * numberOfChunks + 4);
 
         var chunkOffset = outputStream.Position;
@@ -178,18 +194,18 @@ public sealed class McmFileStream : CompressibleStream
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
-                
+
                 using var stream = new MemoryStream(buffer, 0, (int) chunkSize);
                 if (reader.Read(buffer, 0, (int) chunkSize) < chunkSize) throw new EndOfStreamException();
 
                 stream.CopyTo(compressStream);
                 if (compressStream is not MemoryStream) compressStream.Dispose();
-                
+
                 var dataLength = tempBuffer.Length;
-                
+
                 writer.Seek((int) chunkOffset + 4 * i, SeekOrigin.Begin);
                 writer.Write((int) (dataOffset + dataLength));
-                
+
                 writer.Seek((int) dataOffset, SeekOrigin.Begin);
                 tempBuffer.WriteTo(outputStream);
 
