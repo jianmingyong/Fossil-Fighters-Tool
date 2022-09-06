@@ -2,7 +2,6 @@
 
     <PropertyGroup>
         <AssemblyName>fftool</AssemblyName>
-        <RootNamespace>TheDialgaTeam.FossilFighters.Tool.Cli</RootNamespace>
         <OutputType>Exe</OutputType>
         <TargetFramework>net6.0</TargetFramework>
         
@@ -16,6 +15,7 @@
         <PackageProjectUrl>https://github.com/jianmingyong/Fossil-Fighters-Tool</PackageProjectUrl>
         <RepositoryUrl>https://github.com/jianmingyong/Fossil-Fighters-Tool</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
+        <ApplicationIcon>fossil-fighters-logo.ico</ApplicationIcon>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">

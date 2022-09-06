@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AvaloniaProject">
+    <option name="projectPerEditor">
+      <map>
+        <entry key="TheDialgaTeam.FossilFighters.Tool.Gui/App.axaml" value="TheDialgaTeam.FossilFighters.Tool.Gui/TheDialgaTeam.FossilFighters.Tool.Gui.csproj" />
+        <entry key="TheDialgaTeam.FossilFighters.Tool.Gui/TheDialgaTeam.FossilFighters.Tool.Gui/App.axaml" value="TheDialgaTeam.FossilFighters.Tool.Gui/TheDialgaTeam.FossilFighters.Tool.Gui.Desktop/TheDialgaTeam.FossilFighters.Tool.Gui.Desktop.csproj" />
+        <entry key="TheDialgaTeam.FossilFighters.Tool.Gui/TheDialgaTeam.FossilFighters.Tool.Gui/Views/MainView.axaml" value="TheDialgaTeam.FossilFighters.Tool.Gui/TheDialgaTeam.FossilFighters.Tool.Gui.Desktop/TheDialgaTeam.FossilFighters.Tool.Gui.Desktop.csproj" />
+        <entry key="TheDialgaTeam.FossilFighters.Tool.Gui/Views/MainWindow.axaml" value="TheDialgaTeam.FossilFighters.Tool.Gui/TheDialgaTeam.FossilFighters.Tool.Gui.csproj" />
+      </map>
+    </option>
+  </component>
+</project>
