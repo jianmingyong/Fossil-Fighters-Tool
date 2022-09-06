@@ -166,7 +166,7 @@ public class DecompressCommand : System.CommandLine.Command
                                     Decompress(Path.Combine(Path.GetDirectoryName(input)!, mpmHeader.BitmapFileName), Path.Combine(output, ".."));
                                 }
 
-                                if (mpmHeader.BitmapIndexFileIndex == 0)
+                                if (mpmHeader.BgMapFileIndex == 0)
                                 {
                                     using var bitmapFileStream = new FileStream(bitmapFile, FileMode.Open, FileAccess.Read);
                                     var bitmap = ImageUtility.GetBitmap(bitmapFileStream);
@@ -179,11 +179,11 @@ public class DecompressCommand : System.CommandLine.Command
                                 }
                                 else
                                 {
-                                    var bitmapIndexFile = Path.Combine(output, "..", mpmHeader.BitmapIndexFileName, $"{mpmHeader.BitmapIndexFileIndex}.bin");
+                                    var bitmapIndexFile = Path.Combine(output, "..", mpmHeader.BgMapFileName, $"{mpmHeader.BgMapFileIndex}.bin");
 
                                     if (!File.Exists(bitmapFile))
                                     {
-                                        Decompress(Path.Combine(Path.GetDirectoryName(input)!, mpmHeader.BitmapIndexFileName), Path.Combine(output, ".."));
+                                        Decompress(Path.Combine(Path.GetDirectoryName(input)!, mpmHeader.BgMapFileName), Path.Combine(output, ".."));
                                     }
                                     
                                     using var bitmapFileStream = new FileStream(bitmapFile, FileMode.Open, FileAccess.Read);

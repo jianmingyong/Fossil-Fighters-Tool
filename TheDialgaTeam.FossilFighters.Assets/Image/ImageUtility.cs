@@ -1,6 +1,4 @@
-﻿using System.Buffers;
-using System.Buffers.Binary;
-using System.Text;
+﻿using System.Text;
 using JetBrains.Annotations;
 using SixLabors.ImageSharp.PixelFormats;
 using TheDialgaTeam.FossilFighters.Assets.Header;
@@ -15,28 +13,25 @@ public static class ImageUtility
     
     public static ColorPalette GetColorPalette(Stream stream)
     {
-        var buffer = ArrayPool<byte>.Shared.Rent(ColorPalette256FileSize + 1);
+        if (!stream.CanRead) throw new ArgumentException(Localization.StreamIsNotReadable, nameof(stream));
 
-        try
+        using var tempStream = new MemoryStream();
+        stream.CopyTo(tempStream);
+        tempStream.Seek(0, SeekOrigin.Begin);
+        
+        using var reader = new BinaryReader(tempStream);
+
+        var colorTable = new List<Rgba32>();
+        
+        while (tempStream.Position < tempStream.Length)
         {
-            var bytesRead = stream.Read(buffer, 0, ColorPalette256FileSize + 1);
-            if (bytesRead != ColorPalette16FileSize && bytesRead != ColorPalette256FileSize) throw new InvalidDataException();
-
-            var colorSize = bytesRead == ColorPalette16FileSize ? 16 : 256;
-            var result = new Rgba32[colorSize];
-
-            for (var i = 0; i < colorSize; i++)
-            {
-                var rawValue = BinaryPrimitives.ReadUInt16LittleEndian(buffer.AsSpan(i * 2, 2));
-                result[i] = new Rgba32((byte) ((rawValue & 0x1F) << 3), (byte) (((rawValue >> 5) & 0x1F) << 3), (byte) (((rawValue >> 10) & 0x1F) << 3), (byte) (i == 0 ? 0 : 255));
-            }
-
-            return new ColorPalette(colorSize == 16 ? ColorPaletteType.Color16 : ColorPaletteType.Color256, result);
+            var rawValue = reader.ReadUInt16();
+            colorTable.Add(new Rgba32((byte) ((rawValue & 0x1F) << 3), (byte) (((rawValue >> 5) & 0x1F) << 3), (byte) (((rawValue >> 10) & 0x1F) << 3), 255));
         }
-        finally
-        {
-            ArrayPool<byte>.Shared.Return(buffer);
-        }
+
+        colorTable[0] = new Rgba32(colorTable[0].R, colorTable[0].G, colorTable[0].B, 0);
+
+        return new ColorPalette(colorTable.Count <= 16 ? ColorPaletteType.Color16 : ColorPaletteType.Color256, colorTable.ToArray());
     }
 
     public static byte[] GetBitmap(Stream stream)
@@ -81,80 +76,26 @@ public static class ImageUtility
         var image = new SixLabors.ImageSharp.Image<Rgba32>(header.Width, header.Height);
         var bitmapIndex = 0;
         
-        if (header.BitmapIndexFileIndex != 0)
+        if (colorPalette.Type == ColorPaletteType.Color16)
         {
-            var gridX = 0;
-            var gridY = 0;
-            
-            if (colorPalette.Type == ColorPaletteType.Color16)
+            for (var y = 0; y < header.Height; y++)
             {
-                while (bitmapIndex * 2 < header.Width * header.Height)
+                for (var x = 0; x < header.Width; x += 2)
                 {
-                    for (var y = 0; y < gridSize; y++)
-                    {
-                        for (var x = 0; x < gridSize; x += 2)
-                        {
-                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[bitmap[bitmapIndex] >> 4];
-                            image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[bitmap[bitmapIndex] & 0xF];
-
-                            bitmapIndex++;
-                        }
-                    }
-
-                    gridX++;
-
-                    if (gridX >= header.Width / gridSize)
-                    {
-                        gridX = 0;
-                        gridY++;
-                    }
-                }
-            }
-            else if (colorPalette.Type == ColorPaletteType.Color256)
-            {
-                while (bitmapIndex < header.Width * header.Height)
-                {
-                    for (var y = 0; y < gridSize; y++)
-                    {
-                        for (var x = 0; x < gridSize; x++)
-                        {
-                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[bitmap[bitmapIndex++]];
-                        }
-                    }
-
-                    gridX++;
-
-                    if (gridX >= header.Width / gridSize)
-                    {
-                        gridX = 0;
-                        gridY++;
-                    }
+                    image[x, y] = colorPalette.Table[bitmap[bitmapIndex] >> 4];
+                    image[x + 1, y] = colorPalette.Table[bitmap[bitmapIndex] & 0xF];
+                    bitmapIndex++;
                 }
             }
         }
-        else
+        else if (colorPalette.Type == ColorPaletteType.Color256)
         {
-            if (colorPalette.Type == ColorPaletteType.Color16)
+            for (var y = 0; y < header.Height; y++)
             {
-                for (var y = 0; y < header.Height; y++)
+                for (var x = 0; x < header.Width; x++)
                 {
-                    for (var x = 0; x < header.Width; x += 2)
-                    {
-                        image[x, y] = colorPalette.Table[bitmap[bitmapIndex] >> 4];
-                        image[x + 1, y] = colorPalette.Table[bitmap[bitmapIndex] & 0xF];
-                        bitmapIndex++;
-                    }
-                }
-            }
-            else if (colorPalette.Type == ColorPaletteType.Color256)
-            {
-                for (var y = 0; y < header.Height; y++)
-                {
-                    for (var x = 0; x < header.Width; x++)
-                    {
-                        image[x, y] = colorPalette.Table[bitmap[bitmapIndex]];
-                        bitmapIndex++;
-                    }
+                    image[x, y] = colorPalette.Table[bitmap[bitmapIndex]];
+                    bitmapIndex++;
                 }
             }
         }
@@ -180,12 +121,9 @@ public static class ImageUtility
                 {
                     for (var x = 0; x < gridSize; x += 2)
                     {
-                        if (bitmapIndex < chunkBitmap.ColorPaletteIndexes.Count)
-                        {
-                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[chunkBitmap.ColorPaletteIndexes[bitmapIndex][index] >> 4];
-                            image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[chunkBitmap.ColorPaletteIndexes[bitmapIndex][index] & 0xF];
-                            index++;
-                        }
+                        image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][index] >> 4];
+                        image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][index] & 0xF];
+                        index++;
                     }
                 }
             }
@@ -195,12 +133,9 @@ public static class ImageUtility
                 {
                     for (var x = 0; x < gridSize; x++)
                     {
-                        if (bitmapIndex < chunkBitmap.ColorPaletteIndexes.Count)
-                        {
-                            var colorPaletteIndex = chunkBitmap.ColorPaletteIndexes[bitmapIndex][index];
-                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[colorPaletteIndex];
-                            index++;
-                        }
+                        var colorPaletteIndex = chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][index];
+                        image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[colorPaletteIndex];
+                        index++;
                     }
                 }
             }
