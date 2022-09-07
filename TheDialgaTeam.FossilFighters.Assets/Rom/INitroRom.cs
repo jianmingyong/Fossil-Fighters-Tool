@@ -14,11 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-namespace TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels;
+using JetBrains.Annotations;
 
-public class MainWindowViewModel : ViewModelBase
+namespace TheDialgaTeam.FossilFighters.Assets.Rom;
+
+[PublicAPI]
+public interface INitroRom
 {
-    public string FirstHeader => "MAR Archives";
+    public string FullPath { get; }
 
-    public string SecondHeader => "File Editors";
+    public string Name { get; }
 }
