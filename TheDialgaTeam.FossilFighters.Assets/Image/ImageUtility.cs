@@ -130,29 +130,111 @@ public static class ImageUtility
 
         foreach (var bitmapIndex in chunkBitmap.BitmapIndices)
         {
-            var index = 0;
-
             if (colorPalette.Type == ColorPaletteType.Color16)
             {
-                for (var y = 0; y < gridSize; y++)
+                var horizontalFlip = (bitmapIndex & 0x400) > 0;
+                var verticalFlip = (bitmapIndex & 0x800) > 0;
+
+                if (!horizontalFlip && !verticalFlip)
                 {
-                    for (var x = 0; x < gridSize; x += 2)
+                    for (var y = 0; y < gridSize; y++)
                     {
-                        image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][index] >> 4];
-                        image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][index] & 0xF];
-                        index++;
+                        for (var x = 0; x < gridSize; x += 2)
+                        {
+                            var targetIndex = (x + y * gridSize) / 2;
+                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] >> 4];
+                            image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] & 0xF];
+                        }
+                    }
+                }
+                else if (horizontalFlip && !verticalFlip)
+                {
+                    for (var y = 0; y < gridSize; y++)
+                    {
+                        for (var x = 0; x < gridSize; x += 2)
+                        {
+                            var targetIndex = (gridSize - 1 - x + y * gridSize) / 2;
+                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] >> 4];
+                            image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] & 0xF];
+                        }
+                    }
+                }
+                else if (!horizontalFlip && verticalFlip)
+                {
+                    for (var y = 0; y < gridSize; y++)
+                    {
+                        for (var x = 0; x < gridSize; x += 2)
+                        {
+                            var targetIndex = (x + (gridSize - 1 - y) * gridSize) / 2;
+                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] & 0xF];
+                            image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] >> 4];
+                        }
+                    }
+                }
+                else
+                {
+                    for (var y = 0; y < gridSize; y++)
+                    {
+                        for (var x = 0; x < gridSize; x += 2)
+                        {
+                            var targetIndex = (gridSize - 1 - x + (gridSize - 1 - y) * gridSize) / 2;
+                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] & 0xF];
+                            image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] >> 4];
+                        }
                     }
                 }
             }
             else
             {
-                for (var y = 0; y < gridSize; y++)
+                var horizontalFlip = (bitmapIndex & 0x400) > 0;
+                var verticalFlip = (bitmapIndex & 0x800) > 0;
+
+                if (!horizontalFlip && !verticalFlip)
                 {
-                    for (var x = 0; x < gridSize; x++)
+                    for (var y = 0; y < gridSize; y++)
                     {
-                        var colorPaletteIndex = chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][index];
-                        image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[colorPaletteIndex];
-                        index++;
+                        for (var x = 0; x < gridSize; x++)
+                        {
+                            var targetIndex = x + y * gridSize;
+                            var colorPaletteIndex = chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex];
+                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[colorPaletteIndex];
+                        }
+                    }
+                }
+                else if (horizontalFlip && !verticalFlip)
+                {
+                    for (var y = 0; y < gridSize; y++)
+                    {
+                        for (var x = 0; x < gridSize; x++)
+                        {
+                            var targetIndex = gridSize - 1 - x + y * gridSize;
+                            var colorPaletteIndex = chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex];
+                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[colorPaletteIndex];
+                        }
+                    }
+                }
+                else if (!horizontalFlip && verticalFlip)
+                {
+                    for (var y = 0; y < gridSize; y++)
+                    {
+                        for (var x = 0; x < gridSize; x++)
+                        {
+                            var targetIndex = x + (gridSize - 1 - y) * gridSize;
+                            var colorPaletteIndex = chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex];
+                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[colorPaletteIndex];
+                        }
+                    }
+                }
+                else
+                {
+                    for (var y = 0; y < gridSize; y++)
+                    {
+                        for (var x = 0; x < gridSize; x++)
+                        {
+                            var targetIndex = gridSize - 1 - x + (gridSize - 1 - y) * gridSize;
+                            var colorPaletteIndex = chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex];
+                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[colorPaletteIndex];
+                        }
                     }
                 }
             }
