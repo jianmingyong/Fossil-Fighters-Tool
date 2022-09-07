@@ -15,9 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.Threading.Tasks;
-using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Markup.Xaml;
 using TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Gui.Views;
@@ -27,14 +25,6 @@ public partial class MessageBoxWindow : Window
     public MessageBoxWindow()
     {
         InitializeComponent();
-#if DEBUG
-        this.AttachDevTools();
-#endif
-    }
-
-    private void InitializeComponent()
-    {
-        AvaloniaXamlLoader.Load(this);
     }
 
     public static Task ShowDialog(Window owner, string title, string message)

@@ -10,6 +10,9 @@
         <TrimMode>copyused</TrimMode>
         <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
 
+        <PublishSingleFile>true</PublishSingleFile>
+        <PublishRelease>true</PublishRelease>
+
         <Version>1.4.0</Version>
         <Title>Fossil Fighters Tool</Title>
         <Authors>Yong Jian Ming</Authors>
