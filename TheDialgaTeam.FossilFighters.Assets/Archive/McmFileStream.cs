@@ -25,12 +25,6 @@ namespace TheDialgaTeam.FossilFighters.Assets.Archive;
 [PublicAPI]
 public sealed class McmFileStream : CompressibleStream
 {
-    private const int HeaderId = 0x004D434D;
-
-    private int _maxSizePerChunk = 0x2000;
-    private McmFileCompressionType _compressionType1;
-    private McmFileCompressionType _compressionType2;
-
     public int MaxSizePerChunk
     {
         get => _maxSizePerChunk;
@@ -60,6 +54,12 @@ public sealed class McmFileStream : CompressibleStream
             _compressionType2 = value;
         }
     }
+
+    private const int HeaderId = 0x004D434D;
+
+    private int _maxSizePerChunk = 0x2000;
+    private McmFileCompressionType _compressionType1;
+    private McmFileCompressionType _compressionType2;
 
     public McmFileStream(Stream stream, CompressibleStreamMode mode, bool leaveOpen = false) : base(stream, mode, leaveOpen)
     {

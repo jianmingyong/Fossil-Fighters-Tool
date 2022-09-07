@@ -23,13 +23,6 @@ namespace TheDialgaTeam.FossilFighters.Assets.Archive;
 [PublicAPI]
 public abstract class CompressibleStream : Stream
 {
-    private readonly MemoryStream? _inputStream;
-    private readonly MemoryStream? _outputStream;
-    private readonly BinaryReader _reader;
-    private readonly BinaryWriter _writer;
-
-    private bool _hasDecompressed;
-    private bool _hasDisposed;
     public override bool CanRead => Mode == CompressibleStreamMode.Decompress && BaseStream.CanRead;
     public override bool CanSeek => false;
     public override bool CanWrite => Mode == CompressibleStreamMode.Compress && BaseStream.CanWrite;
@@ -45,6 +38,14 @@ public abstract class CompressibleStream : Stream
         get => throw new NotSupportedException();
         set => throw new NotSupportedException();
     }
+
+    private readonly MemoryStream? _inputStream;
+    private readonly MemoryStream? _outputStream;
+    private readonly BinaryReader _reader;
+    private readonly BinaryWriter _writer;
+
+    private bool _hasDecompressed;
+    private bool _hasDisposed;
 
     protected CompressibleStream(Stream stream, CompressibleStreamMode mode, bool leaveOpen = false)
     {

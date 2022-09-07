@@ -21,10 +21,6 @@ namespace TheDialgaTeam.FossilFighters.Assets.Archive.Compression.Huffman;
 [PublicAPI]
 public sealed class HuffmanStream : CompressibleStream
 {
-    private const int CompressionHeader = 2 << 4;
-
-    private HuffmanDataSize _dataSize;
-
     public HuffmanDataSize DataSize
     {
         get => _dataSize;
@@ -34,6 +30,10 @@ public sealed class HuffmanStream : CompressibleStream
             _dataSize = value;
         }
     }
+
+    private const int CompressionHeader = 2 << 4;
+
+    private HuffmanDataSize _dataSize;
 
     public HuffmanStream(Stream stream, CompressibleStreamMode mode, bool leaveOpen = false) : base(stream, mode, leaveOpen)
     {
