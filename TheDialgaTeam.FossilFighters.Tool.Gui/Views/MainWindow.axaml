@@ -3,42 +3,43 @@
         xmlns:vm="using:TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="250"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="TheDialgaTeam.FossilFighters.Tool.Gui.Views.MainWindow"
         Icon="/Assets/fossil-fighters-logo.ico"
         Title="Fossil Fighters Tool"
-        Width="400" Height="250" WindowStartupLocation="CenterScreen">
+        Width="800" Height="450" WindowStartupLocation="CenterScreen">
 
     <Design.DataContext>
-        <vm:MainWindowViewModel />
+        <vm:MainWindowViewModel>
+            <x:Arguments>
+                <x:Null />
+            </x:Arguments>
+        </vm:MainWindowViewModel>
     </Design.DataContext>
 
     <Window.Background>
         <ImageBrush Source="/Assets/967.png" Stretch="Fill" />
     </Window.Background>
 
-    <Grid RowDefinitions="Auto, Auto, Auto" ColumnDefinitions="1*">
-        <Grid Grid.Row="0" RowDefinitions="*, *" Margin="4, 4, 4, 0">
-            <TextBlock Grid.Row="0" Text="{Binding FirstHeader}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-
-            <Grid Grid.Row="1" ColumnDefinitions="*, *">
-                <Button Grid.Column="0" HorizontalAlignment="Center">Decompress</Button>
-                <Button Grid.Column="1" HorizontalAlignment="Center">Compress</Button>
-            </Grid>
+    <Grid RowDefinitions="Auto, *" ColumnDefinitions="*" Margin="4">
+        <Grid Grid.Row="0" RowDefinitions="*" ColumnDefinitions="*" Margin="4, 4, 4, 4">
+            <Menu Background="white">
+                <MenuItem Header="_File">
+                    <MenuItem Header="_Open" Command="{Binding OpenFileCommand}" />
+                    <Separator />
+                    <MenuItem Header="_Exit" Command="{Binding ExitCommand}" />
+                </MenuItem>
+            </Menu>
         </Grid>
 
-        <Grid Grid.Row="1" RowDefinitions="*, *, *" Margin="4, 4, 4, 0" IsVisible="False">
-            <TextBlock Grid.Row="0" Text="{Binding SecondHeader}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-
-            <Grid Grid.Row="1" ColumnDefinitions="*, *">
-                <Button Grid.Column="0" HorizontalAlignment="Center">Text</Button>
-                <Button Grid.Column="1" HorizontalAlignment="Center">Message</Button>
-            </Grid>
-
-            <Grid Grid.Row="2" ColumnDefinitions="*, *">
-                <Button Grid.Column="0" HorizontalAlignment="Center">Vivosaur</Button>
-                <Button Grid.Column="1" HorizontalAlignment="Center">Moves</Button>
-            </Grid>
+        <Grid Grid.Row="1" RowDefinitions="*" ColumnDefinitions="*, *" Margin="4, 4, 4, 4">
+            <TreeView Grid.Column="0" Background="white" Items="{Binding NitroContents}" SelectedItems="{Binding SelectedFiles}" SelectionMode="Multiple">
+                <TreeView.ItemTemplate>
+                    <TreeDataTemplate ItemsSource="{Binding Subfolders}">
+                        <TextBlock Text="{Binding Path}" />
+                    </TreeDataTemplate>
+                </TreeView.ItemTemplate>
+            </TreeView>
         </Grid>
     </Grid>
     

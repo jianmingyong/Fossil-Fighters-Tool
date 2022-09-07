@@ -1,4 +1,4 @@
-// Fossil Fighters Tool is used to decompress and compress MAR archives used in Fossil Fighters game.
+﻿// Fossil Fighters Tool is used to decompress and compress MAR archives used in Fossil Fighters game.
 // Copyright (C) 2022 Yong Jian Ming
 // 
 // This program is free software: you can redistribute it and/or modify
@@ -14,30 +14,33 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System.Threading.Tasks;
 using Avalonia;
-using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels;
-using TheDialgaTeam.FossilFighters.Tool.Gui.Views;
 
-namespace TheDialgaTeam.FossilFighters.Tool.Gui;
+namespace TheDialgaTeam.FossilFighters.Tool.Gui.Views;
 
-public class App : Application
+public partial class MessageBoxWindow : Window
 {
-    public override void Initialize()
+    public MessageBoxWindow()
+    {
+        InitializeComponent();
+#if DEBUG
+        this.AttachDevTools();
+#endif
+    }
+
+    private void InitializeComponent()
     {
         AvaloniaXamlLoader.Load(this);
     }
 
-    public override void OnFrameworkInitializationCompleted()
+    public static Task ShowDialog(Window owner, string title, string message)
     {
-        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-        {
-            var mainWindow = new MainWindow();
-            mainWindow.DataContext = new MainWindowViewModel(mainWindow);
-            desktop.MainWindow = mainWindow;
-        }
-
-        base.OnFrameworkInitializationCompleted();
+        var messageBox = new MessageBoxWindow();
+        messageBox.DataContext = new MessageBoxWindowViewModel(messageBox, title, message);
+        return messageBox.ShowDialog(owner);
     }
 }

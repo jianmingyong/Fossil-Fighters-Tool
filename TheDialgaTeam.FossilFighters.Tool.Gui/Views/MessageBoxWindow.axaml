@@ -1,0 +1,28 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="300" d:DesignHeight="100"
+        x:Class="TheDialgaTeam.FossilFighters.Tool.Gui.Views.MessageBoxWindow"
+        Title="{Binding Title}"
+        MinWidth="300" MinHeight="100" MaxWidth="600" MaxHeight="540" WindowStartupLocation="CenterScreen"
+        SizeToContent="WidthAndHeight">
+
+    <Design.DataContext>
+        <vm:MessageBoxWindowViewModel>
+            <x:Arguments>
+                <x:Null />
+                <x:String>Title</x:String>
+                <x:String>Testing Error Message! Testing Error Message!</x:String>
+            </x:Arguments>
+        </vm:MessageBoxWindowViewModel>
+    </Design.DataContext>
+
+    <Grid RowDefinitions="*, Auto" Margin="8">
+        <TextBlock Grid.Row="0" Text="{Binding Message}" VerticalAlignment="Center" TextWrapping="Wrap" />
+        <Button Grid.Row="1" HorizontalAlignment="Right" Command="{Binding CloseCommand}">
+            <TextBlock Text="{Binding OkButtonText}" />
+        </Button>
+    </Grid>
+</Window>
