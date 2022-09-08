@@ -23,62 +23,76 @@ using Avalonia.Controls;
 using ReactiveUI;
 using TheDialgaTeam.FossilFighters.Assets.Rom;
 using TheDialgaTeam.FossilFighters.Tool.Gui.Models;
-using TheDialgaTeam.FossilFighters.Tool.Gui.Views;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels;
 
 public class MainWindowViewModel : ViewModelBase
 {
-    public ObservableCollection<Node> NitroContents { get; } = new();
+    public ObservableCollection<NitroRomNode> NitroContents { get; } = new();
 
-    public ObservableCollection<Node> SelectedFiles { get; set; }
+    public ObservableCollection<NitroRomNode> SelectedFiles { get; } = new();
 
     public ReactiveCommand<Unit, Unit> OpenFileCommand { get; }
 
-    public ReactiveCommand<Unit, Unit> ExitCommand { get; }
+    public ReactiveCommand<Unit, Unit> CompressCommand { get; }
 
-    private readonly Window _window;
+    public ReactiveCommand<Unit, Unit> DecompressCommand { get; }
 
-    private NdsFilesystem? _romLoaded;
-
-    public MainWindowViewModel(Window window)
+    public bool IsRomLoaded
     {
-        _window = window;
+        get => _isRomLoaded;
+
+        private set
+        {
+            _isRomLoaded = value;
+            this.RaisePropertyChanged();
+        }
+    }
+
+    private bool _isRomLoaded;
+    private NdsFilesystem? _loadedRom;
+
+    public MainWindowViewModel(Window window) : base(window)
+    {
         OpenFileCommand = ReactiveCommand.CreateFromTask(OpenFile);
-        ExitCommand = ReactiveCommand.Create(Exit);
+        CompressCommand = ReactiveCommand.Create(Compress);
+        DecompressCommand = ReactiveCommand.Create(Decompress);
     }
 
     private async Task OpenFile()
     {
-        var fileDialog = new OpenFileDialog { AllowMultiple = false, Filters = new List<FileDialogFilter> { new() { Extensions = { "nds" } } } };
-        var selectedFile = await fileDialog.ShowAsync(_window);
-
-        if (selectedFile == null) return;
-
         try
         {
-            _romLoaded = NdsFilesystem.FromFile(selectedFile[0]);
+            var fileDialog = new OpenFileDialog { AllowMultiple = false, Filters = new List<FileDialogFilter> { new() { Extensions = { "nds" } } } };
+            var selectedFile = await fileDialog.ShowAsync(Window);
+            if (selectedFile == null) return;
+
+            _loadedRom = NdsFilesystem.FromFile(selectedFile[0]);
+            IsRomLoaded = true;
 
             NitroContents.Clear();
 
-            foreach (var subDirectory in _romLoaded.RootDirectory.SubDirectories)
+            foreach (var subDirectory in _loadedRom.RootDirectory.SubDirectories)
             {
-                NitroContents.Add(new Node(subDirectory));
+                NitroContents.Add(new NitroRomNode(subDirectory));
             }
 
-            foreach (var file in _romLoaded.RootDirectory.Files)
+            foreach (var file in _loadedRom.RootDirectory.Files)
             {
-                NitroContents.Add(new Node(file));
+                NitroContents.Add(new NitroRomNode(file));
             }
         }
         catch (Exception ex)
         {
-            await MessageBoxWindow.ShowDialog(_window, "Error", ex.ToString());
+            await this.ShowDialog("Error", ex.ToString());
         }
     }
 
-    private void Exit()
+    private void Compress()
     {
-        _window.Close();
+    }
+
+    private void Decompress()
+    {
     }
 }

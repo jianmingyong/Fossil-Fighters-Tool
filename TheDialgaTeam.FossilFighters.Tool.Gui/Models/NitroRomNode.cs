@@ -19,30 +19,47 @@ using TheDialgaTeam.FossilFighters.Assets.Rom;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Gui.Models;
 
-public class Node
+public class NitroRomNode
 {
-    public ObservableCollection<Node> Subfolders { get; } = new();
+    public ObservableCollection<NitroRomNode> Subfolders { get; } = new();
 
     public string Path { get; }
 
     public string FullPath { get; }
 
-    public Node(INitroRom nitroRom)
+    public bool IsFile { get; }
+
+    public long Size { get; }
+
+    public NitroRomNode(INitroRom nitroRom)
     {
         Path = nitroRom.Name;
         FullPath = nitroRom.FullPath;
 
-        if (nitroRom is NitroRomDirectory nitroRomDirectory)
+        switch (nitroRom)
         {
-            foreach (var subDirectory in nitroRomDirectory.SubDirectories)
+            case NitroRomDirectory nitroRomDirectory:
             {
-                Subfolders.Add(new Node(subDirectory));
+                IsFile = false;
+                Size = 0;
+
+                foreach (var subDirectory in nitroRomDirectory.SubDirectories)
+                {
+                    Subfolders.Add(new NitroRomNode(subDirectory));
+                }
+
+                foreach (var file in nitroRomDirectory.Files)
+                {
+                    Subfolders.Add(new NitroRomNode(file));
+                }
+
+                break;
             }
 
-            foreach (var file in nitroRomDirectory.Files)
-            {
-                Subfolders.Add(new Node(file));
-            }
+            case NitroRomFile nitroRomFile:
+                IsFile = true;
+                Size = nitroRomFile.Size;
+                break;
         }
     }
 }

@@ -14,9 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System.Threading.Tasks;
 using Avalonia.Controls;
-using TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Gui.Views;
 
@@ -25,12 +23,5 @@ public partial class MessageBoxWindow : Window
     public MessageBoxWindow()
     {
         InitializeComponent();
-    }
-
-    public static Task ShowDialog(Window owner, string title, string message)
-    {
-        var messageBox = new MessageBoxWindow();
-        messageBox.DataContext = new MessageBoxWindowViewModel(messageBox, title, message);
-        return messageBox.ShowDialog(owner);
     }
 }

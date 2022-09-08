@@ -5,15 +5,19 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="TheDialgaTeam.FossilFighters.Tool.Gui.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        x:CompileBindings="True"
         Icon="/Assets/fossil-fighters-logo.ico"
         Title="Fossil Fighters Tool"
-        Width="800" Height="450" WindowStartupLocation="CenterScreen">
+        Width="640" Height="512" MinWidth="640" MinHeight="512" WindowStartupLocation="CenterScreen">
 
     <Design.DataContext>
         <vm:MainWindowViewModel>
             <x:Arguments>
                 <x:Null />
             </x:Arguments>
+
+            <vm:MainWindowViewModel.IsRomLoaded>True</vm:MainWindowViewModel.IsRomLoaded>
         </vm:MainWindowViewModel>
     </Design.DataContext>
 
@@ -21,25 +25,44 @@
         <ImageBrush Source="/Assets/967.png" Stretch="Fill" />
     </Window.Background>
 
-    <Grid RowDefinitions="Auto, *" ColumnDefinitions="*" Margin="4">
+    <Grid RowDefinitions="Auto, *" Margin="4">
         <Grid Grid.Row="0" RowDefinitions="*" ColumnDefinitions="*" Margin="4, 4, 4, 4">
             <Menu Background="white">
                 <MenuItem Header="_File">
-                    <MenuItem Header="_Open" Command="{Binding OpenFileCommand}" />
+                    <MenuItem Header="_Open" Command="{CompiledBinding OpenFileCommand}" />
                     <Separator />
-                    <MenuItem Header="_Exit" Command="{Binding ExitCommand}" />
+                    <MenuItem Header="_Exit" Command="{CompiledBinding CloseCommand}" />
                 </MenuItem>
             </Menu>
         </Grid>
 
-        <Grid Grid.Row="1" RowDefinitions="*" ColumnDefinitions="*, *" Margin="4, 4, 4, 4">
-            <TreeView Grid.Column="0" Background="white" Items="{Binding NitroContents}" SelectedItems="{Binding SelectedFiles}" SelectionMode="Multiple">
+        <Grid Grid.Row="1" ColumnDefinitions="*, *" Margin="4, 4, 4, 4" IsVisible="{CompiledBinding IsRomLoaded}">
+            <TreeView Grid.Column="0" Background="white" Items="{CompiledBinding NitroContents}" SelectedItems="{CompiledBinding SelectedFiles}">
+                <TreeView.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Compress" Command="{CompiledBinding CompressCommand}" />
+                        <MenuItem Header="Decompress" Command="{CompiledBinding DecompressCommand}" />
+                    </ContextMenu>
+                </TreeView.ContextMenu>
+                
                 <TreeView.ItemTemplate>
-                    <TreeDataTemplate ItemsSource="{Binding Subfolders}">
-                        <TextBlock Text="{Binding Path}" />
+                    <TreeDataTemplate ItemsSource="{CompiledBinding Subfolders}">
+                        <TextBlock Text="{CompiledBinding Path}" />
                     </TreeDataTemplate>
                 </TreeView.ItemTemplate>
             </TreeView>
+
+            <Grid Grid.Column="1" RowDefinitions="Auto, Auto, Auto" ColumnDefinitions="Auto, *" Margin="8, 0, 0, 0" IsVisible="{CompiledBinding SelectedFiles.Count}">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Path:" />
+                <TextBlock Grid.Row="0" Grid.Column="1" Text="{CompiledBinding SelectedFiles[0].FullPath}" Margin="4, 0, 0, 0" />
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Type:" />
+                <TextBlock Grid.Row="1" Grid.Column="1" Text="Folder" Margin="4, 0, 0, 0" IsVisible="{CompiledBinding !SelectedFiles[0].IsFile}" />
+                <TextBlock Grid.Row="1" Grid.Column="1" Text="File" Margin="4, 0, 0, 0" IsVisible="{CompiledBinding SelectedFiles[0].IsFile}" />
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Size:" IsVisible="{CompiledBinding SelectedFiles[0].IsFile}" />
+                <TextBlock Grid.Row="2" Grid.Column="1" Text="{CompiledBinding SelectedFiles[0].Size, StringFormat=\{0:N0\} bytes}" Margin="4, 0, 0, 0" IsVisible="{CompiledBinding SelectedFiles[0].IsFile}" />
+            </Grid>
         </Grid>
     </Grid>
     

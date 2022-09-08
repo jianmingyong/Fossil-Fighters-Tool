@@ -14,10 +14,34 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System.Reactive;
+using Avalonia.Controls;
+using JetBrains.Annotations;
 using ReactiveUI;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels;
 
 public class ViewModelBase : ReactiveObject
 {
+    public ReactiveCommand<Unit, Unit> CloseCommand { get; }
+
+    public Window Window { get; }
+
+    public ViewModelBase(Window window)
+    {
+        Window = window;
+        CloseCommand = ReactiveCommand.Create(Close);
+    }
+
+    [UsedImplicitly]
+    protected virtual void Close()
+    {
+    }
+
+    [UsedImplicitly]
+    private void CloseWindow()
+    {
+        Close();
+        Window.Close();
+    }
 }
