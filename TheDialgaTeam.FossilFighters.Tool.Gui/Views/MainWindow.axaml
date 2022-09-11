@@ -5,13 +5,50 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="TheDialgaTeam.FossilFighters.Tool.Gui.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        x:CompileBindings="True"
         Icon="/Assets/fossil-fighters-logo.ico"
-        Title="Fossil Fighters Tool">
+        Title="Fossil Fighters Tool"
+        Width="640" Height="512" MinWidth="640" MinHeight="512" WindowStartupLocation="CenterScreen">
 
     <Design.DataContext>
-        <vm:MainWindowViewModel />
+        <vm:MainWindowViewModel>
+            <x:Arguments>
+                <x:Null />
+            </x:Arguments>
+        </vm:MainWindowViewModel>
     </Design.DataContext>
 
-    <TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+    <Window.Background>
+        <ImageBrush Source="/Assets/967.png" Stretch="Fill" />
+    </Window.Background>
 
+    <Grid RowDefinitions="Auto, *" Margin="4">
+        <Grid Grid.Row="0" RowDefinitions="*" ColumnDefinitions="*" Margin="4, 4, 4, 4">
+            <Menu Background="white">
+                <MenuItem Header="_File">
+                    <MenuItem Header="_Open" Command="{CompiledBinding OpenFileCommand}" />
+                    <MenuItem Header="_Save" Command="{CompiledBinding SaveFileCommand}" />
+                    <Separator />
+                    <MenuItem Header="_Exit" Command="{CompiledBinding CloseCommand}" />
+                </MenuItem>
+                <MenuItem Header="_Editor">
+                    <MenuItem Header="Vivosaur Definition" />
+                    <Separator />
+                </MenuItem>
+            </Menu>
+        </Grid>
+
+        <Grid Grid.Row="1" Margin="4, 4, 4, 4" IsVisible="{CompiledBinding IsRomLoaded}">
+            <TreeDataGrid Background="white" Source="{CompiledBinding NitroContentSource}">
+                <TreeDataGrid.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Compress" Command="{CompiledBinding CompressCommand}" />
+                        <MenuItem Header="Decompress" Command="{CompiledBinding DecompressCommand}" />
+                    </ContextMenu>
+                </TreeDataGrid.ContextMenu>
+            </TreeDataGrid>
+        </Grid>
+    </Grid>
+    
 </Window>

@@ -14,10 +14,52 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System.Reactive;
+using System.Threading.Tasks;
+using Avalonia.Controls;
 using ReactiveUI;
+using TheDialgaTeam.FossilFighters.Tool.Gui.Views;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels;
 
 public class ViewModelBase : ReactiveObject
 {
+    public ReactiveCommand<Unit, Unit> CloseCommand { get; }
+
+    protected Window Window { get; }
+
+    protected ViewModelBase(Window window)
+    {
+        Window = window;
+        CloseCommand = ReactiveCommand.Create(CloseWindow);
+    }
+
+    protected Task ShowDialog(string message)
+    {
+        return ShowDialog(string.Empty, message);
+    }
+    
+    protected Task ShowDialog(string title, string message)
+    {
+        if (string.IsNullOrWhiteSpace(message)) return Task.CompletedTask;
+
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            title = Window.Title;
+        }
+
+        var messageBox = new MessageBoxWindow();
+        messageBox.DataContext = new MessageBoxWindowViewModel(messageBox, title, message);
+        return messageBox.ShowDialog(Window);
+    }
+    
+    protected virtual bool Close()
+    {
+        return true;
+    }
+    
+    private void CloseWindow()
+    {
+        if (Close()) Window.Close();
+    }
 }

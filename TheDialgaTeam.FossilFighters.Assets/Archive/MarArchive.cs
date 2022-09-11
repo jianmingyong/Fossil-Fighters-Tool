@@ -23,14 +23,8 @@ namespace TheDialgaTeam.FossilFighters.Assets.Archive;
 [PublicAPI]
 public sealed class MarArchive : IDisposable
 {
-    private const int HeaderId = 0x0052414D;
-
-    private readonly BinaryReader? _reader;
-    private readonly BinaryWriter? _writer;
-
-    private readonly List<MarArchiveEntry> _entries = new();
-
-    private bool _hasEntriesRead;
+    public const int HeaderId = 0x0052414D;
+    
     public Stream BaseStream { get; }
 
     public MarArchiveMode Mode { get; }
@@ -43,6 +37,13 @@ public sealed class MarArchive : IDisposable
             return _entries;
         }
     }
+
+    private readonly BinaryReader? _reader;
+    private readonly BinaryWriter? _writer;
+
+    private readonly List<MarArchiveEntry> _entries = new();
+
+    private bool _hasEntriesRead;
 
     public MarArchive(Stream stream, MarArchiveMode mode = MarArchiveMode.Read, bool leaveOpen = false)
     {

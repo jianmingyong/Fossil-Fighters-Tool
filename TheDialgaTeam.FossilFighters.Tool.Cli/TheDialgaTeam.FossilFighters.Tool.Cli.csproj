@@ -8,7 +8,10 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
 
-        <Version>1.3.0</Version>
+        <PublishSingleFile>true</PublishSingleFile>
+        <PublishRelease>true</PublishRelease>
+
+        <Version>1.4.0</Version>
         <Title>Fossil Fighters Tool</Title>
         <Authors>Yong Jian Ming</Authors>
         <Description>This program is used to decompress and compress MAR archives used in Fossil Fighters game.</Description>
