@@ -20,6 +20,8 @@ using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Controls.Models.TreeDataGrid;
+using Avalonia.Controls.Selection;
 using ReactiveUI;
 using TheDialgaTeam.FossilFighters.Assets.Rom;
 using TheDialgaTeam.FossilFighters.Tool.Gui.Models;
@@ -28,9 +30,7 @@ namespace TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels;
 
 public class MainWindowViewModel : ViewModelBase
 {
-    public ObservableCollection<NitroRomNode> NitroContents { get; } = new();
-
-    public ObservableCollection<NitroRomNode> SelectedFiles { get; } = new();
+    public HierarchicalTreeDataGridSource<NitroRomNode> NitroContentSource { get; }
 
     public ReactiveCommand<Unit, Unit> OpenFileCommand { get; }
 
@@ -38,25 +38,38 @@ public class MainWindowViewModel : ViewModelBase
 
     public ReactiveCommand<Unit, Unit> DecompressCommand { get; }
 
-    public bool IsRomLoaded
-    {
-        get => _isRomLoaded;
+    public bool IsRomLoaded => _isRomLoaded;
 
-        private set
-        {
-            _isRomLoaded = value;
-            this.RaisePropertyChanged();
-        }
-    }
+    public NitroRomNode? SelectedNitroRomNode => _selectedNitroRomNode;
+
+    private readonly ObservableCollection<NitroRomNode> _nitroContents = new();
 
     private bool _isRomLoaded;
     private NdsFilesystem? _loadedRom;
+    private NitroRomNode? _selectedNitroRomNode;
 
     public MainWindowViewModel(Window window) : base(window)
     {
         OpenFileCommand = ReactiveCommand.CreateFromTask(OpenFile);
         CompressCommand = ReactiveCommand.Create(Compress);
         DecompressCommand = ReactiveCommand.Create(Decompress);
+
+        NitroContentSource = new HierarchicalTreeDataGridSource<NitroRomNode>(_nitroContents)
+        {
+            Columns =
+            {
+                new HierarchicalExpanderColumn<NitroRomNode>(new TextColumn<NitroRomNode, string>("Name", node => node.Name), node => node.Subfolders, node => node.Subfolders.Count > 0),
+                new TextColumn<NitroRomNode, string>("Type", node => node.FileType),
+                new TextColumn<NitroRomNode, string>("Size", node => !node.IsFile ? string.Empty : $"{node.Size:N0} B")
+            }
+        };
+
+        NitroContentSource.RowSelection!.SelectionChanged += NitroContentSourceOnSelectionChanged;
+    }
+
+    private void NitroContentSourceOnSelectionChanged(object? sender, TreeSelectionModelSelectionChangedEventArgs<NitroRomNode> e)
+    {
+        this.RaiseAndSetIfChanged(ref _selectedNitroRomNode, e.SelectedItems[0], nameof(SelectedNitroRomNode));
     }
 
     private async Task OpenFile()
@@ -66,20 +79,20 @@ public class MainWindowViewModel : ViewModelBase
             var fileDialog = new OpenFileDialog { AllowMultiple = false, Filters = new List<FileDialogFilter> { new() { Extensions = { "nds" } } } };
             var selectedFile = await fileDialog.ShowAsync(Window);
             if (selectedFile == null) return;
-
+            
             _loadedRom = NdsFilesystem.FromFile(selectedFile[0]);
-            IsRomLoaded = true;
+            this.RaiseAndSetIfChanged(ref _isRomLoaded, true, nameof(IsRomLoaded));
 
-            NitroContents.Clear();
+            _nitroContents.Clear();
 
             foreach (var subDirectory in _loadedRom.RootDirectory.SubDirectories)
             {
-                NitroContents.Add(new NitroRomNode(subDirectory));
+                _nitroContents.Add(new NitroRomNode(subDirectory));
             }
 
             foreach (var file in _loadedRom.RootDirectory.Files)
             {
-                NitroContents.Add(new NitroRomNode(file));
+                _nitroContents.Add(new NitroRomNode(file));
             }
         }
         catch (Exception ex)

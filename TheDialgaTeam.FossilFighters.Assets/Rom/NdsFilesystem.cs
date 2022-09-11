@@ -93,27 +93,25 @@ public sealed class NdsFilesystem : IDisposable
         return new NdsFilesystem(File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.Read));
     }
 
-    public MemoryStream GetFileById(ushort id)
+    public NitroRomFile GetFileById(ushort id)
     {
-        return NitroRomFilesById[id].Open();
+        return NitroRomFilesById[id];
     }
 
-    public MemoryStream GetFileByPath(string filePath)
+    public NitroRomFile GetFileByPath(string filePath)
     {
-        return NitroRomFilesByPath[filePath].Open();
+        return NitroRomFilesByPath[filePath];
     }
 
-    public IEnumerable<string> EnumerateFiles()
+    public IEnumerable<NitroRomFile> EnumerateFiles()
     {
-        foreach (var key in NitroRomFilesByPath.Keys)
-        {
-            yield return key;
-        }
+        return NitroRomFilesByPath.Values;
     }
 
     public void Dispose()
     {
         Reader.Dispose();
         //Writer.Dispose();
+        RootDirectory.Dispose();
     }
 }

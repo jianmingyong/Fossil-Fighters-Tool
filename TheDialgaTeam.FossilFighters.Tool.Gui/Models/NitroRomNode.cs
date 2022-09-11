@@ -23,43 +23,32 @@ public class NitroRomNode
 {
     public ObservableCollection<NitroRomNode> Subfolders { get; } = new();
 
-    public string Path { get; }
+    public string FullPath => _nitroRom.FullPath;
 
-    public string FullPath { get; }
+    public string Name => _nitroRom.Name;
 
-    public bool IsFile { get; }
+    public string FileType => _nitroRom.FileType;
 
-    public long Size { get; }
+    public bool IsFile => _nitroRom is NitroRomFile;
+
+    public long Size => _nitroRom is NitroRomFile test ? test.Size : 0;
+
+    private readonly INitroRom _nitroRom;
 
     public NitroRomNode(INitroRom nitroRom)
     {
-        Path = nitroRom.Name;
-        FullPath = nitroRom.FullPath;
+        _nitroRom = nitroRom;
 
-        switch (nitroRom)
+        if (nitroRom is not NitroRomDirectory nitroRomDirectory) return;
+
+        foreach (var subDirectory in nitroRomDirectory.SubDirectories)
         {
-            case NitroRomDirectory nitroRomDirectory:
-            {
-                IsFile = false;
-                Size = 0;
+            Subfolders.Add(new NitroRomNode(subDirectory));
+        }
 
-                foreach (var subDirectory in nitroRomDirectory.SubDirectories)
-                {
-                    Subfolders.Add(new NitroRomNode(subDirectory));
-                }
-
-                foreach (var file in nitroRomDirectory.Files)
-                {
-                    Subfolders.Add(new NitroRomNode(file));
-                }
-
-                break;
-            }
-
-            case NitroRomFile nitroRomFile:
-                IsFile = true;
-                Size = nitroRomFile.Size;
-                break;
+        foreach (var file in nitroRomDirectory.Files)
+        {
+            Subfolders.Add(new NitroRomNode(file));
         }
     }
 }
