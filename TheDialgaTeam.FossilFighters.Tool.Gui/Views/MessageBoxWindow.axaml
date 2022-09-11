@@ -24,7 +24,7 @@
     <Grid RowDefinitions="*, Auto" Margin="8">
         <TextBlock Grid.Row="0" Text="{CompiledBinding Message}" VerticalAlignment="Center" TextWrapping="Wrap" />
         <Button Grid.Row="1" HorizontalAlignment="Right" Command="{CompiledBinding CloseCommand}">
-            <TextBlock Text="{CompiledBinding OkButtonText}" />
+            <TextBlock Text="OK" />
         </Button>
     </Grid>
 </Window>

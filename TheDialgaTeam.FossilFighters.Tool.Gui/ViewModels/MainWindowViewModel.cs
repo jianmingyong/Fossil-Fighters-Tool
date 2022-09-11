@@ -18,11 +18,15 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Reactive;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Controls.Selection;
+using JetBrains.Annotations;
 using ReactiveUI;
+using ReactiveUI.Fody.Helpers;
+using TheDialgaTeam.FossilFighters.Assets.Archive;
 using TheDialgaTeam.FossilFighters.Assets.Rom;
 using TheDialgaTeam.FossilFighters.Tool.Gui.Models;
 
@@ -30,31 +34,33 @@ namespace TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels;
 
 public class MainWindowViewModel : ViewModelBase
 {
+    [ObservableAsProperty]
+    [UsedImplicitly]
+    public bool IsRomLoaded { get; }
+
     public HierarchicalTreeDataGridSource<NitroRomNode> NitroContentSource { get; }
 
     public ReactiveCommand<Unit, Unit> OpenFileCommand { get; }
+    
+    public ReactiveCommand<Unit, Unit> SaveFileCommand { get; }
 
     public ReactiveCommand<Unit, Unit> CompressCommand { get; }
 
     public ReactiveCommand<Unit, Unit> DecompressCommand { get; }
-
-    public bool IsRomLoaded => _isRomLoaded;
-
-    public NitroRomNode? SelectedNitroRomNode => _selectedNitroRomNode;
-
-    private readonly ObservableCollection<NitroRomNode> _nitroContents = new();
-
-    private bool _isRomLoaded;
-    private NdsFilesystem? _loadedRom;
-    private NitroRomNode? _selectedNitroRomNode;
+    
+    [Reactive]
+    private NdsFilesystem? LoadedRom { get; set; }
+    
+    private ObservableCollection<NitroRomNode> NitroContents { get; } = new();
+    
+    [Reactive] 
+    private NitroRomNode? SelectedNitroRomNode { get; set; }
 
     public MainWindowViewModel(Window window) : base(window)
     {
-        OpenFileCommand = ReactiveCommand.CreateFromTask(OpenFile);
-        CompressCommand = ReactiveCommand.Create(Compress);
-        DecompressCommand = ReactiveCommand.Create(Decompress);
-
-        NitroContentSource = new HierarchicalTreeDataGridSource<NitroRomNode>(_nitroContents)
+        this.WhenAnyValue(model => model.LoadedRom).Select(filesystem => filesystem != null).ToPropertyEx(this, model => model.IsRomLoaded);
+        
+        NitroContentSource = new HierarchicalTreeDataGridSource<NitroRomNode>(NitroContents)
         {
             Columns =
             {
@@ -65,11 +71,16 @@ public class MainWindowViewModel : ViewModelBase
         };
 
         NitroContentSource.RowSelection!.SelectionChanged += NitroContentSourceOnSelectionChanged;
+        
+        OpenFileCommand = ReactiveCommand.CreateFromTask(OpenFile);
+        SaveFileCommand = ReactiveCommand.Create(SaveFile, this.WhenAnyValue(model => model.LoadedRom).Select(filesystem => filesystem != null).AsObservable());
+        CompressCommand = ReactiveCommand.Create(Compress, this.WhenAnyValue(model => model.SelectedNitroRomNode).Select(node => node?.IsFile ?? false).AsObservable());
+        DecompressCommand = ReactiveCommand.CreateFromTask(Decompress, this.WhenAnyValue(model => model.SelectedNitroRomNode).Select(node => node != null).AsObservable());
     }
 
     private void NitroContentSourceOnSelectionChanged(object? sender, TreeSelectionModelSelectionChangedEventArgs<NitroRomNode> e)
     {
-        this.RaiseAndSetIfChanged(ref _selectedNitroRomNode, e.SelectedItems[0], nameof(SelectedNitroRomNode));
+        SelectedNitroRomNode = e.SelectedItems[0];
     }
 
     private async Task OpenFile()
@@ -79,33 +90,51 @@ public class MainWindowViewModel : ViewModelBase
             var fileDialog = new OpenFileDialog { AllowMultiple = false, Filters = new List<FileDialogFilter> { new() { Extensions = { "nds" } } } };
             var selectedFile = await fileDialog.ShowAsync(Window);
             if (selectedFile == null) return;
-            
-            _loadedRom = NdsFilesystem.FromFile(selectedFile[0]);
-            this.RaiseAndSetIfChanged(ref _isRomLoaded, true, nameof(IsRomLoaded));
 
-            _nitroContents.Clear();
+            LoadedRom = NdsFilesystem.FromFile(selectedFile[0]);
+            NitroContents.Clear();
 
-            foreach (var subDirectory in _loadedRom.RootDirectory.SubDirectories)
+            foreach (var subDirectory in LoadedRom.RootDirectory.SubDirectories)
             {
-                _nitroContents.Add(new NitroRomNode(subDirectory));
+                NitroContents.Add(new NitroRomNode(subDirectory));
             }
 
-            foreach (var file in _loadedRom.RootDirectory.Files)
+            foreach (var file in LoadedRom.RootDirectory.Files)
             {
-                _nitroContents.Add(new NitroRomNode(file));
+                NitroContents.Add(new NitroRomNode(file));
             }
         }
         catch (Exception ex)
         {
-            await this.ShowDialog("Error", ex.ToString());
+            await ShowDialog("Error", ex.ToString());
         }
+    }
+
+    private void SaveFile()
+    {
+        
     }
 
     private void Compress()
     {
     }
 
-    private void Decompress()
+    private async Task Decompress()
     {
+        try
+        {
+            var folderDialog = new OpenFolderDialog();
+            var selectedFolder = await folderDialog.ShowAsync(Window);
+            if (selectedFolder == null) return;
+
+            if (SelectedNitroRomNode!.IsFile)
+            {
+                
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowDialog("Error", ex.ToString());
+        }
     }
 }

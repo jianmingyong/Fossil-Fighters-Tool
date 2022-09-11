@@ -23,6 +23,9 @@ namespace TheDialgaTeam.FossilFighters.Assets.Rom;
 [PublicAPI]
 public class NitroRomFile : INitroRom, IDisposable
 {
+    public const string MarArchiveFileType = "MAR Archive";
+    public const string OtherFileType = "File";
+    
     public NitroRomDirectory Directory { get; }
 
     public string FullPath => $"{Directory.FullPath}/{Name}";
@@ -63,7 +66,7 @@ public class NitroRomFile : INitroRom, IDisposable
 
         var fileHeader = reader.ReadInt32();
 
-        FileType = MarArchive.HeaderId == fileHeader ? "MAR Archive" : "File";
+        FileType = MarArchive.HeaderId == fileHeader ? MarArchiveFileType : OtherFileType;
 
         ndsFilesystem.NitroRomFilesById.Add(id, this);
         ndsFilesystem.NitroRomFilesByPath.Add(FullPath, this);

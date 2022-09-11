@@ -28,7 +28,7 @@
             <Menu Background="white">
                 <MenuItem Header="_File">
                     <MenuItem Header="_Open" Command="{CompiledBinding OpenFileCommand}" />
-                    <MenuItem Header="_Save" IsEnabled="False" />
+                    <MenuItem Header="_Save" Command="{CompiledBinding SaveFileCommand}" />
                     <Separator />
                     <MenuItem Header="_Exit" Command="{CompiledBinding CloseCommand}" />
                 </MenuItem>
@@ -43,7 +43,7 @@
             <TreeDataGrid Background="white" Source="{CompiledBinding NitroContentSource}">
                 <TreeDataGrid.ContextMenu>
                     <ContextMenu>
-                        <MenuItem Header="Compress" Command="{CompiledBinding CompressCommand}" IsEnabled="{Binding SelectedNitroRomNode.IsFile, FallbackValue=False}" />
+                        <MenuItem Header="Compress" Command="{CompiledBinding CompressCommand}" />
                         <MenuItem Header="Decompress" Command="{CompiledBinding DecompressCommand}" />
                     </ContextMenu>
                 </TreeDataGrid.ContextMenu>

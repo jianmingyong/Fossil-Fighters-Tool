@@ -15,9 +15,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.Reactive;
+using System.Threading.Tasks;
 using Avalonia.Controls;
-using JetBrains.Annotations;
 using ReactiveUI;
+using TheDialgaTeam.FossilFighters.Tool.Gui.Views;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels;
 
@@ -25,23 +26,40 @@ public class ViewModelBase : ReactiveObject
 {
     public ReactiveCommand<Unit, Unit> CloseCommand { get; }
 
-    public Window Window { get; }
+    protected Window Window { get; }
 
-    public ViewModelBase(Window window)
+    protected ViewModelBase(Window window)
     {
         Window = window;
-        CloseCommand = ReactiveCommand.Create(Close);
+        CloseCommand = ReactiveCommand.Create(CloseWindow);
     }
 
-    [UsedImplicitly]
-    protected virtual void Close()
+    protected Task ShowDialog(string message)
     {
+        return ShowDialog(string.Empty, message);
     }
+    
+    protected Task ShowDialog(string title, string message)
+    {
+        if (string.IsNullOrWhiteSpace(message)) return Task.CompletedTask;
 
-    [UsedImplicitly]
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            title = Window.Title;
+        }
+
+        var messageBox = new MessageBoxWindow();
+        messageBox.DataContext = new MessageBoxWindowViewModel(messageBox, title, message);
+        return messageBox.ShowDialog(Window);
+    }
+    
+    protected virtual bool Close()
+    {
+        return true;
+    }
+    
     private void CloseWindow()
     {
-        Close();
-        Window.Close();
+        if (Close()) Window.Close();
     }
 }

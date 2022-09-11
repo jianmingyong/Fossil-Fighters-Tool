@@ -14,16 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System.Threading.Tasks;
 using Avalonia.Controls;
-using TheDialgaTeam.FossilFighters.Tool.Gui.Views;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels;
 
 public class MessageBoxWindowViewModel : ViewModelBase
 {
-    public string OkButtonText => "OK";
-
     public string Title { get; }
 
     public string Message { get; }
@@ -32,22 +28,5 @@ public class MessageBoxWindowViewModel : ViewModelBase
     {
         Title = title;
         Message = message;
-    }
-}
-
-public static class MessageBoxWindowViewModelExtension
-{
-    public static Task ShowDialog(this ViewModelBase viewModel, string title, string message)
-    {
-        if (string.IsNullOrWhiteSpace(message)) return Task.CompletedTask;
-
-        if (string.IsNullOrWhiteSpace(title))
-        {
-            title = viewModel.Window.Title;
-        }
-
-        var messageBox = new MessageBoxWindow();
-        messageBox.DataContext = new MessageBoxWindowViewModel(messageBox, title, message);
-        return messageBox.ShowDialog(viewModel.Window);
     }
 }
