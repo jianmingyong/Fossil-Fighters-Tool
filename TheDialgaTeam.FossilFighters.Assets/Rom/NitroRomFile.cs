@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System.Buffers;
 using JetBrains.Annotations;
 using TheDialgaTeam.FossilFighters.Assets.Archive;
 
@@ -33,14 +32,14 @@ public sealed class NitroRomFile : INitroRom
 
     public NitroRomType FileType { get; }
 
-    public long Size => IsDirty ? FileToCommit.Length : OriginalSize;
+    public int Size => (int) (IsDirty ? DataToCommit.Length : OriginalSize);
 
-    public long OriginalOffset { get; }
+    public int OriginalOffset { get; }
 
-    public long OriginalSize { get; }
+    public int OriginalSize { get; }
 
-    internal MemoryStream FileToCommit { get; } = new();
-
+    internal MemoryStream DataToCommit { get; } = new();
+    
     internal bool IsDirty { get; private set; }
 
     private readonly NdsFilesystem _ndsFilesystem;
@@ -59,8 +58,8 @@ public sealed class NitroRomFile : INitroRom
 
         stream.Seek(ndsFilesystem.FileAllocationTableOffset + id * 8, SeekOrigin.Begin);
 
-        OriginalOffset = reader.ReadUInt32();
-        OriginalSize = reader.ReadUInt32() - OriginalOffset;
+        OriginalOffset = reader.ReadInt32();
+        OriginalSize = reader.ReadInt32() - OriginalOffset;
 
         stream.Seek(OriginalOffset, SeekOrigin.Begin);
 
@@ -74,111 +73,60 @@ public sealed class NitroRomFile : INitroRom
 
     public MemoryStream OpenRead()
     {
-        var result = new MemoryStream();
-        ReadInto(result);
-        result.Seek(0, SeekOrigin.Begin);
-        return result;
-    }
-
-    public MemoryStream OpenWrite()
-    {
-        BeforeWrite();
-        return FileToCommit;
-    }
-
-    public void ReadInto(Stream stream)
-    {
         if (IsDirty)
         {
-            FileToCommit.WriteTo(stream);
+            return new MemoryStream(DataToCommit.GetBuffer(), 0, (int) DataToCommit.Length, false);
         }
-        else
-        {
-            var bufferSize = (int) Math.Min(81920, OriginalSize);
-            var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
 
-            try
-            {
-                _ndsFilesystem.BaseStream.Seek(OriginalOffset, SeekOrigin.Begin);
-
-                var fileRemaining = OriginalSize;
-
-                while (fileRemaining > 0)
-                {
-                    int bytesRead;
-                    if ((bytesRead = _ndsFilesystem.Reader.Read(buffer, 0, bufferSize)) == 0) throw new EndOfStreamException();
-
-                    stream.Write(buffer, 0, (int) Math.Min(bytesRead, fileRemaining));
-                    fileRemaining -= bytesRead;
-                }
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(buffer);
-            }
-        }
+        _ndsFilesystem.BaseStream.Seek(OriginalOffset, SeekOrigin.Begin);
+        return new MemoryStream(_ndsFilesystem.Reader.ReadBytes(OriginalSize), false);
     }
 
     public void WriteFrom(byte[] buffer, int offset, int count)
     {
         BeforeWrite();
-        FileToCommit.Write(buffer, offset, count);
+        DataToCommit.Write(buffer, offset, count);
     }
 
     public void WriteFrom(ReadOnlySpan<byte> buffer)
     {
         BeforeWrite();
-        FileToCommit.Write(buffer);
+        DataToCommit.Write(buffer);
     }
 
     public void WriteFrom(Stream stream)
     {
         BeforeWrite();
-        stream.CopyTo(FileToCommit);
+        stream.CopyTo(DataToCommit);
     }
 
-    public Task WriteFromAsync(byte[] buffer, int offset, int count)
-    {
-        return WriteFromAsync(buffer, offset, count, CancellationToken.None);
-    }
-
-    public Task WriteFromAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    public Task WriteFromAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default)
     {
         BeforeWrite();
-        return FileToCommit.WriteAsync(buffer, offset, count, cancellationToken);
+        return DataToCommit.WriteAsync(buffer, offset, count, cancellationToken);
     }
 
-    public ValueTask WriteFromAsync(ReadOnlyMemory<byte> buffer)
-    {
-        return WriteFromAsync(buffer, CancellationToken.None);
-    }
-
-    public ValueTask WriteFromAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+    public ValueTask WriteFromAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
     {
         BeforeWrite();
-        return FileToCommit.WriteAsync(buffer, cancellationToken);
+        return DataToCommit.WriteAsync(buffer, cancellationToken);
     }
 
-    public Task WriteFromAsync(Stream stream)
-    {
-        return WriteFromAsync(stream, CancellationToken.None);
-    }
-
-    public Task WriteFromAsync(Stream stream, CancellationToken cancellationToken)
+    public Task WriteFromAsync(Stream stream, CancellationToken cancellationToken = default)
     {
         BeforeWrite();
-        return stream.CopyToAsync(FileToCommit, cancellationToken);
+        return stream.CopyToAsync(DataToCommit, cancellationToken);
     }
 
     private void BeforeWrite()
     {
         IsDirty = true;
-        FileToCommit.Seek(0, SeekOrigin.Begin);
-        FileToCommit.SetLength(0);
+        DataToCommit.Seek(0, SeekOrigin.Begin);
+        DataToCommit.SetLength(0);
     }
 
     internal void Dispose()
     {
-        FileToCommit.Dispose();
+        DataToCommit.Dispose();
     }
 }

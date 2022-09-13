@@ -26,10 +26,6 @@ public sealed class NdsFilesystem : IDisposable
 
     public string GameTitle { get; }
 
-    public string GameCode { get; }
-
-    public string MakerCode { get; }
-
     public uint FileNameTableOffset { get; }
 
     public uint FileNameTableSize { get; }
@@ -69,11 +65,6 @@ public sealed class NdsFilesystem : IDisposable
         }
 
         GameTitle = gameTitleBuilder.ToString();
-
-        stream.Seek(0x0C, SeekOrigin.Begin);
-
-        GameCode = Reader.ReadChars(4).AsSpan().ToString();
-        MakerCode = Reader.ReadChars(2).AsSpan().ToString();
 
         if (!GameTitle.Contains("KASEKI")) throw new InvalidDataException(string.Format(Localization.StreamIsNotFormat, "FF1/FFC"));
 
