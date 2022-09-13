@@ -40,7 +40,7 @@
         </Grid>
 
         <Grid Grid.Row="1" Margin="4, 4, 4, 4" IsVisible="{CompiledBinding IsRomLoaded}">
-            <TreeDataGrid Background="white" Source="{CompiledBinding NitroContentSource}">
+            <TreeDataGrid Background="white" Source="{CompiledBinding NitroRomNodeSource}">
                 <TreeDataGrid.ContextMenu>
                     <ContextMenu>
                         <MenuItem Header="Compress" Command="{CompiledBinding CompressCommand}" />

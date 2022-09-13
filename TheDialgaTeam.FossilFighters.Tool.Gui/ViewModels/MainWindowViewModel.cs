@@ -38,7 +38,7 @@ public class MainWindowViewModel : ViewModelBase
     [UsedImplicitly]
     public bool IsRomLoaded { get; }
 
-    public HierarchicalTreeDataGridSource<NitroRomNode> NitroContentSource { get; }
+    public HierarchicalTreeDataGridSource<NitroRomNode> NitroRomNodeSource { get; }
 
     public ReactiveCommand<Unit, Unit> OpenFileCommand { get; }
     
@@ -51,7 +51,7 @@ public class MainWindowViewModel : ViewModelBase
     [Reactive]
     private NdsFilesystem? LoadedRom { get; set; }
     
-    private ObservableCollection<NitroRomNode> NitroContents { get; } = new();
+    private ObservableCollection<NitroRomNode> NitroRomNodes { get; } = new();
     
     [Reactive] 
     private NitroRomNode? SelectedNitroRomNode { get; set; }
@@ -60,7 +60,7 @@ public class MainWindowViewModel : ViewModelBase
     {
         this.WhenAnyValue(model => model.LoadedRom).Select(filesystem => filesystem != null).ToPropertyEx(this, model => model.IsRomLoaded);
         
-        NitroContentSource = new HierarchicalTreeDataGridSource<NitroRomNode>(NitroContents)
+        NitroRomNodeSource = new HierarchicalTreeDataGridSource<NitroRomNode>(NitroRomNodes)
         {
             Columns =
             {
@@ -70,7 +70,7 @@ public class MainWindowViewModel : ViewModelBase
             }
         };
 
-        NitroContentSource.RowSelection!.SelectionChanged += NitroContentSourceOnSelectionChanged;
+        NitroRomNodeSource.RowSelection!.SelectionChanged += NitroContentSourceOnSelectionChanged;
         
         OpenFileCommand = ReactiveCommand.CreateFromTask(OpenFile);
         SaveFileCommand = ReactiveCommand.Create(SaveFile, this.WhenAnyValue(model => model.LoadedRom).Select(filesystem => filesystem != null).AsObservable());
@@ -92,16 +92,16 @@ public class MainWindowViewModel : ViewModelBase
             if (selectedFile == null) return;
 
             LoadedRom = NdsFilesystem.FromFile(selectedFile[0]);
-            NitroContents.Clear();
+            NitroRomNodes.Clear();
 
             foreach (var subDirectory in LoadedRom.RootDirectory.SubDirectories)
             {
-                NitroContents.Add(new NitroRomNode(subDirectory));
+                NitroRomNodes.Add(new NitroRomNode(subDirectory));
             }
 
             foreach (var file in LoadedRom.RootDirectory.Files)
             {
-                NitroContents.Add(new NitroRomNode(file));
+                NitroRomNodes.Add(new NitroRomNode(file));
             }
         }
         catch (Exception ex)
