@@ -26,7 +26,7 @@ using ColorPalette = TheDialgaTeam.FossilFighters.Assets.Motion.ColorPalette;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Cli.Command;
 
-public class DecompressCommand : System.CommandLine.Command
+public sealed class DecompressCommand : System.CommandLine.Command
 {
     public DecompressCommand() : base("decompress", Localization.DecompressCommandDescription)
     {

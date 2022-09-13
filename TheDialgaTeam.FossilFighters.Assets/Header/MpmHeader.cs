@@ -20,7 +20,7 @@ using JetBrains.Annotations;
 namespace TheDialgaTeam.FossilFighters.Assets.Header;
 
 [PublicAPI]
-public class MpmHeader
+public sealed class MpmHeader
 {
     public const int FileHeader = 0x004D504D;
 

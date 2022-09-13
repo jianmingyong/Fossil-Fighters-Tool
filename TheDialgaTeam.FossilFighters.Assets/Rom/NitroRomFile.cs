@@ -21,11 +21,8 @@ using TheDialgaTeam.FossilFighters.Assets.Archive;
 namespace TheDialgaTeam.FossilFighters.Assets.Rom;
 
 [PublicAPI]
-public class NitroRomFile : INitroRom, IDisposable
+public sealed class NitroRomFile : INitroRom
 {
-    public const string MarArchiveFileType = "MAR Archive";
-    public const string OtherFileType = "File";
-    
     public NitroRomDirectory Directory { get; }
 
     public string FullPath => $"{Directory.FullPath}/{Name}";
@@ -34,16 +31,19 @@ public class NitroRomFile : INitroRom, IDisposable
 
     public string Name { get; }
 
-    public string FileType { get; }
+    public NitroRomType FileType { get; }
 
-    public long Size => _fileCacheMemoryStream?.Length ?? OriginalSize;
+    public long Size => IsDirty ? FileToCommit.Length : OriginalSize;
 
     public long OriginalOffset { get; }
 
     public long OriginalSize { get; }
 
+    internal MemoryStream FileToCommit { get; } = new();
+
+    internal bool IsDirty { get; private set; }
+
     private readonly NdsFilesystem _ndsFilesystem;
-    private MemoryStream? _fileCacheMemoryStream;
 
     public NitroRomFile(NdsFilesystem ndsFilesystem, NitroRomDirectory directory, ushort id, string name)
     {
@@ -56,7 +56,7 @@ public class NitroRomFile : INitroRom, IDisposable
 
         var stream = ndsFilesystem.BaseStream;
         var reader = ndsFilesystem.Reader;
-        
+
         stream.Seek(ndsFilesystem.FileAllocationTableOffset + id * 8, SeekOrigin.Begin);
 
         OriginalOffset = reader.ReadUInt32();
@@ -66,48 +66,119 @@ public class NitroRomFile : INitroRom, IDisposable
 
         var fileHeader = reader.ReadInt32();
 
-        FileType = MarArchive.HeaderId == fileHeader ? MarArchiveFileType : OtherFileType;
+        FileType = MarArchive.HeaderId == fileHeader ? NitroRomType.MarArchive : NitroRomType.File;
 
         ndsFilesystem.NitroRomFilesById.Add(id, this);
         ndsFilesystem.NitroRomFilesByPath.Add(FullPath, this);
     }
 
-    public MemoryStream Open()
+    public MemoryStream OpenRead()
     {
-        if (_fileCacheMemoryStream != null)
-        {
-            _fileCacheMemoryStream.Seek(0, SeekOrigin.Begin);
-            return _fileCacheMemoryStream;
-        }
-
-        _fileCacheMemoryStream = new MemoryStream((int) OriginalSize);
-        _ndsFilesystem.BaseStream.Seek(OriginalOffset, SeekOrigin.Begin);
-
-        var buffer = ArrayPool<byte>.Shared.Rent(4096);
-        var fileRemaining = OriginalSize;
-
-        try
-        {
-            while (fileRemaining > 0)
-            {
-                int bytesRead;
-                if ((bytesRead = _ndsFilesystem.Reader.Read(buffer, 0, 4096)) == 0) throw new EndOfStreamException();
-
-                _fileCacheMemoryStream.Write(buffer, 0, (int) Math.Min(bytesRead, fileRemaining));
-                fileRemaining -= bytesRead;
-            }
-        }
-        finally
-        {
-            ArrayPool<byte>.Shared.Return(buffer);
-        }
-
-        _fileCacheMemoryStream.Seek(0, SeekOrigin.Begin);
-        return _fileCacheMemoryStream;
+        var result = new MemoryStream();
+        ReadInto(result);
+        result.Seek(0, SeekOrigin.Begin);
+        return result;
     }
 
-    public void Dispose()
+    public MemoryStream OpenWrite()
     {
-        _fileCacheMemoryStream?.Dispose();
+        BeforeWrite();
+        return FileToCommit;
+    }
+
+    public void ReadInto(Stream stream)
+    {
+        if (IsDirty)
+        {
+            FileToCommit.WriteTo(stream);
+        }
+        else
+        {
+            var bufferSize = (int) Math.Min(81920, OriginalSize);
+            var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+
+            try
+            {
+                _ndsFilesystem.BaseStream.Seek(OriginalOffset, SeekOrigin.Begin);
+
+                var fileRemaining = OriginalSize;
+
+                while (fileRemaining > 0)
+                {
+                    int bytesRead;
+                    if ((bytesRead = _ndsFilesystem.Reader.Read(buffer, 0, bufferSize)) == 0) throw new EndOfStreamException();
+
+                    stream.Write(buffer, 0, (int) Math.Min(bytesRead, fileRemaining));
+                    fileRemaining -= bytesRead;
+                }
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
+        }
+    }
+
+    public void WriteFrom(byte[] buffer, int offset, int count)
+    {
+        BeforeWrite();
+        FileToCommit.Write(buffer, offset, count);
+    }
+
+    public void WriteFrom(ReadOnlySpan<byte> buffer)
+    {
+        BeforeWrite();
+        FileToCommit.Write(buffer);
+    }
+
+    public void WriteFrom(Stream stream)
+    {
+        BeforeWrite();
+        stream.CopyTo(FileToCommit);
+    }
+
+    public Task WriteFromAsync(byte[] buffer, int offset, int count)
+    {
+        return WriteFromAsync(buffer, offset, count, CancellationToken.None);
+    }
+
+    public Task WriteFromAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        BeforeWrite();
+        return FileToCommit.WriteAsync(buffer, offset, count, cancellationToken);
+    }
+
+    public ValueTask WriteFromAsync(ReadOnlyMemory<byte> buffer)
+    {
+        return WriteFromAsync(buffer, CancellationToken.None);
+    }
+
+    public ValueTask WriteFromAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+    {
+        BeforeWrite();
+        return FileToCommit.WriteAsync(buffer, cancellationToken);
+    }
+
+    public Task WriteFromAsync(Stream stream)
+    {
+        return WriteFromAsync(stream, CancellationToken.None);
+    }
+
+    public Task WriteFromAsync(Stream stream, CancellationToken cancellationToken)
+    {
+        BeforeWrite();
+        return stream.CopyToAsync(FileToCommit, cancellationToken);
+    }
+
+    private void BeforeWrite()
+    {
+        IsDirty = true;
+        FileToCommit.Seek(0, SeekOrigin.Begin);
+        FileToCommit.SetLength(0);
+    }
+
+    internal void Dispose()
+    {
+        FileToCommit.Dispose();
     }
 }

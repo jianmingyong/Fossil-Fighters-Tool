@@ -17,6 +17,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
@@ -64,8 +65,8 @@ public class MainWindowViewModel : ViewModelBase
         {
             Columns =
             {
-                new HierarchicalExpanderColumn<NitroRomNode>(new TextColumn<NitroRomNode, string>("Name", node => node.Name), node => node.Subfolders, node => node.Subfolders.Count > 0),
-                new TextColumn<NitroRomNode, string>("Type", node => node.FileType),
+                new HierarchicalExpanderColumn<NitroRomNode>(new TextColumn<NitroRomNode, string>("Name", node => node.Name), node => node.ChildNodes, node => node.ChildNodes.Count > 0),
+                new TextColumn<NitroRomNode, string>("Type", node => node.FileTypeDisplay),
                 new TextColumn<NitroRomNode, string>("Size", node => !node.IsFile ? string.Empty : $"{node.Size:N0} B")
             }
         };
@@ -129,12 +130,78 @@ public class MainWindowViewModel : ViewModelBase
 
             if (SelectedNitroRomNode!.IsFile)
             {
-                
+                if (SelectedNitroRomNode.FileType == NitroRomType.MarArchive)
+                {
+                    DecompressFile(SelectedNitroRomNode, selectedFolder);
+                }
+                else
+                {
+                    ExportFile(SelectedNitroRomNode, selectedFolder);
+                }
             }
+            else
+            {
+                DecompressFolder(SelectedNitroRomNode, selectedFolder);
+            }
+
+            await ShowDialog("Decompress completed.");
         }
         catch (Exception ex)
         {
             await ShowDialog("Error", ex.ToString());
         }
+    }
+
+    private void DecompressFolder(NitroRomNode targetFolder, string targetLocation)
+    {
+        foreach (var targetFolderChildNode in targetFolder.ChildNodes)
+        {
+            if (targetFolderChildNode.IsFile)
+            {
+                if (targetFolderChildNode.FileType == NitroRomType.MarArchive)
+                {
+                    DecompressFile(targetFolderChildNode, Path.Combine(targetLocation, targetFolder.Name));
+                }
+                else
+                {
+                    ExportFile(targetFolderChildNode, Path.Combine(targetLocation, targetFolder.Name));
+                }
+            }
+            else
+            {
+                DecompressFolder(targetFolderChildNode, Path.Combine(targetLocation, targetFolder.Name));
+            }
+        }
+    }
+
+    private void DecompressFile(NitroRomNode targetFile, string targetLocation)
+    {
+        using var marArchive = new MarArchive(LoadedRom!.GetFileByPath(targetFile.FullPath).OpenRead());
+
+        for (var index = 0; index < marArchive.Entries.Count; index++)
+        {
+            var marArchiveEntry = marArchive.Entries[index];
+            var outputFileDirectory = Path.Combine(targetLocation, targetFile.Name);
+
+            if (!Directory.Exists(outputFileDirectory))
+            {
+                Directory.CreateDirectory(outputFileDirectory);
+            }
+
+            using var mcmFile = marArchiveEntry.OpenRead();
+            using var outputFile = File.Open(Path.Combine(outputFileDirectory, $"{index}.bin"), FileMode.Create);
+            mcmFile.CopyTo(outputFile);
+        }
+    }
+
+    private void ExportFile(NitroRomNode targetFile, string targetLocation)
+    {
+        if (!Directory.Exists(targetLocation))
+        {
+            Directory.CreateDirectory(targetLocation);
+        }
+
+        using var outputFile = File.Open(Path.Combine(targetLocation, targetFile.Name), FileMode.Create);
+        LoadedRom!.GetFileByPath(targetFile.FullPath).OpenRead().CopyTo(outputFile);
     }
 }

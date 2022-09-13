@@ -16,7 +16,7 @@
 
 namespace TheDialgaTeam.FossilFighters.Assets.Archive.Compression.Huffman;
 
-public class HuffmanNode
+public sealed class HuffmanNode
 {
     public HuffmanNode? Parent { get; set; }
 

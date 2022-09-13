@@ -20,7 +20,7 @@ using TheDialgaTeam.FossilFighters.Assets.Archive;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Cli.Command;
 
-public class CompressCommand : System.CommandLine.Command
+public sealed class CompressCommand : System.CommandLine.Command
 {
     public CompressCommand() : base("compress", Localization.CompressCommandDescription)
     {

@@ -19,7 +19,7 @@ using JetBrains.Annotations;
 namespace TheDialgaTeam.FossilFighters.Assets.Rom;
 
 [PublicAPI]
-public class NitroRomDirectory : INitroRom, IDisposable
+public sealed class NitroRomDirectory : INitroRom
 {
     public string FullPath
     {
@@ -47,7 +47,7 @@ public class NitroRomDirectory : INitroRom, IDisposable
 
     public string Name { get; }
 
-    public string FileType => "File Folder";
+    public NitroRomType FileType => NitroRomType.FileFolder;
 
     public List<NitroRomDirectory> SubDirectories { get; } = new();
 
@@ -107,7 +107,7 @@ public class NitroRomDirectory : INitroRom, IDisposable
         }
     }
 
-    public void Dispose()
+    internal void Dispose()
     {
         foreach (var nitroRomFile in Files)
         {

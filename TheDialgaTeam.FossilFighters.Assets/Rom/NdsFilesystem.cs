@@ -42,23 +42,23 @@ public sealed class NdsFilesystem : IDisposable
 
     internal BinaryReader Reader { get; }
 
-    //internal BinaryWriter Writer { get; }
+    internal BinaryWriter Writer { get; }
 
     internal Dictionary<ushort, NitroRomDirectory> NitroRomDirectories { get; } = new();
 
-    internal Dictionary<ushort, NitroRomFile> NitroRomFilesById { get; } = new();
+    internal SortedDictionary<ushort, NitroRomFile> NitroRomFilesById { get; } = new();
 
     internal Dictionary<string, NitroRomFile> NitroRomFilesByPath { get; } = new();
 
     private NdsFilesystem(FileStream stream, bool leaveOpen = false)
     {
         if (!stream.CanRead) throw new ArgumentException(Localization.StreamIsNotReadable, nameof(stream));
-        //if (!stream.CanWrite) throw new ArgumentException(Localization.StreamIsNotWriteable, nameof(stream));
+        if (!stream.CanWrite) throw new ArgumentException(Localization.StreamIsNotWriteable, nameof(stream));
 
         BaseStream = stream;
 
         Reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen);
-        //Writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen);
+        Writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen);
 
         var gameTitleBuilder = new StringBuilder();
         char tempChar;
@@ -90,7 +90,7 @@ public sealed class NdsFilesystem : IDisposable
 
     public static NdsFilesystem FromFile(string filePath)
     {
-        return new NdsFilesystem(File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.Read));
+        return new NdsFilesystem(File.Open(filePath, FileMode.Open, FileAccess.ReadWrite));
     }
 
     public NitroRomFile GetFileById(ushort id)
@@ -108,10 +108,15 @@ public sealed class NdsFilesystem : IDisposable
         return NitroRomFilesByPath.Values;
     }
 
+    public void SaveChanges()
+    {
+        throw new NotImplementedException();
+    }
+
     public void Dispose()
     {
         Reader.Dispose();
-        //Writer.Dispose();
+        Writer.Dispose();
         RootDirectory.Dispose();
     }
 }

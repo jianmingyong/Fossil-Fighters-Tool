@@ -14,20 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System;
 using System.Collections.ObjectModel;
 using TheDialgaTeam.FossilFighters.Assets.Rom;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Gui.Models;
 
-public class NitroRomNode
+public sealed class NitroRomNode
 {
-    public ObservableCollection<NitroRomNode> Subfolders { get; } = new();
+    private const string FileFolderTypeName = "File Folder";
+    private const string FileTypeName = "File";
+    private const string MarArchiveTypeName = "Mar Archive";
+
+    public ObservableCollection<NitroRomNode> ChildNodes { get; } = new();
 
     public string FullPath => _nitroRom.FullPath;
 
     public string Name => _nitroRom.Name;
 
-    public string FileType => _nitroRom.FileType;
+    public NitroRomType FileType => _nitroRom.FileType;
+
+    public string FileTypeDisplay { get; }
 
     public bool IsFile => _nitroRom is NitroRomFile;
 
@@ -39,16 +46,24 @@ public class NitroRomNode
     {
         _nitroRom = nitroRom;
 
+        FileTypeDisplay = nitroRom.FileType switch
+        {
+            NitroRomType.FileFolder => FileFolderTypeName,
+            NitroRomType.File => FileTypeName,
+            NitroRomType.MarArchive => MarArchiveTypeName,
+            var _ => throw new ArgumentOutOfRangeException()
+        };
+
         if (nitroRom is not NitroRomDirectory nitroRomDirectory) return;
 
         foreach (var subDirectory in nitroRomDirectory.SubDirectories)
         {
-            Subfolders.Add(new NitroRomNode(subDirectory));
+            ChildNodes.Add(new NitroRomNode(subDirectory));
         }
 
         foreach (var file in nitroRomDirectory.Files)
         {
-            Subfolders.Add(new NitroRomNode(file));
+            ChildNodes.Add(new NitroRomNode(file));
         }
     }
 }
