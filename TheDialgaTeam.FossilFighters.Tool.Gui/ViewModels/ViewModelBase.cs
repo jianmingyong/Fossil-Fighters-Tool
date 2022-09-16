@@ -38,7 +38,7 @@ public class ViewModelBase : ReactiveObject
     {
         return ShowDialog(string.Empty, message);
     }
-    
+
     protected Task ShowDialog(string title, string message)
     {
         if (string.IsNullOrWhiteSpace(message)) return Task.CompletedTask;
@@ -52,12 +52,12 @@ public class ViewModelBase : ReactiveObject
         messageBox.DataContext = new MessageBoxWindowViewModel(messageBox, title, message);
         return messageBox.ShowDialog(Window);
     }
-    
+
     protected virtual bool Close()
     {
         return true;
     }
-    
+
     private void CloseWindow()
     {
         if (Close()) Window.Close();

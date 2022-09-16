@@ -132,6 +132,15 @@ namespace TheDialgaTeam.FossilFighters.Assets {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The stream provided is not seekable..
+        /// </summary>
+        internal static string StreamIsNotSeekable {
+            get {
+                return ResourceManager.GetString("StreamIsNotSeekable", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The stream provided is not writeable..
         /// </summary>
         internal static string StreamIsNotWriteable {

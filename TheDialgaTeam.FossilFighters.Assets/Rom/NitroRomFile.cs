@@ -32,17 +32,19 @@ public sealed class NitroRomFile : INitroRom
 
     public NitroRomType FileType { get; }
 
-    public int Size => (int) (IsDirty ? DataToCommit.Length : OriginalSize);
+    public int Size => (int) (IsDirty ? NitroRomData.Length : OriginalSize);
 
     public int OriginalOffset { get; }
 
     public int OriginalSize { get; }
 
-    internal MemoryStream DataToCommit { get; } = new();
-    
+    internal MemoryStream NitroRomData { get; } = new();
+
     internal bool IsDirty { get; private set; }
 
     private readonly NdsFilesystem _ndsFilesystem;
+
+    private bool _isLoaded;
 
     public NitroRomFile(NdsFilesystem ndsFilesystem, NitroRomDirectory directory, ushort id, string name)
     {
@@ -73,60 +75,66 @@ public sealed class NitroRomFile : INitroRom
 
     public MemoryStream OpenRead()
     {
-        if (IsDirty)
+        if (!_isLoaded && !IsDirty)
         {
-            return new MemoryStream(DataToCommit.GetBuffer(), 0, (int) DataToCommit.Length, false);
+            _ndsFilesystem.BaseStream.Seek(OriginalOffset, SeekOrigin.Begin);
+
+            NitroRomData.Seek(0, SeekOrigin.Begin);
+            NitroRomData.SetLength(0);
+
+            NitroRomData.Write(_ndsFilesystem.Reader.ReadBytes(OriginalSize));
+
+            _isLoaded = true;
         }
 
-        _ndsFilesystem.BaseStream.Seek(OriginalOffset, SeekOrigin.Begin);
-        return new MemoryStream(_ndsFilesystem.Reader.ReadBytes(OriginalSize), false);
+        return new MemoryStream(NitroRomData.GetBuffer(), 0, (int) NitroRomData.Length, false);
     }
 
     public void WriteFrom(byte[] buffer, int offset, int count)
     {
         BeforeWrite();
-        DataToCommit.Write(buffer, offset, count);
+        NitroRomData.Write(buffer, offset, count);
     }
 
     public void WriteFrom(ReadOnlySpan<byte> buffer)
     {
         BeforeWrite();
-        DataToCommit.Write(buffer);
+        NitroRomData.Write(buffer);
     }
 
     public void WriteFrom(Stream stream)
     {
         BeforeWrite();
-        stream.CopyTo(DataToCommit);
+        stream.CopyTo(NitroRomData);
     }
 
     public Task WriteFromAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default)
     {
         BeforeWrite();
-        return DataToCommit.WriteAsync(buffer, offset, count, cancellationToken);
+        return NitroRomData.WriteAsync(buffer, offset, count, cancellationToken);
     }
 
     public ValueTask WriteFromAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
     {
         BeforeWrite();
-        return DataToCommit.WriteAsync(buffer, cancellationToken);
+        return NitroRomData.WriteAsync(buffer, cancellationToken);
     }
 
     public Task WriteFromAsync(Stream stream, CancellationToken cancellationToken = default)
     {
         BeforeWrite();
-        return stream.CopyToAsync(DataToCommit, cancellationToken);
+        return stream.CopyToAsync(NitroRomData, cancellationToken);
     }
 
     private void BeforeWrite()
     {
         IsDirty = true;
-        DataToCommit.Seek(0, SeekOrigin.Begin);
-        DataToCommit.SetLength(0);
+        NitroRomData.Seek(0, SeekOrigin.Begin);
+        NitroRomData.SetLength(0);
     }
 
     internal void Dispose()
     {
-        DataToCommit.Dispose();
+        NitroRomData.Dispose();
     }
 }

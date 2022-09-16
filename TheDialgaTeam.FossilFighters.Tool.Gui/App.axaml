@@ -5,6 +5,27 @@
     <Application.Styles>
         <FluentTheme Mode="Light" />
         <StyleInclude Source="avares://Avalonia.Controls.TreeDataGrid/Themes/Fluent.axaml" />
+
+        <Style Selector="Window">
+            <Setter Property="Title" Value="Fossil Fighters Tool" />
+            <Setter Property="Icon" Value="/Assets/fossil-fighters-logo.ico" />
+            <Setter Property="Background">
+                <ImageBrush Source="/Assets/967.png" Stretch="Fill" />
+            </Setter>
+            <Setter Property="Padding" Value="8" />
+        </Style>
+
+        <Style Selector="Grid Grid">
+            <Setter Property="Margin" Value="0, 4, 0, 4" />
+        </Style>
+
+        <Style Selector="Grid Grid:nth-child(1)">
+            <Setter Property="Margin" Value="0, 0, 0, 4" />
+        </Style>
+
+        <Style Selector="Grid Grid:nth-last-child(1)">
+            <Setter Property="Margin" Value="0, 4, 0, 0" />
+        </Style>
     </Application.Styles>
 
 </Application>

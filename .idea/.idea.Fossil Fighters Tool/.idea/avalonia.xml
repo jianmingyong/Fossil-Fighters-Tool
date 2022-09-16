@@ -4,8 +4,7 @@
     <option name="projectPerEditor">
       <map>
         <entry key="TheDialgaTeam.FossilFighters.Tool.Gui/App.axaml" value="TheDialgaTeam.FossilFighters.Tool.Gui/TheDialgaTeam.FossilFighters.Tool.Gui.csproj" />
-        <entry key="TheDialgaTeam.FossilFighters.Tool.Gui/TheDialgaTeam.FossilFighters.Tool.Gui/App.axaml" value="TheDialgaTeam.FossilFighters.Tool.Gui/TheDialgaTeam.FossilFighters.Tool.Gui.Desktop/TheDialgaTeam.FossilFighters.Tool.Gui.Desktop.csproj" />
-        <entry key="TheDialgaTeam.FossilFighters.Tool.Gui/TheDialgaTeam.FossilFighters.Tool.Gui/Views/MainView.axaml" value="TheDialgaTeam.FossilFighters.Tool.Gui/TheDialgaTeam.FossilFighters.Tool.Gui.Desktop/TheDialgaTeam.FossilFighters.Tool.Gui.Desktop.csproj" />
+        <entry key="TheDialgaTeam.FossilFighters.Tool.Gui/Views/Editor/BpExchangeWindow.axaml" value="TheDialgaTeam.FossilFighters.Tool.Gui/TheDialgaTeam.FossilFighters.Tool.Gui.csproj" />
         <entry key="TheDialgaTeam.FossilFighters.Tool.Gui/Views/MainWindow.axaml" value="TheDialgaTeam.FossilFighters.Tool.Gui/TheDialgaTeam.FossilFighters.Tool.Gui.csproj" />
         <entry key="TheDialgaTeam.FossilFighters.Tool.Gui/Views/MessageBoxWindow.axaml" value="TheDialgaTeam.FossilFighters.Tool.Gui/TheDialgaTeam.FossilFighters.Tool.Gui.csproj" />
       </map>

@@ -31,8 +31,8 @@ This project is build with [dotnet 6.0](https://dotnet.microsoft.com/download/do
 Git CLI: `git clone https://github.com/jianmingyong/Fossil-Fighters-Tool.git`
 
 2. Build the program with dotnet CLI. <br />
-For windows: `dotnet publish -r win-x64 -o bin/win-x64 --self-contained true` <br />
-For linux: `dotnet publish -r linux-x64 -o bin/linux-x64 --self-contained true` <br />
-For macOS: `dotnet publish -r osx-x64 -o bin/osx-x64 --self-contained true` <br />
+For windows: `dotnet publish -c Release -r win-x64 -o bin/win-x64 --self-contained true` <br />
+For linux: `dotnet publish -c Release -r linux-x64 -o bin/linux-x64 --self-contained true` <br />
+For macOS: `dotnet publish -c Release -r osx-x64 -o bin/osx-x64 --self-contained true` <br />
 
 <p align="right">(<a href="#top">back to top</a>)</p>

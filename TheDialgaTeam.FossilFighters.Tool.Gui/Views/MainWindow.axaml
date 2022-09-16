@@ -1,14 +1,12 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="TheDialgaTeam.FossilFighters.Tool.Gui.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         x:CompileBindings="True"
-        Icon="/Assets/fossil-fighters-logo.ico"
-        Title="Fossil Fighters Tool"
         Width="640" Height="512" MinWidth="640" MinHeight="512" WindowStartupLocation="CenterScreen">
 
     <Design.DataContext>
@@ -19,12 +17,8 @@
         </vm:MainWindowViewModel>
     </Design.DataContext>
 
-    <Window.Background>
-        <ImageBrush Source="/Assets/967.png" Stretch="Fill" />
-    </Window.Background>
-
-    <Grid RowDefinitions="Auto, *" Margin="4">
-        <Grid Grid.Row="0" RowDefinitions="*" ColumnDefinitions="*" Margin="4, 4, 4, 4">
+    <Grid RowDefinitions="Auto, *">
+        <Grid Grid.Row="0" RowDefinitions="*" ColumnDefinitions="*">
             <Menu Background="white">
                 <MenuItem Header="_File">
                     <MenuItem Header="_Open" Command="{CompiledBinding OpenFileCommand}" />
@@ -39,7 +33,7 @@
             </Menu>
         </Grid>
 
-        <Grid Grid.Row="1" Margin="4, 4, 4, 4" IsVisible="{CompiledBinding IsRomLoaded}">
+        <Grid Grid.Row="1" IsVisible="{CompiledBinding IsRomLoaded}">
             <TreeDataGrid Background="white" Source="{CompiledBinding NitroRomNodeSource}">
                 <TreeDataGrid.ContextMenu>
                     <ContextMenu>
@@ -50,5 +44,5 @@
             </TreeDataGrid>
         </Grid>
     </Grid>
-    
+
 </Window>

@@ -42,25 +42,25 @@ public class MainWindowViewModel : ViewModelBase
     public HierarchicalTreeDataGridSource<NitroRomNode> NitroRomNodeSource { get; }
 
     public ReactiveCommand<Unit, Unit> OpenFileCommand { get; }
-    
+
     public ReactiveCommand<Unit, Unit> SaveFileCommand { get; }
 
     public ReactiveCommand<Unit, Unit> CompressCommand { get; }
 
     public ReactiveCommand<Unit, Unit> DecompressCommand { get; }
-    
+
+    private ObservableCollection<NitroRomNode> NitroRomNodes { get; } = new();
+
     [Reactive]
     private NdsFilesystem? LoadedRom { get; set; }
-    
-    private ObservableCollection<NitroRomNode> NitroRomNodes { get; } = new();
-    
-    [Reactive] 
+
+    [Reactive]
     private NitroRomNode? SelectedNitroRomNode { get; set; }
 
     public MainWindowViewModel(Window window) : base(window)
     {
         this.WhenAnyValue(model => model.LoadedRom).Select(filesystem => filesystem != null).ToPropertyEx(this, model => model.IsRomLoaded);
-        
+
         NitroRomNodeSource = new HierarchicalTreeDataGridSource<NitroRomNode>(NitroRomNodes)
         {
             Columns =
@@ -72,7 +72,7 @@ public class MainWindowViewModel : ViewModelBase
         };
 
         NitroRomNodeSource.RowSelection!.SelectionChanged += NitroContentSourceOnSelectionChanged;
-        
+
         OpenFileCommand = ReactiveCommand.CreateFromTask(OpenFile);
         SaveFileCommand = ReactiveCommand.Create(SaveFile, this.WhenAnyValue(model => model.LoadedRom).Select(filesystem => filesystem != null).AsObservable());
         CompressCommand = ReactiveCommand.Create(Compress, this.WhenAnyValue(model => model.SelectedNitroRomNode).Select(node => node?.IsFile ?? false).AsObservable());
@@ -113,7 +113,6 @@ public class MainWindowViewModel : ViewModelBase
 
     private void SaveFile()
     {
-        
     }
 
     private void Compress()
@@ -176,7 +175,8 @@ public class MainWindowViewModel : ViewModelBase
 
     private void DecompressFile(NitroRomNode targetFile, string targetLocation)
     {
-        using var marArchive = new MarArchive(LoadedRom!.GetFileByPath(targetFile.FullPath).OpenRead());
+        using var nitroRomFile = LoadedRom!.GetFileByPath(targetFile.FullPath).OpenRead();
+        using var marArchive = new MarArchive(nitroRomFile);
 
         for (var index = 0; index < marArchive.Entries.Count; index++)
         {
@@ -202,6 +202,7 @@ public class MainWindowViewModel : ViewModelBase
         }
 
         using var outputFile = File.Open(Path.Combine(targetLocation, targetFile.Name), FileMode.Create);
-        LoadedRom!.GetFileByPath(targetFile.FullPath).OpenRead().CopyTo(outputFile);
+        using var nitroRomFile = LoadedRom!.GetFileByPath(targetFile.FullPath).OpenRead();
+        nitroRomFile.CopyTo(outputFile);
     }
 }

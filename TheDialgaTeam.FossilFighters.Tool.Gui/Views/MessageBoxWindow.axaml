@@ -1,15 +1,15 @@
 ﻿<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels"
         mc:Ignorable="d" d:DesignWidth="300" d:DesignHeight="100"
         x:Class="TheDialgaTeam.FossilFighters.Tool.Gui.Views.MessageBoxWindow"
         x:DataType="vm:MessageBoxWindowViewModel"
         x:CompileBindings="True"
         Title="{CompiledBinding Title}"
         MinWidth="300" MinHeight="100" MaxWidth="600" MaxHeight="540" WindowStartupLocation="CenterScreen"
-        SizeToContent="WidthAndHeight">
+        SizeToContent="WidthAndHeight" Background="{x:Null}">
 
     <Design.DataContext>
         <vm:MessageBoxWindowViewModel>
@@ -21,7 +21,7 @@
         </vm:MessageBoxWindowViewModel>
     </Design.DataContext>
 
-    <Grid RowDefinitions="*, Auto" Margin="8">
+    <Grid RowDefinitions="*, Auto">
         <TextBlock Grid.Row="0" Text="{CompiledBinding Message}" VerticalAlignment="Center" TextWrapping="Wrap" />
         <Button Grid.Row="1" HorizontalAlignment="Right" Command="{CompiledBinding CloseCommand}">
             <TextBlock Text="OK" />

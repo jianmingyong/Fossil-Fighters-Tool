@@ -95,8 +95,7 @@ public sealed class NitroRomDirectory : INitroRom
             else if (subTableType < 0x80)
             {
                 // Files
-                var length = subTableType;
-                var fileName = reader.ReadChars(length).AsSpan().ToString();
+                var fileName = reader.ReadChars(subTableType).AsSpan().ToString();
 
                 var tempPosition = stream.Position;
                 Files.Add(new NitroRomFile(ndsFilesystem, this, firstFileId, fileName));

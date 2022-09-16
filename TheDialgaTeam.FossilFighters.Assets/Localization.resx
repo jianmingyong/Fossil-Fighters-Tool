@@ -51,4 +51,7 @@
     <data name="StreamIsNotFormat" xml:space="preserve">
         <value>The contents of the stream is not a {0} file.</value>
     </data>
+    <data name="StreamIsNotSeekable" xml:space="preserve">
+        <value>The stream provided is not seekable.</value>
+    </data>
 </root>

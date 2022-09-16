@@ -22,10 +22,6 @@ namespace TheDialgaTeam.FossilFighters.Tool.Gui.Models;
 
 public sealed class NitroRomNode
 {
-    private const string FileFolderTypeName = "File Folder";
-    private const string FileTypeName = "File";
-    private const string MarArchiveTypeName = "Mar Archive";
-
     public ObservableCollection<NitroRomNode> ChildNodes { get; } = new();
 
     public string FullPath => _nitroRom.FullPath;
@@ -39,6 +35,10 @@ public sealed class NitroRomNode
     public bool IsFile => _nitroRom is NitroRomFile;
 
     public long Size => _nitroRom is NitroRomFile test ? test.Size : 0;
+
+    private const string FileFolderTypeName = "File Folder";
+    private const string FileTypeName = "File";
+    private const string MarArchiveTypeName = "Mar Archive";
 
     private readonly INitroRom _nitroRom;
 

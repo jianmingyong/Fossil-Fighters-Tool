@@ -56,15 +56,8 @@ public sealed class NdsFilesystem : IDisposable
         Reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen);
         Writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen);
 
-        var gameTitleBuilder = new StringBuilder();
-        char tempChar;
-
-        while ((tempChar = Reader.ReadChar()) != '\0')
-        {
-            gameTitleBuilder.Append(tempChar);
-        }
-
-        GameTitle = gameTitleBuilder.ToString();
+        var tempGameTitle = Reader.ReadChars(12).AsSpan();
+        GameTitle = tempGameTitle.TrimEnd('\0').ToString();
 
         if (!GameTitle.Contains("KASEKI")) throw new InvalidDataException(string.Format(Localization.StreamIsNotFormat, "FF1/FFC"));
 

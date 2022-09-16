@@ -21,7 +21,7 @@ using JetBrains.Annotations;
 namespace TheDialgaTeam.FossilFighters.Assets.Archive;
 
 [PublicAPI]
-public sealed class MarArchiveEntry : IDisposable
+public sealed class MarArchiveEntry
 {
     internal readonly MemoryStream MemoryStream;
 
@@ -82,7 +82,7 @@ public sealed class MarArchiveEntry : IDisposable
         return reader.ReadInt32();
     }
 
-    public void Dispose()
+    internal void Dispose()
     {
         MemoryStream.Dispose();
     }

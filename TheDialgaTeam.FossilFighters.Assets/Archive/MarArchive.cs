@@ -24,7 +24,7 @@ namespace TheDialgaTeam.FossilFighters.Assets.Archive;
 public sealed class MarArchive : IDisposable
 {
     public const int HeaderId = 0x0052414D;
-    
+
     public Stream BaseStream { get; }
 
     public MarArchiveMode Mode { get; }
