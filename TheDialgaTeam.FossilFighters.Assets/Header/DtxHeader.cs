@@ -35,16 +35,16 @@ public sealed class DtxHeader
 
         if (reader.ReadInt32() != FileHeader) throw new InvalidDataException(string.Format(Localization.StreamIsNotFormat, "DTX"));
 
-        var textCount = reader.ReadInt32();
+        var textCount = reader.ReadUInt32();
         Texts = new string[textCount];
 
-        stream.Seek(reader.ReadInt32(), SeekOrigin.Begin);
+        stream.Seek(reader.ReadUInt32(), SeekOrigin.Begin);
 
-        var textOffsets = new int[textCount];
+        var textOffsets = new uint[textCount];
 
         for (var i = 0; i < textCount; i++)
         {
-            textOffsets[i] = reader.ReadInt32();
+            textOffsets[i] = reader.ReadUInt32();
         }
 
         for (var i = 0; i < textCount; i++)

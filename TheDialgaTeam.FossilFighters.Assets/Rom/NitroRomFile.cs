@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System.Buffers;
 using JetBrains.Annotations;
 using TheDialgaTeam.FossilFighters.Assets.Archive;
 
@@ -34,9 +35,9 @@ public sealed class NitroRomFile : INitroRom
 
     public int Size => (int) (IsDirty ? NitroRomData.Length : OriginalSize);
 
-    public int OriginalOffset { get; }
+    public uint OriginalOffset { get; }
 
-    public int OriginalSize { get; }
+    public uint OriginalSize { get; }
 
     internal MemoryStream NitroRomData { get; } = new();
 
@@ -54,14 +55,14 @@ public sealed class NitroRomFile : INitroRom
 
         Id = id;
         Name = name;
-
+        
         var stream = ndsFilesystem.BaseStream;
         var reader = ndsFilesystem.Reader;
 
         stream.Seek(ndsFilesystem.FileAllocationTableOffset + id * 8, SeekOrigin.Begin);
 
-        OriginalOffset = reader.ReadInt32();
-        OriginalSize = reader.ReadInt32() - OriginalOffset;
+        OriginalOffset = reader.ReadUInt32();
+        OriginalSize = reader.ReadUInt32() - OriginalOffset;
 
         stream.Seek(OriginalOffset, SeekOrigin.Begin);
 
@@ -77,13 +78,33 @@ public sealed class NitroRomFile : INitroRom
     {
         if (!_isLoaded && !IsDirty)
         {
-            _ndsFilesystem.BaseStream.Seek(OriginalOffset, SeekOrigin.Begin);
+            var stream = _ndsFilesystem.BaseStream;
+            stream.Seek(OriginalOffset, SeekOrigin.Begin);
 
             NitroRomData.Seek(0, SeekOrigin.Begin);
             NitroRomData.SetLength(0);
 
-            NitroRomData.Write(_ndsFilesystem.Reader.ReadBytes(OriginalSize));
+            long remainingSize = OriginalSize;
+            
+            var bufferSize = (int) Math.Min(81920, remainingSize);
+            var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
 
+            try
+            {
+                while (remainingSize > 0)
+                {
+                    int read;
+                    if ((read = stream.Read(buffer, 0, bufferSize)) == 0) throw new EndOfStreamException();
+                    
+                    NitroRomData.Write(buffer, 0, (int) Math.Min(remainingSize, read));
+                    remainingSize -= read;
+                }
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
+            
             _isLoaded = true;
         }
 

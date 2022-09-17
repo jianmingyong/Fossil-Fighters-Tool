@@ -22,9 +22,16 @@ namespace TheDialgaTeam.FossilFighters.Assets.Rom;
 [PublicAPI]
 public sealed class NdsFilesystem : IDisposable
 {
+    // ReSharper disable InconsistentNaming
+    public const string FF1EnglishGameCode = "YKHE";
+    public const string FF1JapaneseGameCode = "YKHJ";
+    public const string FFCEnglishGameCode = "VDEE";
+    public const string FFCJapaneseGameCode = "VDEJ";
+    // ReSharper restore InconsistentNaming
+    
     public Stream BaseStream { get; }
-
-    public string GameTitle { get; }
+    
+    public string GameCode { get; }
 
     public uint FileNameTableOffset { get; }
 
@@ -38,28 +45,28 @@ public sealed class NdsFilesystem : IDisposable
 
     internal BinaryReader Reader { get; }
 
-    internal BinaryWriter Writer { get; }
-
     internal Dictionary<ushort, NitroRomDirectory> NitroRomDirectories { get; } = new();
 
     internal SortedDictionary<ushort, NitroRomFile> NitroRomFilesById { get; } = new();
 
     internal Dictionary<string, NitroRomFile> NitroRomFilesByPath { get; } = new();
 
-    private NdsFilesystem(FileStream stream, bool leaveOpen = false)
+    private NdsFilesystem(FileStream stream)
     {
         if (!stream.CanRead) throw new ArgumentException(Localization.StreamIsNotReadable, nameof(stream));
-        if (!stream.CanWrite) throw new ArgumentException(Localization.StreamIsNotWriteable, nameof(stream));
 
         BaseStream = stream;
+        
+        Reader = new BinaryReader(stream, Encoding.UTF8);
+        stream.Seek(0x0C, SeekOrigin.Begin);
+        
+        GameCode = Reader.ReadChars(4).AsSpan().TrimEnd('\0').ToString();
 
-        Reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen);
-        Writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen);
-
-        var tempGameTitle = Reader.ReadChars(12).AsSpan();
-        GameTitle = tempGameTitle.TrimEnd('\0').ToString();
-
-        if (!GameTitle.Contains("KASEKI")) throw new InvalidDataException(string.Format(Localization.StreamIsNotFormat, "FF1/FFC"));
+        if (!GameCode.Equals(FF1EnglishGameCode) && !GameCode.Equals(FF1JapaneseGameCode) &&
+            !GameCode.Equals(FFCEnglishGameCode) && !GameCode.Equals(FFCJapaneseGameCode))
+        {
+            throw new InvalidDataException(string.Format(Localization.StreamIsNotFormat, "FF1/FFC"));
+        }
 
         stream.Seek(0x40, SeekOrigin.Begin);
 
@@ -74,7 +81,7 @@ public sealed class NdsFilesystem : IDisposable
 
     public static NdsFilesystem FromFile(string filePath)
     {
-        return new NdsFilesystem(File.Open(filePath, FileMode.Open, FileAccess.ReadWrite));
+        return new NdsFilesystem(new FileStream(filePath, FileMode.Open, FileAccess.ReadWrite));
     }
 
     public NitroRomFile GetFileById(ushort id)
@@ -100,7 +107,6 @@ public sealed class NdsFilesystem : IDisposable
     public void Dispose()
     {
         Reader.Dispose();
-        Writer.Dispose();
         RootDirectory.Dispose();
     }
 }

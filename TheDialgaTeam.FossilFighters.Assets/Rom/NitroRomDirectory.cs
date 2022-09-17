@@ -58,18 +58,19 @@ public sealed class NitroRomDirectory : INitroRom
 
     public NitroRomDirectory(NdsFilesystem ndsFilesystem, ushort id, string name)
     {
-        Name = name;
         ndsFilesystem.NitroRomDirectories.Add(id, this);
-
+        
+        Name = name;
+        
         var stream = ndsFilesystem.BaseStream;
-        stream.Seek(ndsFilesystem.FileNameTableOffset + (id & 0xFFF) * 8, SeekOrigin.Begin);
-
         var reader = ndsFilesystem.Reader;
-
+        
+        stream.Seek(ndsFilesystem.FileNameTableOffset + (id & 0xFFF) * 8, SeekOrigin.Begin);
+        
         var subTableOffset = reader.ReadUInt32();
         var firstFileId = reader.ReadUInt16();
         var parentDirectory = reader.ReadUInt16();
-
+        
         if (id != 0xF000)
         {
             _parentDirectory = ndsFilesystem.NitroRomDirectories[parentDirectory];
@@ -84,8 +85,7 @@ public sealed class NitroRomDirectory : INitroRom
             if (subTableType > 0x80)
             {
                 // Directories
-                var length = subTableType - 0x80;
-                var directoryName = reader.ReadChars(length).AsSpan().ToString();
+                var directoryName = reader.ReadChars(subTableType - 0x80).AsSpan().ToString();
                 var subDirectoryId = reader.ReadUInt16();
 
                 var tempPosition = stream.Position;

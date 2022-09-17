@@ -51,9 +51,9 @@ public sealed class DbtlHeader
 
         stream.Seek(0x04, SeekOrigin.Current);
 
-        BpExchangeInfos = new BpExchangeInfo[reader.ReadInt32()];
+        BpExchangeInfos = new BpExchangeInfo[reader.ReadUInt32()];
 
-        stream.Seek(reader.ReadInt32(), SeekOrigin.Begin);
+        stream.Seek(reader.ReadUInt32(), SeekOrigin.Begin);
 
         for (var i = 0; i < BpExchangeInfos.Length; i++)
         {
