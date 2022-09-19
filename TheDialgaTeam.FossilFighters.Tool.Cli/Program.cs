@@ -31,27 +31,7 @@ internal static class Program
 
         if (args.Length > 0)
         {
-            var validCommand = new List<string>();
-            var hasValidCommand = false;
-
-            foreach (var subcommand in rootCommand.Subcommands)
-            {
-                foreach (var alias in subcommand.Aliases)
-                {
-                    validCommand.Add(alias);
-                }
-            }
-
-            foreach (var command in validCommand)
-            {
-                if (args[0].Equals(command, StringComparison.OrdinalIgnoreCase))
-                {
-                    hasValidCommand = true;
-                    break;
-                }
-            }
-
-            if (!hasValidCommand)
+            if (File.Exists(args[0]) || Directory.Exists(args[0]))
             {
                 var newArgs = new List<string>(args);
                 newArgs.Insert(0, "decompress");

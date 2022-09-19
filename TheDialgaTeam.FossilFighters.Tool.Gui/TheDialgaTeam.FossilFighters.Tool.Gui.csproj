@@ -12,6 +12,7 @@
 
         <PublishSingleFile>true</PublishSingleFile>
         <PublishRelease>true</PublishRelease>
+        <PublishTrimmed>true</PublishTrimmed>
 
         <Version>1.4.0</Version>
         <Title>Fossil Fighters Tool</Title>
@@ -20,6 +21,9 @@
         <PackageProjectUrl>https://github.com/jianmingyong/Fossil-Fighters-Tool</PackageProjectUrl>
         <RepositoryUrl>https://github.com/jianmingyong/Fossil-Fighters-Tool</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
+    </PropertyGroup>
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+        <DebugType>none</DebugType>
     </PropertyGroup>
     <ItemGroup>
         <Folder Include="Models\"/>

@@ -88,8 +88,6 @@ public sealed class LzssStream : CompressibleStream
 
             for (var i = buffer.Length - MinDisplacement; i >= 0; i--)
             {
-                if ((buffer.Length - i) % 2 != 0) continue;
-
                 inputStream.Seek(searchOffset, SeekOrigin.Begin);
 
                 var repeatCount = GetNextRepeatCount(buffer[i..]);
@@ -113,15 +111,7 @@ public sealed class LzssStream : CompressibleStream
 
             while (bufferIndex < MaxBytesToCopy && inputStream.Position < inputStream.Length)
             {
-                if (bufferIndex < buffer.Length)
-                {
-                    if (buffer[bufferIndex] != reader.ReadByte()) break;
-                }
-                else
-                {
-                    if (0 != reader.ReadByte()) break;
-                }
-
+                if (buffer[bufferIndex % buffer.Length] != reader.ReadByte()) break;
                 bufferIndex++;
             }
 
@@ -176,6 +166,11 @@ public sealed class LzssStream : CompressibleStream
             {
                 writer.Write((byte) flagData);
                 writer.Write(tempBuffer.AsSpan(0, tempBufferSize));
+            }
+
+            while (outputStream.Length % 4 != 0)
+            {
+                writer.Write((byte) 0);
             }
         }
         finally

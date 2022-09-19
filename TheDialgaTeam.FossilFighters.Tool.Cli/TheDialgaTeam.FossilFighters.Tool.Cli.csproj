@@ -10,6 +10,7 @@
 
         <PublishSingleFile>true</PublishSingleFile>
         <PublishRelease>true</PublishRelease>
+        <PublishTrimmed>true</PublishTrimmed>
 
         <Version>1.4.0</Version>
         <Title>Fossil Fighters Tool</Title>

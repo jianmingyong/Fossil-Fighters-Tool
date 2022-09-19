@@ -170,6 +170,11 @@ public sealed class RleStream : CompressibleStream
             {
                 WriteUncompressed(rawDataBuffer.AsSpan(0, rawDataLength));
             }
+
+            while (outputStream.Length % 4 != 0)
+            {
+                writer.Write((byte) 0);
+            }
         }
         finally
         {
