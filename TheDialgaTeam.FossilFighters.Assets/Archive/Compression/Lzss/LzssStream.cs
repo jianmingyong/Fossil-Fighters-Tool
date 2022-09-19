@@ -88,6 +88,8 @@ public sealed class LzssStream : CompressibleStream
 
             for (var i = buffer.Length - MinDisplacement; i >= 0; i--)
             {
+                if ((buffer.Length - i) % 2 != 0) continue;
+
                 inputStream.Seek(searchOffset, SeekOrigin.Begin);
 
                 var repeatCount = GetNextRepeatCount(buffer[i..]);

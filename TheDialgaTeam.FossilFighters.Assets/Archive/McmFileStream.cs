@@ -198,7 +198,7 @@ public sealed class McmFileStream : CompressibleStream
                 using var stream = new MemoryStream(buffer, 0, (int) chunkSize);
                 if (reader.Read(buffer, 0, (int) chunkSize) < chunkSize) throw new EndOfStreamException();
 
-                stream.CopyTo(compressStream);
+                stream.WriteTo(compressStream);
                 if (compressStream is not MemoryStream) compressStream.Dispose();
 
                 var dataLength = tempBuffer.Length;
