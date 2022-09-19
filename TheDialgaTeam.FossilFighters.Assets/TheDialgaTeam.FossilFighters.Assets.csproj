@@ -8,6 +8,7 @@
 
         <IsPublishable>false</IsPublishable>
 
+        <Version>1.4.0</Version>
         <Title>Fossil Fighters Tool API</Title>
         <Authors>Yong Jian Ming</Authors>
         <Description>This library is used to decompress and compress MAR archives used in Fossil Fighters game.</Description>
