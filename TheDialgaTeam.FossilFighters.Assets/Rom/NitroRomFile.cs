@@ -55,7 +55,7 @@ public sealed class NitroRomFile : INitroRom
 
         Id = id;
         Name = name;
-        
+
         var stream = ndsFilesystem.BaseStream;
         var reader = ndsFilesystem.Reader;
 
@@ -85,8 +85,8 @@ public sealed class NitroRomFile : INitroRom
             NitroRomData.SetLength(0);
 
             long remainingSize = OriginalSize;
-            
-            var bufferSize = (int) Math.Min(81920, remainingSize);
+
+            var bufferSize = (int) Math.Min(4096, remainingSize);
             var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
 
             try
@@ -95,7 +95,7 @@ public sealed class NitroRomFile : INitroRom
                 {
                     int read;
                     if ((read = stream.Read(buffer, 0, bufferSize)) == 0) throw new EndOfStreamException();
-                    
+
                     NitroRomData.Write(buffer, 0, (int) Math.Min(remainingSize, read));
                     remainingSize -= read;
                 }
@@ -104,7 +104,7 @@ public sealed class NitroRomFile : INitroRom
             {
                 ArrayPool<byte>.Shared.Return(buffer);
             }
-            
+
             _isLoaded = true;
         }
 

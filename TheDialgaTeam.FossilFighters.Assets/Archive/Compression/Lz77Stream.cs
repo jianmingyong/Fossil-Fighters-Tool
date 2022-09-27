@@ -17,12 +17,12 @@
 using System.Buffers;
 using JetBrains.Annotations;
 
-namespace TheDialgaTeam.FossilFighters.Assets.Archive.Compression.Lzss;
+namespace TheDialgaTeam.FossilFighters.Assets.Archive.Compression;
 
 [PublicAPI]
-public sealed class LzssStream : CompressibleStream
+public sealed class Lz77Stream : CompressibleStream
 {
-    private const int CompressHeader = 1 << 4;
+    private const int CompressHeader = 0x10;
 
     private const int MinDisplacement = 0x1 + 1;
     private const int MaxDisplacement = 0xFFF + 1;
@@ -30,16 +30,16 @@ public sealed class LzssStream : CompressibleStream
     private const int MinBytesToCopy = 3;
     private const int MaxBytesToCopy = 0xF + MinBytesToCopy;
 
-    public LzssStream(Stream stream, CompressibleStreamMode mode, bool leaveOpen = false) : base(stream, mode, leaveOpen)
+    public Lz77Stream(Stream stream, CompressibleStreamMode mode, bool leaveOpen = false) : base(stream, mode, leaveOpen)
     {
     }
 
     protected override void Decompress(BinaryReader reader, BinaryWriter writer, Stream inputStream, MemoryStream outputStream)
     {
         var rawHeaderData = reader.ReadInt32();
-        if ((rawHeaderData & CompressHeader) != CompressHeader) throw new InvalidDataException(string.Format(Localization.StreamIsNotCompressedBy, "LZSS"));
+        if ((rawHeaderData & 0xF0) != CompressHeader) throw new InvalidDataException(string.Format(Localization.StreamIsNotCompressedBy, "LZ77"));
 
-        var decompressSize = (rawHeaderData >> 8) & 0xFFFFFF;
+        var decompressSize = rawHeaderData >>> 8;
 
         if (outputStream.Capacity < decompressSize)
         {
@@ -63,11 +63,13 @@ public sealed class LzssStream : CompressibleStream
                     var compressHeader = reader.ReadUInt16();
                     var copyCount = ((compressHeader >> 4) & 0xF) + 3;
                     var displacement = (((compressHeader & 0xF) << 8) | ((compressHeader >> 8) & 0xFF)) + 1;
-                    var lookbackBuffer = outputStream.GetBuffer().AsSpan((int) (outputStream.Position - displacement));
+                    var buffer = outputStream.GetBuffer().AsSpan((int) (outputStream.Position - displacement));
+
+                    if (copyCount + outputStream.Length > decompressSize) throw new InvalidDataException(Localization.StreamIsCorrupted);
 
                     for (var j = 0; j < copyCount; j++)
                     {
-                        writer.Write(lookbackBuffer[j]);
+                        writer.Write(buffer[j % buffer.Length]);
                     }
                 }
 

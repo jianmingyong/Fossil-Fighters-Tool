@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-namespace TheDialgaTeam.FossilFighters.Assets.Archive.Compression.Huffman;
+namespace TheDialgaTeam.FossilFighters.Assets.Archive.Compression;
 
 public sealed class HuffmanNode
 {

@@ -17,7 +17,7 @@
 using System.Buffers;
 using JetBrains.Annotations;
 
-namespace TheDialgaTeam.FossilFighters.Assets.Archive.Compression.Rle;
+namespace TheDialgaTeam.FossilFighters.Assets.Archive.Compression;
 
 [PublicAPI]
 public sealed class RleStream : CompressibleStream
@@ -40,20 +40,26 @@ public sealed class RleStream : CompressibleStream
     protected override void Decompress(BinaryReader reader, BinaryWriter writer, Stream inputStream, MemoryStream outputStream)
     {
         var rawHeaderData = reader.ReadInt32();
-        if ((rawHeaderData & CompressionHeader) != CompressionHeader) throw new InvalidDataException(string.Format(Localization.StreamIsNotCompressedBy, "RLE"));
+        if ((rawHeaderData & 0xF0) != CompressionHeader) throw new InvalidDataException(string.Format(Localization.StreamIsNotCompressedBy, "RLE"));
 
-        var decompressSize = (rawHeaderData >> 8) & 0xFFFFFF;
-        outputStream.Capacity = decompressSize;
+        var decompressSize = rawHeaderData >>> 8;
+
+        if (outputStream.Capacity < decompressSize)
+        {
+            outputStream.Capacity = decompressSize;
+        }
 
         while (outputStream.Length < decompressSize)
         {
             var flagRawData = reader.ReadByte();
-            var flagType = flagRawData >> 7;
+            var flagType = (flagRawData >> 7) & 0x1;
             var flagData = flagRawData & MaxFlagDataLength;
 
             if (flagType == 0)
             {
                 var repeatCount = flagData + 1;
+
+                if (outputStream.Length + repeatCount > decompressSize) throw new InvalidDataException(Localization.StreamIsCorrupted);
 
                 for (var i = repeatCount - 1; i >= 0; i--)
                 {
@@ -64,6 +70,8 @@ public sealed class RleStream : CompressibleStream
             {
                 var repeatCount = flagData + 3;
                 var repeatData = reader.ReadByte();
+
+                if (outputStream.Length + repeatCount > decompressSize) throw new InvalidDataException(Localization.StreamIsCorrupted);
 
                 for (var i = repeatCount - 1; i >= 0; i--)
                 {

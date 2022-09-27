@@ -16,9 +16,7 @@
 
 using System.Buffers;
 using JetBrains.Annotations;
-using TheDialgaTeam.FossilFighters.Assets.Archive.Compression.Huffman;
-using TheDialgaTeam.FossilFighters.Assets.Archive.Compression.Lzss;
-using TheDialgaTeam.FossilFighters.Assets.Archive.Compression.Rle;
+using TheDialgaTeam.FossilFighters.Assets.Archive.Compression;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Archive;
 
@@ -101,7 +99,7 @@ public sealed class McmFileStream : CompressibleStream
                 {
                     McmFileCompressionType.None => dataChunk,
                     McmFileCompressionType.Rle => new RleStream(dataChunk, CompressibleStreamMode.Decompress),
-                    McmFileCompressionType.Lzss => new LzssStream(dataChunk, CompressibleStreamMode.Decompress),
+                    McmFileCompressionType.Lzss => new Lz77Stream(dataChunk, CompressibleStreamMode.Decompress),
                     McmFileCompressionType.Huffman => new HuffmanStream(dataChunk, CompressibleStreamMode.Decompress),
                     var _ => throw new ArgumentOutOfRangeException(null)
                 };
@@ -116,7 +114,7 @@ public sealed class McmFileStream : CompressibleStream
                         break;
 
                     case McmFileCompressionType.Lzss:
-                        compressedStream = new LzssStream(compressedStream, CompressibleStreamMode.Decompress);
+                        compressedStream = new Lz77Stream(compressedStream, CompressibleStreamMode.Decompress);
                         break;
 
                     case McmFileCompressionType.Huffman:
@@ -169,7 +167,7 @@ public sealed class McmFileStream : CompressibleStream
                 {
                     McmFileCompressionType.None => tempBuffer,
                     McmFileCompressionType.Rle => new RleStream(tempBuffer, CompressibleStreamMode.Compress, true),
-                    McmFileCompressionType.Lzss => new LzssStream(tempBuffer, CompressibleStreamMode.Compress, true),
+                    McmFileCompressionType.Lzss => new Lz77Stream(tempBuffer, CompressibleStreamMode.Compress, true),
                     McmFileCompressionType.Huffman => new HuffmanStream(tempBuffer, CompressibleStreamMode.Compress, true),
                     var _ => throw new ArgumentOutOfRangeException()
                 };
@@ -184,7 +182,7 @@ public sealed class McmFileStream : CompressibleStream
                         break;
 
                     case McmFileCompressionType.Lzss:
-                        compressStream = new LzssStream(compressStream, CompressibleStreamMode.Compress);
+                        compressStream = new Lz77Stream(compressStream, CompressibleStreamMode.Compress);
                         break;
 
                     case McmFileCompressionType.Huffman:

@@ -16,7 +16,7 @@
 
 using JetBrains.Annotations;
 
-namespace TheDialgaTeam.FossilFighters.Assets.Archive.Compression.Huffman;
+namespace TheDialgaTeam.FossilFighters.Assets.Archive.Compression;
 
 [PublicAPI]
 public sealed class HuffmanStream : CompressibleStream

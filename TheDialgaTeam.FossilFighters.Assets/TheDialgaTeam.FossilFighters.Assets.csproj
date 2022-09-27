@@ -5,10 +5,11 @@
 
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <LangVersion>preview</LangVersion>
 
         <IsPublishable>false</IsPublishable>
 
-        <Version>1.4.0</Version>
+        <Version>1.5.0</Version>
         <Title>Fossil Fighters Tool API</Title>
         <Authors>Yong Jian Ming</Authors>
         <Description>This library is used to decompress and compress MAR archives used in Fossil Fighters game.</Description>
@@ -17,7 +18,7 @@
         <RepositoryType>git</RepositoryType>
     </PropertyGroup>
 
-    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <PropertyGroup Condition="'$(Configuration)' == 'Release'">
         <DebugType>none</DebugType>
     </PropertyGroup>
 
