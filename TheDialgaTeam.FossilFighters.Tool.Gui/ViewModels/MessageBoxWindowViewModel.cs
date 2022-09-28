@@ -18,7 +18,7 @@ using Avalonia.Controls;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels;
 
-public class MessageBoxWindowViewModel : ViewModelBase
+public sealed class MessageBoxWindowViewModel : ViewModelBase
 {
     public string Title { get; }
 

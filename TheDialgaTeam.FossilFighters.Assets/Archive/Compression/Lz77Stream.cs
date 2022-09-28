@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System.Buffers;
 using JetBrains.Annotations;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Archive.Compression;
@@ -122,62 +121,55 @@ public sealed class Lz77Stream : CompressibleStream
 
         writer.Write((uint) (CompressHeader | (inputStream.Length << 8)));
 
-        var tempBuffer = ArrayPool<byte>.Shared.Rent(16);
+        Span<byte> tempBuffer = stackalloc byte[16];
         var tempBufferSize = 0;
 
         var flagData = 0;
         var flagIndex = 7;
 
-        try
+        while (inputStream.Position < inputStream.Length)
         {
-            while (inputStream.Position < inputStream.Length)
+            var startIndex = Math.Max(0, inputStream.Position - MaxDisplacement);
+            var length = inputStream.Position - startIndex;
+
+            var nextToken = SearchForNextToken(inputStream.GetBuffer().AsSpan((int) startIndex, (int) length));
+
+            if (nextToken.displacement < MinDisplacement || nextToken.bytesToCopy < MinBytesToCopy)
             {
-                var startIndex = Math.Max(0, inputStream.Position - MaxDisplacement);
-                var length = inputStream.Position - startIndex;
+                var dataToWrite = reader.ReadByte();
+                tempBuffer[tempBufferSize++] = dataToWrite;
+            }
+            else
+            {
+                var newDisplacement = nextToken.displacement - 1;
+                var newBytesToCopy = nextToken.bytesToCopy - 3;
+                tempBuffer[tempBufferSize++] = (byte) (((newDisplacement & 0xF00) >> 8) | (newBytesToCopy << 4));
+                tempBuffer[tempBufferSize++] = (byte) (newDisplacement & 0xFF);
 
-                var nextToken = SearchForNextToken(inputStream.GetBuffer().AsSpan((int) startIndex, (int) length));
-
-                if (nextToken.displacement < MinDisplacement || nextToken.bytesToCopy < MinBytesToCopy)
-                {
-                    var dataToWrite = reader.ReadByte();
-                    tempBuffer[tempBufferSize++] = dataToWrite;
-                }
-                else
-                {
-                    var newDisplacement = nextToken.displacement - 1;
-                    var newBytesToCopy = nextToken.bytesToCopy - 3;
-                    tempBuffer[tempBufferSize++] = (byte) (((newDisplacement & 0xF00) >> 8) | (newBytesToCopy << 4));
-                    tempBuffer[tempBufferSize++] = (byte) (newDisplacement & 0xFF);
-
-                    flagData |= 1 << flagIndex;
-                }
-
-                flagIndex--;
-
-                if (flagIndex >= 0) continue;
-
-                writer.Write((byte) flagData);
-                writer.Write(tempBuffer.AsSpan(0, tempBufferSize));
-
-                tempBufferSize = 0;
-                flagData = 0;
-                flagIndex = 7;
+                flagData |= 1 << flagIndex;
             }
 
-            if (flagIndex < 7)
-            {
-                writer.Write((byte) flagData);
-                writer.Write(tempBuffer.AsSpan(0, tempBufferSize));
-            }
+            flagIndex--;
 
-            while (outputStream.Length % 4 != 0)
-            {
-                writer.Write((byte) 0);
-            }
+            if (flagIndex >= 0) continue;
+
+            writer.Write((byte) flagData);
+            writer.Write(tempBuffer[..tempBufferSize]);
+
+            tempBufferSize = 0;
+            flagData = 0;
+            flagIndex = 7;
         }
-        finally
+
+        if (flagIndex < 7)
         {
-            ArrayPool<byte>.Shared.Return(tempBuffer);
+            writer.Write((byte) flagData);
+            writer.Write(tempBuffer[..tempBufferSize]);
+        }
+
+        while (outputStream.Length % 4 != 0)
+        {
+            writer.Write((byte) 0);
         }
     }
 }

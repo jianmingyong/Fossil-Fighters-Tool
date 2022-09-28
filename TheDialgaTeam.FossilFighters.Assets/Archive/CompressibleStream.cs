@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System.Buffers;
+using System.Runtime.CompilerServices;
 using System.Text;
 using JetBrains.Annotations;
 
@@ -70,18 +70,11 @@ public abstract class CompressibleStream : Stream
         }
     }
 
+    [SkipLocalsInit]
     public override int ReadByte()
     {
-        var buffer = ArrayPool<byte>.Shared.Rent(1);
-
-        try
-        {
-            return Read(buffer, 0, 1) > 0 ? buffer[0] : -1;
-        }
-        finally
-        {
-            ArrayPool<byte>.Shared.Return(buffer);
-        }
+        Span<byte> buffer = stackalloc byte[1];
+        return Read(buffer) > 0 ? buffer[0] : -1;
     }
 
     public override int Read(byte[] buffer, int offset, int count)
@@ -113,6 +106,35 @@ public abstract class CompressibleStream : Stream
         return _outputStream!.Read(buffer, offset, count);
     }
 
+    public override int Read(Span<byte> buffer)
+    {
+        if (Mode == CompressibleStreamMode.Compress) throw new NotSupportedException();
+        if (_hasDisposed) throw new ObjectDisposedException(nameof(CompressibleStream));
+
+        if (!_hasDecompressed)
+        {
+            if (BaseStream.CanSeek)
+            {
+                Decompress(_reader, _writer, BaseStream, _outputStream!);
+            }
+            else
+            {
+                using var inputStream = new MemoryStream();
+                using var reader = new BinaryReader(inputStream);
+
+                BaseStream.CopyTo(inputStream);
+                inputStream.Seek(0, SeekOrigin.Begin);
+
+                Decompress(reader, _writer, inputStream, _outputStream!);
+            }
+
+            _outputStream!.Seek(0, SeekOrigin.Begin);
+            _hasDecompressed = true;
+        }
+
+        return _outputStream!.Read(buffer);
+    }
+
     public override void WriteByte(byte value)
     {
         if (Mode == CompressibleStreamMode.Decompress) throw new NotSupportedException();
@@ -127,6 +149,30 @@ public abstract class CompressibleStream : Stream
         if (_hasDisposed) throw new ObjectDisposedException(nameof(CompressibleStream));
 
         _inputStream!.Write(buffer, offset, count);
+    }
+
+    public override void Write(ReadOnlySpan<byte> buffer)
+    {
+        if (Mode == CompressibleStreamMode.Decompress) throw new NotSupportedException();
+        if (_hasDisposed) throw new ObjectDisposedException(nameof(CompressibleStream));
+
+        _inputStream!.Write(buffer);
+    }
+
+    public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        if (Mode == CompressibleStreamMode.Decompress) throw new NotSupportedException();
+        if (_hasDisposed) throw new ObjectDisposedException(nameof(CompressibleStream));
+
+        return _inputStream!.WriteAsync(buffer, offset, count, cancellationToken);
+    }
+
+    public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+    {
+        if (Mode == CompressibleStreamMode.Decompress) throw new NotSupportedException();
+        if (_hasDisposed) throw new ObjectDisposedException(nameof(CompressibleStream));
+
+        return _inputStream!.WriteAsync(buffer, cancellationToken);
     }
 
     public override void Flush()

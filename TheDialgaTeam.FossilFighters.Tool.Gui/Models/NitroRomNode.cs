@@ -34,7 +34,7 @@ public sealed class NitroRomNode
 
     public bool IsFile => _nitroRom is NitroRomFile;
 
-    public long Size => _nitroRom is NitroRomFile test ? test.Size : 0;
+    public long Size => (_nitroRom as NitroRomFile)?.Size ?? 0;
 
     private const string FileFolderTypeName = "File Folder";
     private const string FileTypeName = "File";

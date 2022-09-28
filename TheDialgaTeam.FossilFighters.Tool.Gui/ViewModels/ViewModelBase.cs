@@ -22,7 +22,7 @@ using TheDialgaTeam.FossilFighters.Tool.Gui.Views;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels;
 
-public class ViewModelBase : ReactiveObject
+public abstract class ViewModelBase : ReactiveObject
 {
     public ReactiveCommand<Unit, Unit> CloseCommand { get; }
 

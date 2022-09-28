@@ -108,7 +108,7 @@ public sealed class NitroRomFile : INitroRom
             _isLoaded = true;
         }
 
-        return new MemoryStream(NitroRomData.GetBuffer(), 0, (int) NitroRomData.Length, false);
+        return new MemoryStream(NitroRomData.GetBuffer(), 0, (int) NitroRomData.Length, false, true);
     }
 
     public void WriteFrom(byte[] buffer, int offset, int count)

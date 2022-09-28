@@ -33,7 +33,7 @@ using TheDialgaTeam.FossilFighters.Tool.Gui.Models;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels;
 
-public class MainWindowViewModel : ViewModelBase
+public sealed class MainWindowViewModel : ViewModelBase
 {
     [ObservableAsProperty]
     [UsedImplicitly]

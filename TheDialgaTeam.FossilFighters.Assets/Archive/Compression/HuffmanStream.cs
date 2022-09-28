@@ -42,11 +42,15 @@ public sealed class HuffmanStream : CompressibleStream
     protected override void Decompress(BinaryReader reader, BinaryWriter writer, Stream inputStream, MemoryStream outputStream)
     {
         var rawHeaderData = reader.ReadInt32();
-        if ((rawHeaderData & CompressionHeader) != CompressionHeader) throw new InvalidDataException(string.Format(Localization.StreamIsNotCompressedBy, "Huffman"));
+        if ((rawHeaderData & 0xF0) != CompressionHeader) throw new InvalidDataException(string.Format(Localization.StreamIsNotCompressedBy, "Huffman"));
 
         _dataSize = (HuffmanDataSize) (rawHeaderData & 0xF);
         var decompressSize = (rawHeaderData >> 8) & 0xFFFFFF;
-        outputStream.Capacity = decompressSize;
+
+        if (outputStream.Capacity < decompressSize)
+        {
+            outputStream.Capacity = decompressSize;
+        }
 
         var treeSize = reader.ReadByte();
         var treeNodeLength = (treeSize + 1) * 2 - 1;
