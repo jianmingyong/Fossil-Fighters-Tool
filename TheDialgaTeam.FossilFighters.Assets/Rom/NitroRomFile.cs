@@ -33,11 +33,11 @@ public sealed class NitroRomFile : INitroRom
 
     public NitroRomType FileType { get; }
 
-    public int Size => (int) (IsDirty ? NitroRomData.Length : OriginalSize);
+    public long Size => IsDirty ? NitroRomData.Length : OriginalSize;
 
-    public uint OriginalOffset { get; }
+    public long OriginalOffset { get; }
 
-    public uint OriginalSize { get; }
+    public long OriginalSize { get; }
 
     internal MemoryStream NitroRomData { get; } = new();
 
@@ -84,7 +84,7 @@ public sealed class NitroRomFile : INitroRom
             NitroRomData.Seek(0, SeekOrigin.Begin);
             NitroRomData.SetLength(0);
 
-            long remainingSize = OriginalSize;
+            var remainingSize = OriginalSize;
 
             var bufferSize = (int) Math.Min(4096, remainingSize);
             var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);

@@ -45,9 +45,13 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     public ReactiveCommand<Unit, Unit> SaveFileCommand { get; }
 
-    public ReactiveCommand<Unit, Unit> CompressCommand { get; }
+    public ReactiveCommand<Unit, Unit> ImportFileCommand { get; }
 
-    public ReactiveCommand<Unit, Unit> DecompressCommand { get; }
+    public ReactiveCommand<Unit, Unit> ExportFileCommand { get; }
+
+    public ReactiveCommand<Unit, Unit> CompressFileCommand { get; }
+
+    public ReactiveCommand<Unit, Unit> DecompressFileCommand { get; }
 
     private ObservableCollection<NitroRomNode> NitroRomNodes { get; } = new();
 
@@ -74,9 +78,11 @@ public sealed class MainWindowViewModel : ViewModelBase
         NitroRomNodeSource.RowSelection!.SelectionChanged += NitroContentSourceOnSelectionChanged;
 
         OpenFileCommand = ReactiveCommand.CreateFromTask(OpenFile);
-        SaveFileCommand = ReactiveCommand.Create(SaveFile, this.WhenAnyValue(model => model.LoadedRom).Select(filesystem => filesystem != null).AsObservable());
-        CompressCommand = ReactiveCommand.Create(Compress, this.WhenAnyValue(model => model.SelectedNitroRomNode).Select(node => node?.IsFile ?? false).AsObservable());
-        DecompressCommand = ReactiveCommand.CreateFromTask(Decompress, this.WhenAnyValue(model => model.SelectedNitroRomNode).Select(node => node != null).AsObservable());
+        SaveFileCommand = ReactiveCommand.CreateFromTask(SaveFile, this.WhenAnyValue(model => model.LoadedRom).Select(filesystem => filesystem != null).AsObservable());
+        ImportFileCommand = ReactiveCommand.CreateFromTask(ImportFile, this.WhenAnyValue(model => model.SelectedNitroRomNode).Select(node => node?.IsFile ?? false).AsObservable());
+        ExportFileCommand = ReactiveCommand.CreateFromTask(ExportFile);
+        CompressFileCommand = ReactiveCommand.CreateFromTask(CompressFile, this.WhenAnyValue(model => model.SelectedNitroRomNode).Select(node => node?.FileType == NitroRomType.MarArchive).AsObservable());
+        DecompressFileCommand = ReactiveCommand.CreateFromTask(DecompressFile, this.WhenAnyValue(model => model.SelectedNitroRomNode).Select(node => node?.FileType is NitroRomType.MarArchive or NitroRomType.FileFolder).AsObservable());
     }
 
     private void NitroContentSourceOnSelectionChanged(object? sender, TreeSelectionModelSelectionChangedEventArgs<NitroRomNode> e)
@@ -111,15 +117,31 @@ public sealed class MainWindowViewModel : ViewModelBase
         }
     }
 
-    private void SaveFile()
+    private async Task SaveFile()
     {
+        try
+        {
+            throw new NotImplementedException();
+        }
+        catch (Exception ex)
+        {
+            await ShowDialog("Error", ex.ToString());
+        }
     }
 
-    private void Compress()
+    private async Task ImportFile()
     {
+        try
+        {
+            throw new NotImplementedException();
+        }
+        catch (Exception ex)
+        {
+            await ShowDialog("Error", ex.ToString());
+        }
     }
 
-    private async Task Decompress()
+    private async Task ExportFile()
     {
         try
         {
@@ -127,21 +149,37 @@ public sealed class MainWindowViewModel : ViewModelBase
             var selectedFolder = await folderDialog.ShowAsync(Window);
             if (selectedFolder == null) return;
 
-            if (SelectedNitroRomNode!.IsFile)
-            {
-                if (SelectedNitroRomNode.FileType == NitroRomType.MarArchive)
-                {
-                    DecompressFile(SelectedNitroRomNode, selectedFolder);
-                }
-                else
-                {
-                    ExportFile(SelectedNitroRomNode, selectedFolder);
-                }
-            }
-            else
-            {
-                DecompressFolder(SelectedNitroRomNode, selectedFolder);
-            }
+            ExportFile(SelectedNitroRomNode!, selectedFolder);
+
+            await ShowDialog("Export completed.");
+        }
+        catch (Exception ex)
+        {
+            await ShowDialog("Error", ex.ToString());
+        }
+    }
+
+    private async Task CompressFile()
+    {
+        try
+        {
+            throw new NotImplementedException();
+        }
+        catch (Exception ex)
+        {
+            await ShowDialog("Error", ex.ToString());
+        }
+    }
+
+    private async Task DecompressFile()
+    {
+        try
+        {
+            var folderDialog = new OpenFolderDialog();
+            var selectedFolder = await folderDialog.ShowAsync(Window);
+            if (selectedFolder == null) return;
+
+            DecompressFile(SelectedNitroRomNode!, selectedFolder);
 
             await ShowDialog("Decompress completed.");
         }
@@ -151,58 +189,63 @@ public sealed class MainWindowViewModel : ViewModelBase
         }
     }
 
-    private void DecompressFolder(NitroRomNode targetFolder, string targetLocation)
+    private void DecompressFile(NitroRomNode targetFile, string targetLocation)
     {
-        foreach (var targetFolderChildNode in targetFolder.ChildNodes)
+        if (targetFile.IsFile)
         {
-            if (targetFolderChildNode.IsFile)
+            if (targetFile.FileType != NitroRomType.MarArchive)
             {
-                if (targetFolderChildNode.FileType == NitroRomType.MarArchive)
-                {
-                    DecompressFile(targetFolderChildNode, Path.Combine(targetLocation, targetFolder.Name));
-                }
-                else
-                {
-                    ExportFile(targetFolderChildNode, Path.Combine(targetLocation, targetFolder.Name));
-                }
+                ExportFile(targetFile, targetLocation);
             }
             else
             {
-                DecompressFolder(targetFolderChildNode, Path.Combine(targetLocation, targetFolder.Name));
+                using var nitroRomFile = LoadedRom!.GetFileByPath(targetFile.FullPath).OpenRead();
+                using var marArchive = new MarArchive(nitroRomFile);
+
+                for (var index = 0; index < marArchive.Entries.Count; index++)
+                {
+                    var marArchiveEntry = marArchive.Entries[index];
+                    var outputFileDirectory = Path.Combine(targetLocation, targetFile.Name);
+
+                    if (!Directory.Exists(outputFileDirectory))
+                    {
+                        Directory.CreateDirectory(outputFileDirectory);
+                    }
+
+                    using var mcmFile = marArchiveEntry.OpenRead();
+                    using var outputFile = File.Open(Path.Combine(outputFileDirectory, $"{index}.bin"), FileMode.Create);
+                    mcmFile.CopyTo(outputFile);
+                }
             }
         }
-    }
-
-    private void DecompressFile(NitroRomNode targetFile, string targetLocation)
-    {
-        using var nitroRomFile = LoadedRom!.GetFileByPath(targetFile.FullPath).OpenRead();
-        using var marArchive = new MarArchive(nitroRomFile);
-
-        for (var index = 0; index < marArchive.Entries.Count; index++)
+        else
         {
-            var marArchiveEntry = marArchive.Entries[index];
-            var outputFileDirectory = Path.Combine(targetLocation, targetFile.Name);
-
-            if (!Directory.Exists(outputFileDirectory))
+            foreach (var targetFolderChildNode in targetFile.ChildNodes)
             {
-                Directory.CreateDirectory(outputFileDirectory);
+                DecompressFile(targetFolderChildNode, targetFolderChildNode.IsFile ? targetLocation : Path.Combine(targetLocation, targetFolderChildNode.Name));
             }
-
-            using var mcmFile = marArchiveEntry.OpenRead();
-            using var outputFile = File.Open(Path.Combine(outputFileDirectory, $"{index}.bin"), FileMode.Create);
-            mcmFile.CopyTo(outputFile);
         }
     }
 
     private void ExportFile(NitroRomNode targetFile, string targetLocation)
     {
-        if (!Directory.Exists(targetLocation))
+        if (targetFile.IsFile)
         {
-            Directory.CreateDirectory(targetLocation);
-        }
+            if (!Directory.Exists(targetLocation))
+            {
+                Directory.CreateDirectory(targetLocation);
+            }
 
-        using var outputFile = File.Open(Path.Combine(targetLocation, targetFile.Name), FileMode.Create);
-        using var nitroRomFile = LoadedRom!.GetFileByPath(targetFile.FullPath).OpenRead();
-        nitroRomFile.CopyTo(outputFile);
+            using var outputFile = File.Open(Path.Combine(targetLocation, targetFile.Name), FileMode.Create);
+            using var nitroRomFile = LoadedRom!.GetFileByPath(targetFile.FullPath).OpenRead();
+            nitroRomFile.CopyTo(outputFile);
+        }
+        else
+        {
+            foreach (var targetFolderChildNode in targetFile.ChildNodes)
+            {
+                ExportFile(targetFolderChildNode, targetFolderChildNode.IsFile ? targetLocation : Path.Combine(targetLocation, targetFolderChildNode.Name));
+            }
+        }
     }
 }

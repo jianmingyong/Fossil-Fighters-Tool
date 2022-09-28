@@ -26,10 +26,7 @@
                     <Separator />
                     <MenuItem Header="_Exit" Command="{CompiledBinding CloseCommand}" />
                 </MenuItem>
-                <MenuItem Header="_Editor">
-                    <MenuItem Header="Vivosaur Definition" />
-                    <Separator />
-                </MenuItem>
+                <MenuItem Header="_Editor" />
             </Menu>
         </Grid>
 
@@ -37,8 +34,11 @@
             <TreeDataGrid Background="white" Source="{CompiledBinding NitroRomNodeSource}">
                 <TreeDataGrid.ContextMenu>
                     <ContextMenu>
-                        <MenuItem Header="Compress" Command="{CompiledBinding CompressCommand}" />
-                        <MenuItem Header="Decompress" Command="{CompiledBinding DecompressCommand}" />
+                        <MenuItem Header="Import" Command="{CompiledBinding ImportFileCommand}" />
+                        <MenuItem Header="Export" Command="{CompiledBinding ExportFileCommand}" />
+                        <Separator />
+                        <MenuItem Header="Compress" Command="{CompiledBinding CompressFileCommand}" />
+                        <MenuItem Header="Decompress" Command="{CompiledBinding DecompressFileCommand}" />
                     </ContextMenu>
                 </TreeDataGrid.ContextMenu>
             </TreeDataGrid>
