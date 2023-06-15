@@ -41,4 +41,7 @@
     <data name="CompressCommandDescription" xml:space="preserve">
         <value>Compress files into MAR archive.</value>
     </data>
+    <data name="ExtractingNdsFile" xml:space="preserve">
+        <value>Extracting Nds file... This may take a while.</value>
+    </data>
 </root>

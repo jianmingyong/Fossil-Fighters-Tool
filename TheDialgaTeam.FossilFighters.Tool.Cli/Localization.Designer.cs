@@ -78,6 +78,15 @@ namespace TheDialgaTeam.FossilFighters.Tool.Cli {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Extracting Nds file... This may take a while..
+        /// </summary>
+        internal static string ExtractingNdsFile {
+            get {
+                return ResourceManager.GetString("ExtractingNdsFile", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Extracted: {0}.
         /// </summary>
         internal static string FileExtracted {

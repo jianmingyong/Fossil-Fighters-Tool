@@ -23,7 +23,7 @@ namespace TheDialgaTeam.FossilFighters.Assets.Archive;
 [PublicAPI]
 public sealed class McmFileStream : CompressibleStream
 {
-    public int MaxSizePerChunk
+    public uint MaxSizePerChunk
     {
         get => _maxSizePerChunk;
         set
@@ -55,7 +55,7 @@ public sealed class McmFileStream : CompressibleStream
 
     private const int HeaderId = 0x004D434D;
 
-    private int _maxSizePerChunk = 0x2000;
+    private uint _maxSizePerChunk = 0x2000;
     private McmFileCompressionType _compressionType1;
     private McmFileCompressionType _compressionType2;
 
@@ -68,8 +68,8 @@ public sealed class McmFileStream : CompressibleStream
         var fileHeaderId = reader.ReadInt32();
         if (fileHeaderId != HeaderId) throw new InvalidDataException(string.Format(Localization.StreamIsNotCompressedBy, "MCM"));
 
-        var decompressFileSize = reader.ReadInt32();
-        _maxSizePerChunk = reader.ReadInt32();
+        var decompressFileSize = reader.ReadUInt32();
+        _maxSizePerChunk = reader.ReadUInt32();
         var numberOfChunk = reader.ReadInt32();
 
         var dataChunkOffsets = new int[numberOfChunk + 1];
@@ -140,7 +140,7 @@ public sealed class McmFileStream : CompressibleStream
     protected override void Compress(BinaryReader reader, BinaryWriter writer, MemoryStream inputStream, MemoryStream outputStream)
     {
         writer.Write(HeaderId);
-        writer.Write((int) inputStream.Length);
+        writer.Write((uint) inputStream.Length);
         writer.Write(MaxSizePerChunk);
 
         var numberOfChunks = (int) Math.Ceiling((double) inputStream.Length / MaxSizePerChunk);

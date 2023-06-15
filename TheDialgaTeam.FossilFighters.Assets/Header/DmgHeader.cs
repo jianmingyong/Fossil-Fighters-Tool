@@ -1,5 +1,5 @@
 ﻿// Fossil Fighters Tool is used to decompress and compress MAR archives used in Fossil Fighters game.
-// Copyright (C) 2022 Yong Jian Ming
+// Copyright (C) 2023 Yong Jian Ming
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -20,31 +20,41 @@ using JetBrains.Annotations;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Header;
 
-[JsonSerializable(typeof(DtxHeader))]
-public partial class DtxHeaderContext : JsonSerializerContext
+[JsonSerializable(typeof(DmgHeader))]
+public partial class DmgHeaderContext : JsonSerializerContext
 {
     
 }
 
-[PublicAPI]
-public sealed class DtxHeader
+public readonly struct DmgTextInfo
 {
-    public const int FileHeader = 0x00585444;
+    public int TextId { get; init; }
 
-    public string[] Texts { get; }
+    public int Unknown2 { get; init; }
+    
+    public string Text { get; init; }
+}
 
-    public DtxHeader(Stream stream)
+[PublicAPI]
+public sealed class DmgHeader
+{
+    public const int FileHeader = 0x00474D44;
+
+    public DmgTextInfo[] Texts { get; init; }
+    
+    private DmgHeader()
     {
-        if (!stream.CanRead) throw new ArgumentException(Localization.StreamIsNotReadable, nameof(stream));
-        if (!stream.CanSeek) throw new ArgumentException(Localization.StreamIsNotSeekable, nameof(stream));
+    }
 
+    public static DmgHeader GetHeaderFromStream(Stream stream)
+    {
         using var reader = new BinaryReader(stream, Encoding.UTF8, true);
 
-        if (reader.ReadInt32() != FileHeader) throw new InvalidDataException(string.Format(Localization.StreamIsNotFormat, "DTX"));
+        if (reader.ReadInt32() != FileHeader) throw new InvalidDataException(string.Format(Localization.StreamIsNotFormat, "DMG"));
 
         var textCount = reader.ReadUInt32();
-        Texts = new string[textCount];
-
+        var texts = new DmgTextInfo[textCount];
+        
         stream.Seek(reader.ReadUInt32(), SeekOrigin.Begin);
 
         var textOffsets = new uint[textCount];
@@ -59,14 +69,20 @@ public sealed class DtxHeader
             stream.Seek(textOffsets[i], SeekOrigin.Begin);
 
             var textBuilder = new StringBuilder();
+            int id1, id2 = 0;
             char nextChar;
 
+            id1 = reader.ReadInt32();
+            id2 = reader.ReadInt32();
+            
             while ((nextChar = reader.ReadChar()) != '\0')
             {
                 textBuilder.Append(nextChar);
             }
-            
-            Texts[i] = textBuilder.ToString();
+
+            texts[i] = new DmgTextInfo { TextId = id1, Unknown2 = id2, Text = textBuilder.ToString() };
         }
+
+        return new DmgHeader { Texts = texts };
     }
 }

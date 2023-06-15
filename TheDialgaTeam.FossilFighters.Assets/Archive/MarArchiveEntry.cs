@@ -75,11 +75,11 @@ public sealed class MarArchiveEntry
         return new McmFileStream(MemoryStream, CompressibleStreamMode.Compress, true);
     }
 
-    internal int GetDecompressedDataSize()
+    internal uint GetDecompressedDataSize()
     {
         using var reader = new BinaryReader(MemoryStream, Encoding.UTF8, true);
         MemoryStream.Seek(4, SeekOrigin.Begin);
-        return reader.ReadInt32();
+        return reader.ReadUInt32();
     }
 
     internal void Dispose()

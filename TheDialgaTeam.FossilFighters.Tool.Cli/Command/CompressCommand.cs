@@ -34,7 +34,7 @@ public sealed class CompressCommand : System.CommandLine.Command
         var compressionTypeOption = new Option<McmFileCompressionType[]>(new[] { "--compress-type", "-c" }, () => new[] { McmFileCompressionType.None }, "Type of compression to be used. (Maximum 2) E.g \"-c Huffman -c Lzss\" Compression is done in reverse order. Make sure to put huffman first for better compression ratio.") { Arity = new ArgumentArity(1, 2), IsRequired = false };
         compressionTypeOption.AddCompletions(Enum.GetNames<McmFileCompressionType>());
 
-        var maxSizePerChunkOption = new Option<int>(new[] { "--max-size-per-chunk", "-m" }, () => 0x2000, "Split each file into chunks of <size> bytes when compressing.") { Arity = ArgumentArity.ExactlyOne, IsRequired = false, ArgumentHelpName = "size" };
+        var maxSizePerChunkOption = new Option<uint>(new[] { "--max-size-per-chunk", "-m" }, () => 0x2000, "Split each file into chunks of <size> bytes when compressing.") { Arity = ArgumentArity.ExactlyOne, IsRequired = false, ArgumentHelpName = "size" };
 
         AddArgument(inputArgument);
         AddOption(outputOption);
@@ -45,7 +45,7 @@ public sealed class CompressCommand : System.CommandLine.Command
         this.SetHandler(Invoke, inputArgument, outputOption, includeOption, compressionTypeOption, maxSizePerChunkOption);
     }
 
-    private void Invoke(string input, string output, string[] includes, McmFileCompressionType[] compressionTypes, int maxSizePerChunk)
+    private void Invoke(string input, string output, string[] includes, McmFileCompressionType[] compressionTypes, uint maxSizePerChunk)
     {
         if (Directory.Exists(input))
         {
@@ -57,7 +57,7 @@ public sealed class CompressCommand : System.CommandLine.Command
         }
     }
 
-    private void Compress(string folder, string output, string[] includes, McmFileCompressionType[] compressionTypes, int maxSizePerChunk)
+    private void Compress(string folder, string output, string[] includes, McmFileCompressionType[] compressionTypes, uint maxSizePerChunk)
     {
         using var outputFile = new FileStream(output, FileMode.Create, FileAccess.Write);
         using var marArchive = new MarArchive(outputFile, MarArchiveMode.Create);

@@ -1,5 +1,5 @@
 ﻿// Fossil Fighters Tool is used to decompress and compress MAR archives used in Fossil Fighters game.
-// Copyright (C) 2022 Yong Jian Ming
+// Copyright (C) 2023 Yong Jian Ming
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -16,12 +16,15 @@
 
 using System.CommandLine;
 using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using Microsoft.Extensions.FileSystemGlobbing;
 using SixLabors.ImageSharp;
 using TheDialgaTeam.FossilFighters.Assets.Archive;
 using TheDialgaTeam.FossilFighters.Assets.Header;
 using TheDialgaTeam.FossilFighters.Assets.Image;
 using TheDialgaTeam.FossilFighters.Assets.Motion;
+using TheDialgaTeam.FossilFighters.Assets.Rom;
 using ColorPalette = TheDialgaTeam.FossilFighters.Assets.Motion.ColorPalette;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Cli.Command;
@@ -47,6 +50,56 @@ public sealed class DecompressCommand : System.CommandLine.Command
         {
             if (File.Exists(input))
             {
+                if (Path.GetExtension(input).Equals(".nds", StringComparison.OrdinalIgnoreCase))
+                {
+                    var ndsFileSystem = NdsFilesystem.FromFile(input);
+                    var outputPath = Path.Combine(Path.GetDirectoryName(input)!, ndsFileSystem.GameCode);
+
+                    if (!Directory.Exists(outputPath))
+                    {
+                        Directory.CreateDirectory(outputPath);
+                    }
+
+                    void ExportFile(NitroRomDirectory targetDirectory, string targetLocation)
+                    {
+                        var currentDirectoryPath = Path.Combine(targetLocation, targetDirectory.Name);
+
+                        if (!Directory.Exists(currentDirectoryPath))
+                        {
+                            Directory.CreateDirectory(currentDirectoryPath);
+                        }
+
+                        foreach (var nitroRomFile in targetDirectory.Files)
+                        {
+                            var currentFilePath = Path.Combine(currentDirectoryPath, nitroRomFile.Name);
+
+                            using var fileStream = File.Create(currentFilePath);
+                            using var fileData = nitroRomFile.OpenRead();
+                            fileData.CopyTo(fileStream);
+                        }
+
+                        foreach (var nitroRomDirectory in targetDirectory.SubDirectories)
+                        {
+                            ExportFile(nitroRomDirectory, currentDirectoryPath);
+                        }
+                    }
+
+                    Console.WriteLine(Localization.ExtractingNdsFile);
+
+                    ExportFile(ndsFileSystem.RootDirectory, outputPath);
+
+                    var matcher = new Matcher();
+                    matcher.AddInclude("**/*");
+                    matcher.AddExcludePatterns(excludes);
+
+                    foreach (var file in matcher.GetResultsInFullPath(outputPath))
+                    {
+                        Decompress(file, output);
+                    }
+
+                    continue;
+                }
+
                 Decompress(input, output);
             }
             else if (Directory.Exists(input))
@@ -214,6 +267,30 @@ public sealed class DecompressCommand : System.CommandLine.Command
                                     Console.WriteLine(Localization.FileExtracted, imageOutputFilePath);
                                 }
 
+                                break;
+                            }
+
+                            case DtxHeader.FileHeader:
+                            {
+                                fileStream.Seek(0, SeekOrigin.Begin);
+                                var dtxHeader = new DtxHeader(fileStream);
+                                var jsonText = JsonSerializer.Serialize(dtxHeader, typeof(DtxHeader), new DtxHeaderContext(new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping, WriteIndented = true }));
+                                var jsonOutputFilePath = Path.Combine(output, $"{i}.json");
+
+                                File.WriteAllText(jsonOutputFilePath, jsonText);
+                                Console.WriteLine(Localization.FileExtracted, jsonOutputFilePath);
+                                break;
+                            }
+
+                            case DmgHeader.FileHeader:
+                            {
+                                fileStream.Seek(0, SeekOrigin.Begin);
+                                
+                                var jsonText = JsonSerializer.Serialize(DmgHeader.GetHeaderFromStream(fileStream), typeof(DmgHeader), new DmgHeaderContext(new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping, WriteIndented = true }));
+                                var jsonOutputFilePath = Path.Combine(output, $"{i}.json");
+
+                                File.WriteAllText(jsonOutputFilePath, jsonText);
+                                Console.WriteLine(Localization.FileExtracted, jsonOutputFilePath);
                                 break;
                             }
                         }
