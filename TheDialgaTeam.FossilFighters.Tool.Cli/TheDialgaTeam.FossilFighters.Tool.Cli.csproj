@@ -3,7 +3,7 @@
     <PropertyGroup>
         <AssemblyName>fftool</AssemblyName>
         <OutputType>Exe</OutputType>
-        <TargetFramework>net6.0</TargetFramework>
+        <TargetFramework>net7.0</TargetFramework>
 
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
@@ -12,7 +12,7 @@
         <PublishRelease>true</PublishRelease>
         <PublishTrimmed>true</PublishTrimmed>
 
-        <Version>1.5.0</Version>
+        <Version>1.6.0</Version>
         <Title>Fossil Fighters Tool</Title>
         <Authors>Yong Jian Ming</Authors>
         <Description>This program is used to decompress and compress MAR archives used in Fossil Fighters game.</Description>
