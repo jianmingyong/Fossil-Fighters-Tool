@@ -15,14 +15,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.Text;
-using JetBrains.Annotations;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
 using TheDialgaTeam.FossilFighters.Assets.Header;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Image;
 
-[PublicAPI]
 public static class ImageUtility
 {
     private const int ColorPalette16FileSize = 16 * 2;
@@ -37,17 +33,15 @@ public static class ImageUtility
         tempStream.Seek(0, SeekOrigin.Begin);
 
         using var reader = new BinaryReader(tempStream);
-
-        var colorTable = new List<Rgba32>();
+        
+        var colorTable = new List<Bgra5551>();
 
         while (tempStream.Position < tempStream.Length)
         {
             var rawValue = reader.ReadUInt16();
-            colorTable.Add(new Rgba32((byte) ((rawValue & 0x1F) << 3), (byte) (((rawValue >> 5) & 0x1F) << 3), (byte) (((rawValue >> 10) & 0x1F) << 3), 255));
+            colorTable.Add(new Bgra5551((rawValue & 0x1F) / 31f, ((rawValue >> 5) & 0x1F) / 31f, ((rawValue >> 10) & 0x1F) / 31f, colorTable.Count == 0 ? 0 : 1));
         }
-
-        colorTable[0] = new Rgba32(colorTable[0].R, colorTable[0].G, colorTable[0].B, 0);
-
+        
         return new ColorPalette(colorTable.Count <= 16 ? ColorPaletteType.Color16 : ColorPaletteType.Color256, colorTable.ToArray());
     }
 
@@ -88,9 +82,9 @@ public static class ImageUtility
         return result;
     }
 
-    public static Image<Rgba32> GetImage(MpmHeader header, ColorPalette colorPalette, byte[] bitmap, int gridSize = 8)
+    public static Image<Bgra5551> GetImage(MpmHeader header, ColorPalette colorPalette, byte[] bitmap, int gridSize = 8)
     {
-        var image = new Image<Rgba32>(header.Width, header.Height);
+        var image = new Image<Bgra5551>(header.Width, header.Height);
         var bitmapIndex = 0;
 
         if (colorPalette.Type == ColorPaletteType.Color16)
@@ -99,8 +93,8 @@ public static class ImageUtility
             {
                 for (var x = 0; x < header.Width; x += 2)
                 {
-                    image[x, y] = colorPalette.Table[bitmap[bitmapIndex] >> 4];
-                    image[x + 1, y] = colorPalette.Table[bitmap[bitmapIndex] & 0xF];
+                    image[x, y] = colorPalette.Colors[bitmap[bitmapIndex] >> 4];
+                    image[x + 1, y] = colorPalette.Colors[bitmap[bitmapIndex] & 0xF];
                     bitmapIndex++;
                 }
             }
@@ -111,7 +105,7 @@ public static class ImageUtility
             {
                 for (var x = 0; x < header.Width; x++)
                 {
-                    image[x, y] = colorPalette.Table[bitmap[bitmapIndex]];
+                    image[x, y] = colorPalette.Colors[bitmap[bitmapIndex]];
                     bitmapIndex++;
                 }
             }
@@ -120,11 +114,11 @@ public static class ImageUtility
         return image;
     }
 
-    public static Image<Rgba32> GetImage(MpmHeader header, ColorPalette colorPalette, ChunkBitmap chunkBitmap)
+    public static Image<Bgra5551> GetImage(MpmHeader header, ColorPalette colorPalette, ChunkBitmap chunkBitmap)
     {
         const int gridSize = 8;
 
-        var image = new Image<Rgba32>(header.Width, header.Height);
+        var image = new Image<Bgra5551>(header.Width, header.Height);
         var gridX = 0;
         var gridY = 0;
 
@@ -142,8 +136,8 @@ public static class ImageUtility
                         for (var x = 0; x < gridSize; x += 2)
                         {
                             var targetIndex = (x + y * gridSize) / 2;
-                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] >> 4];
-                            image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] & 0xF];
+                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] >> 4];
+                            image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] & 0xF];
                         }
                     }
                 }
@@ -154,8 +148,8 @@ public static class ImageUtility
                         for (var x = 0; x < gridSize; x += 2)
                         {
                             var targetIndex = (gridSize - 1 - x + y * gridSize) / 2;
-                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] >> 4];
-                            image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] & 0xF];
+                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] >> 4];
+                            image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] & 0xF];
                         }
                     }
                 }
@@ -166,8 +160,8 @@ public static class ImageUtility
                         for (var x = 0; x < gridSize; x += 2)
                         {
                             var targetIndex = (x + (gridSize - 1 - y) * gridSize) / 2;
-                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] & 0xF];
-                            image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] >> 4];
+                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] & 0xF];
+                            image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] >> 4];
                         }
                     }
                 }
@@ -178,8 +172,8 @@ public static class ImageUtility
                         for (var x = 0; x < gridSize; x += 2)
                         {
                             var targetIndex = (gridSize - 1 - x + (gridSize - 1 - y) * gridSize) / 2;
-                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] & 0xF];
-                            image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] >> 4];
+                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] & 0xF];
+                            image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] >> 4];
                         }
                     }
                 }
@@ -197,7 +191,7 @@ public static class ImageUtility
                         {
                             var targetIndex = x + y * gridSize;
                             var colorPaletteIndex = chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex];
-                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[colorPaletteIndex];
+                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[colorPaletteIndex];
                         }
                     }
                 }
@@ -209,7 +203,7 @@ public static class ImageUtility
                         {
                             var targetIndex = gridSize - 1 - x + y * gridSize;
                             var colorPaletteIndex = chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex];
-                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[colorPaletteIndex];
+                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[colorPaletteIndex];
                         }
                     }
                 }
@@ -221,7 +215,7 @@ public static class ImageUtility
                         {
                             var targetIndex = x + (gridSize - 1 - y) * gridSize;
                             var colorPaletteIndex = chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex];
-                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[colorPaletteIndex];
+                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[colorPaletteIndex];
                         }
                     }
                 }
@@ -233,7 +227,7 @@ public static class ImageUtility
                         {
                             var targetIndex = gridSize - 1 - x + (gridSize - 1 - y) * gridSize;
                             var colorPaletteIndex = chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex];
-                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[colorPaletteIndex];
+                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[colorPaletteIndex];
                         }
                     }
                 }

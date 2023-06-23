@@ -21,7 +21,7 @@ using JetBrains.Annotations;
 namespace TheDialgaTeam.FossilFighters.Assets.Header;
 
 [JsonSerializable(typeof(DtxHeader))]
-public partial class DtxHeaderContext : JsonSerializerContext
+public sealed partial class DtxHeaderContext : JsonSerializerContext
 {
     
 }

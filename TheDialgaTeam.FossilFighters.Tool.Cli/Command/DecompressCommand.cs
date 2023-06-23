@@ -20,6 +20,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using Microsoft.Extensions.FileSystemGlobbing;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Png;
 using TheDialgaTeam.FossilFighters.Assets.Archive;
 using TheDialgaTeam.FossilFighters.Assets.Header;
 using TheDialgaTeam.FossilFighters.Assets.Image;
@@ -29,7 +30,7 @@ using ColorPalette = TheDialgaTeam.FossilFighters.Assets.Motion.ColorPalette;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Cli.Command;
 
-public sealed class DecompressCommand : System.CommandLine.Command
+internal sealed class DecompressCommand : System.CommandLine.Command
 {
     public DecompressCommand() : base("decompress", Localization.DecompressCommandDescription)
     {
@@ -44,7 +45,7 @@ public sealed class DecompressCommand : System.CommandLine.Command
         this.SetHandler(Invoke, inputArgument, outputOption, excludeOption);
     }
 
-    private void Invoke(string[] inputs, string output, string[] excludes)
+    private static void Invoke(string[] inputs, string output, string[] excludes)
     {
         foreach (var input in inputs)
         {
@@ -121,7 +122,7 @@ public sealed class DecompressCommand : System.CommandLine.Command
         }
     }
 
-    private void Decompress(string input, string output)
+    private static void Decompress(string input, string output)
     {
         Console.WriteLine(Localization.FileExtracting, input);
 
@@ -147,6 +148,7 @@ public sealed class DecompressCommand : System.CommandLine.Command
         {
             using var marArchive = new MarArchive(new FileStream(input, FileMode.Open, FileAccess.Read));
             var marEntries = marArchive.Entries;
+            var mcmFileMetadata = new Dictionary<int, McmFileMetadata>();
 
             for (var i = 0; i < marEntries.Count; i++)
             {
@@ -157,18 +159,47 @@ public sealed class DecompressCommand : System.CommandLine.Command
                     using (var mcmFileStream = marEntries[i].OpenRead())
                     {
                         mcmFileStream.CopyTo(outputStream);
+                        mcmFileMetadata.Add(i, mcmFileStream.GetFileMetadata());
+                        
+                        //var mcmFileMetadataOutput = Path.Combine(output, $"{i}.meta");
+                        //mcmFileStream.SaveFileMetadata(mcmFileMetadataOutput);
+                        //Console.WriteLine(Localization.FileExtracted, mcmFileMetadataOutput);
                     }
                 }
 
                 Console.WriteLine(Localization.FileExtracted, outputFile);
-
-                // Handle Add-Ons (Image)
+                
+                // Handle Add-Ons
                 using (var fileStream = new FileStream(outputFile, FileMode.Open, FileAccess.Read))
                 {
                     using (var reader = new BinaryReader(fileStream, Encoding.UTF8))
                     {
                         switch (reader.ReadInt32())
                         {
+                            case AclHeader.FileHeader:
+                            {
+                                fileStream.Seek(0, SeekOrigin.Begin);
+                                
+                                var header = AclHeader.GetHeaderFromStream(fileStream);
+                                var jsonOutputFilePath = Path.Combine(output, $"{i}.json");
+                                
+                                File.WriteAllText(jsonOutputFilePath, header.ToJsonString());
+                                Console.WriteLine(Localization.FileExtracted, jsonOutputFilePath);
+                                break;
+                            }
+
+                            case DmsHeader.FileHeader:
+                            {
+                                fileStream.Seek(0, SeekOrigin.Begin);
+                                
+                                var header = DmsHeader.GetHeaderFromStream(fileStream);
+                                var jsonOutputFilePath = Path.Combine(output, $"{i}.json");
+                                
+                                File.WriteAllText(jsonOutputFilePath, header.ToJsonString());
+                                Console.WriteLine(Localization.FileExtracted, jsonOutputFilePath);
+                                break;
+                            }
+                            
                             case MmsHeader.FileHeader:
                             {
                                 fileStream.Seek(0, SeekOrigin.Begin);
@@ -186,6 +217,12 @@ public sealed class DecompressCommand : System.CommandLine.Command
 
                                     using var colorPaletteFileStream = new FileStream(colorPaletteFile, FileMode.Open, FileAccess.Read);
                                     colorPalettes[j] = MotionUtility.GetColorPalette(colorPaletteFileStream);
+
+                                    var palText = colorPalettes[j].ToJascPalString();
+                                    var palOutputFilePath = Path.Combine(output, $"{j}.pal");
+                                    File.WriteAllText(palOutputFilePath, palText);
+                                
+                                    Console.WriteLine(Localization.FileExtracted, palOutputFilePath);
                                 }
 
                                 for (var j = 0; j < mmsHeader.BitmapFileCount; j++)
@@ -204,12 +241,12 @@ public sealed class DecompressCommand : System.CommandLine.Command
                                     {
                                         using var image = MotionUtility.GetImage(colorPalettes[k], bitmap);
                                         var imageOutputFilePath = Path.Combine(output, $"{mmsHeader.BitmapFileIndexes[j]}_{k}.png");
-                                        image.SaveAsPng(imageOutputFilePath);
+                                        image.SaveAsPng(imageOutputFilePath, new PngEncoder { ColorType = PngColorType.Palette });
 
                                         Console.WriteLine(Localization.FileExtracted, imageOutputFilePath);
                                     }
                                 }
-
+                                
                                 break;
                             }
 
@@ -243,7 +280,7 @@ public sealed class DecompressCommand : System.CommandLine.Command
                                     using var image = ImageUtility.GetImage(mpmHeader, colorPalette, bitmap);
                                     var imageOutputFilePath = Path.Combine(output, $"{mpmHeader.BitmapFileIndex}.png");
                                     image.SaveAsPng(imageOutputFilePath);
-
+                                    
                                     Console.WriteLine(Localization.FileExtracted, imageOutputFilePath);
                                 }
                                 else
@@ -266,6 +303,12 @@ public sealed class DecompressCommand : System.CommandLine.Command
 
                                     Console.WriteLine(Localization.FileExtracted, imageOutputFilePath);
                                 }
+                                
+                                var jsonText = mpmHeader.ToJsonString();
+                                var jsonOutputFilePath = Path.Combine(output, $"{i}.json");
+                                File.WriteAllText(jsonOutputFilePath, jsonText);
+                                
+                                Console.WriteLine(Localization.FileExtracted, jsonOutputFilePath);
 
                                 break;
                             }
@@ -297,6 +340,10 @@ public sealed class DecompressCommand : System.CommandLine.Command
                     }
                 }
             }
+            
+            var mcmFileMetadataOutput = Path.Combine(output, "meta.json");
+            File.WriteAllText(mcmFileMetadataOutput, JsonSerializer.Serialize(mcmFileMetadata));
+            Console.WriteLine(Localization.FileExtracted, mcmFileMetadataOutput);
         }
         catch (Exception ex)
         {

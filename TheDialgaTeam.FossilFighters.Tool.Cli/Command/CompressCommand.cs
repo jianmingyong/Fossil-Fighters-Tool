@@ -20,7 +20,7 @@ using TheDialgaTeam.FossilFighters.Assets.Archive;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Cli.Command;
 
-public sealed class CompressCommand : System.CommandLine.Command
+internal sealed class CompressCommand : System.CommandLine.Command
 {
     public CompressCommand() : base("compress", Localization.CompressCommandDescription)
     {
@@ -65,24 +65,33 @@ public sealed class CompressCommand : System.CommandLine.Command
         var matcher = new Matcher();
         matcher.AddIncludePatterns(includes);
 
-        foreach (var file in matcher.GetResultsInFullPath(folder).OrderBy(s => s))
+        foreach (var file in matcher.GetResultsInFullPath(folder).OrderBy(s => int.Parse(Path.GetFileNameWithoutExtension(s))))
         {
             var marArchiveEntry = marArchive.CreateEntry();
-
             using var mcmFileStream = marArchiveEntry.OpenWrite();
-            mcmFileStream.MaxSizePerChunk = maxSizePerChunk;
 
-            if (compressionTypes.Length == 1)
+            var mcmMetaFilePath = Path.Combine(Path.GetDirectoryName(file) ?? string.Empty, $"{Path.GetFileNameWithoutExtension(file)}.meta");
+            
+            if (File.Exists(mcmMetaFilePath))
             {
-                mcmFileStream.CompressionType1 = compressionTypes[0];
+                mcmFileStream.LoadFileMetadata(mcmMetaFilePath);
             }
             else
             {
-                mcmFileStream.CompressionType1 = compressionTypes[0];
-                mcmFileStream.CompressionType2 = compressionTypes[1];
-            }
+                mcmFileStream.MaxSizePerChunk = maxSizePerChunk;
 
-            using var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read);
+                if (compressionTypes.Length == 1)
+                {
+                    mcmFileStream.CompressionType1 = compressionTypes[0];
+                }
+                else
+                {
+                    mcmFileStream.CompressionType1 = compressionTypes[0];
+                    mcmFileStream.CompressionType2 = compressionTypes[1];
+                }
+            }
+            
+            using var fileStream = File.OpenRead(file);
             fileStream.CopyTo(mcmFileStream);
         }
     }

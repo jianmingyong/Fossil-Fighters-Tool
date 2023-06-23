@@ -15,20 +15,26 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using JetBrains.Annotations;
-using SixLabors.ImageSharp.PixelFormats;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Image;
+
+[PublicAPI]
+public enum ColorPaletteType
+{
+    Color16 = 0,
+    Color256 = 1
+}
 
 [PublicAPI]
 public readonly struct ColorPalette
 {
     public ColorPaletteType Type { get; }
+    
+    public Bgra5551[] Colors { get; }
 
-    public Rgba32[] Table { get; }
-
-    public ColorPalette(ColorPaletteType type, Rgba32[] table)
+    public ColorPalette(ColorPaletteType type, Bgra5551[] colors)
     {
         Type = type;
-        Table = table;
+        Colors = colors;
     }
 }

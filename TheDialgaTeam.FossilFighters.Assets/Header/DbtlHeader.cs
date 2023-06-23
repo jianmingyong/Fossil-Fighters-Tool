@@ -19,12 +19,11 @@ using JetBrains.Annotations;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Header;
 
-[PublicAPI]
 public readonly struct BpExchangeInfo
 {
-    public ushort BpValue { get; }
+    public ushort BpValue { get; init; }
 
-    public ushort DpCost { get; }
+    public ushort DpCost { get; init; }
 
     public BpExchangeInfo(ushort bpValue, ushort dpCost)
     {
@@ -33,7 +32,6 @@ public readonly struct BpExchangeInfo
     }
 }
 
-[PublicAPI]
 public sealed class DbtlHeader
 {
     public const int FileHeader = 0x4C544244;

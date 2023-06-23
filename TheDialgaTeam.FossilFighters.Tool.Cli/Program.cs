@@ -1,5 +1,5 @@
 ﻿// Fossil Fighters Tool is used to decompress and compress MAR archives used in Fossil Fighters game.
-// Copyright (C) 2022 Yong Jian Ming
+// Copyright (C) 2023 Yong Jian Ming
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@ internal static class Program
         var rootCommand = new RootCommand(Localization.FossilFightersToolDescription);
         rootCommand.AddCommand(new DecompressCommand());
         rootCommand.AddCommand(new CompressCommand());
+        rootCommand.AddCommand(new ConvertCommand());
 
         if (args.Length > 0)
         {

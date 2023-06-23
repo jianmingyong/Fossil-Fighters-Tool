@@ -15,9 +15,17 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using JetBrains.Annotations;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Header;
+
+[JsonSourceGenerationOptions(WriteIndented = true)]
+[JsonSerializable(typeof(MpmHeader), GenerationMode = JsonSourceGenerationMode.Serialization)]
+public sealed partial class MpmHeaderContext : JsonSerializerContext
+{
+}
 
 [PublicAPI]
 public sealed class MpmHeader
@@ -71,7 +79,7 @@ public sealed class MpmHeader
         var bitmapFileIndex = reader.ReadInt32();
         var bitmapFileOffset = reader.ReadInt32();
         var bgMapFileIndex = reader.ReadInt32();
-        var unknown8 = reader.ReadInt32();
+        var bgMapFileOffset = reader.ReadInt32();
 
         var colorPaletteFile = new StringBuilder();
         reader.BaseStream.Seek(colorPaletteFileOffset, SeekOrigin.Begin);
@@ -91,7 +99,7 @@ public sealed class MpmHeader
 
         var bgMapFile = new StringBuilder();
 
-        if (unknown8 != 0)
+        if (bgMapFileOffset != 0)
         {
             reader.BaseStream.Seek(bitmapFileOffset, SeekOrigin.Begin);
 
@@ -118,5 +126,10 @@ public sealed class MpmHeader
             BgMapFileIndex = bgMapFileIndex,
             BgMapFileName = bgMapFile.ToString()
         };
+    }
+
+    public string ToJsonString()
+    {
+        return JsonSerializer.Serialize(this, MpmHeaderContext.Default.MpmHeader);
     }
 }

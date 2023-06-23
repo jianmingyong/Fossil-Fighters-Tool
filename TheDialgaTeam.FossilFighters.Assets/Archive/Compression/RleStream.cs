@@ -154,22 +154,8 @@ public sealed class RleStream : CompressibleStream
                     }
                     else
                     {
-                        if (tempBufferLength > rawDataSpaceRemaining)
-                        {
-                            tempBuffer.AsSpan(0, rawDataSpaceRemaining).CopyTo(rawDataBuffer.AsSpan(rawDataLength));
-                            rawDataLength += rawDataSpaceRemaining;
-
-                            WriteUncompressed(rawDataBuffer.AsSpan(0, rawDataLength));
-                            rawDataLength = 0;
-
-                            tempBuffer.AsSpan(rawDataSpaceRemaining, tempBufferLength - rawDataSpaceRemaining).CopyTo(rawDataBuffer.AsSpan(rawDataLength));
-                            rawDataLength += tempBufferLength - rawDataSpaceRemaining;
-                        }
-                        else
-                        {
-                            tempBuffer.AsSpan(0, tempBufferLength).CopyTo(rawDataBuffer.AsSpan(rawDataLength));
-                            rawDataLength += rawDataSpaceRemaining;
-                        }
+                        tempBuffer.AsSpan(0, tempBufferLength).CopyTo(rawDataBuffer.AsSpan(rawDataLength));
+                        rawDataLength += tempBufferLength;
                     }
                 }
             }

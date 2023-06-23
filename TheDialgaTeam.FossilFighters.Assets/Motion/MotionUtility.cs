@@ -30,14 +30,17 @@ public static class MotionUtility
 
         var paletteType = (ColorPaletteType) reader.ReadInt32();
         var table = new Rgba32[paletteType == ColorPaletteType.Color16 ? 16 : 256];
+        var colorTable2 = new List<Bgra5551>();
 
         for (var i = 0; i < table.Length; i++)
         {
             var rawValue = reader.ReadUInt16();
             table[i] = new Rgba32((byte) ((rawValue & 0x1F) << 3), (byte) (((rawValue >> 5) & 0x1F) << 3), (byte) (((rawValue >> 10) & 0x1F) << 3), (byte) (i == 0 ? 0 : 255));
+            
+            colorTable2.Add(new Bgra5551((rawValue & 0x1F) / 31f, ((rawValue >> 5) & 0x1F) / 31f, ((rawValue >> 10) & 0x1F) / 31f, colorTable2.Count == 0 ? 0 : 1));
         }
 
-        return new ColorPalette(paletteType, table);
+        return new ColorPalette(paletteType, table, colorTable2.ToArray());
     }
 
     public static Bitmap GetBitmap(Stream stream)
@@ -125,9 +128,9 @@ public static class MotionUtility
         return new Bitmap(width, height, colorPaletteType, colorPaletteIndexes.ToArray());
     }
 
-    public static Image<Rgba32> GetImage(ColorPalette colorPalette, Bitmap bitmap, int gridSize = 8)
+    public static Image<Bgra5551> GetImage(ColorPalette colorPalette, Bitmap bitmap, int gridSize = 8)
     {
-        var image = new Image<Rgba32>(bitmap.Width, bitmap.Height);
+        var image = new Image<Bgra5551>(bitmap.Width, bitmap.Height);
 
         var bitmapIndex = 0;
         var gridX = 0;
@@ -141,8 +144,8 @@ public static class MotionUtility
                 {
                     for (var x = 0; x < gridSize; x += 2)
                     {
-                        image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[bitmap.ColorPaletteIndexes[bitmapIndex] >> 4];
-                        image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[bitmap.ColorPaletteIndexes[bitmapIndex] & 0xF];
+                        image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[bitmap.ColorPaletteIndexes[bitmapIndex] >> 4];
+                        image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[bitmap.ColorPaletteIndexes[bitmapIndex] & 0xF];
 
                         bitmapIndex++;
                     }
@@ -165,7 +168,7 @@ public static class MotionUtility
                 {
                     for (var x = 0; x < gridSize; x++)
                     {
-                        image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Table[bitmap.ColorPaletteIndexes[bitmapIndex++]];
+                        image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[bitmap.ColorPaletteIndexes[bitmapIndex++]];
                     }
                 }
 

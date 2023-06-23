@@ -14,10 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System.Text;
 using JetBrains.Annotations;
-using SixLabors.ImageSharp.PixelFormats;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Motion;
+
+[PublicAPI]
+public enum ColorPaletteType
+{
+    Color16 = 0,
+    Color256 = 1
+}
 
 [PublicAPI]
 public readonly struct ColorPalette
@@ -25,10 +32,31 @@ public readonly struct ColorPalette
     public ColorPaletteType Type { get; }
 
     public Rgba32[] Table { get; }
+    
+    public Bgra5551[] Colors { get; }
 
-    public ColorPalette(ColorPaletteType type, Rgba32[] table)
+    public ColorPalette(ColorPaletteType type, Rgba32[] table, Bgra5551[] colors)
     {
         Type = type;
         Table = table;
+        Colors = colors;
+    }
+
+    public string ToJascPalString()
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("JASC-PAL");
+        builder.AppendLine("0100");
+        builder.AppendLine(Colors.Length.ToString());
+
+        foreach (var color in Colors)
+        {
+            var rgba32 = new Rgba32();
+            color.ToRgba32(ref rgba32);
+            
+            builder.AppendLine($"{rgba32.R} {rgba32.G} {rgba32.B}");
+        }
+
+        return builder.ToString();
     }
 }

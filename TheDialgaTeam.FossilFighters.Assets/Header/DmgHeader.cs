@@ -21,9 +21,8 @@ using JetBrains.Annotations;
 namespace TheDialgaTeam.FossilFighters.Assets.Header;
 
 [JsonSerializable(typeof(DmgHeader))]
-public partial class DmgHeaderContext : JsonSerializerContext
+public sealed partial class DmgHeaderContext : JsonSerializerContext
 {
-    
 }
 
 public readonly struct DmgTextInfo
@@ -41,10 +40,6 @@ public sealed class DmgHeader
     public const int FileHeader = 0x00474D44;
 
     public DmgTextInfo[] Texts { get; init; }
-    
-    private DmgHeader()
-    {
-    }
 
     public static DmgHeader GetHeaderFromStream(Stream stream)
     {
