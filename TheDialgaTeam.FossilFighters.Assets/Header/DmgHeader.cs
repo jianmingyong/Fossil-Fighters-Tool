@@ -20,12 +20,12 @@ using JetBrains.Annotations;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Header;
 
-[JsonSerializable(typeof(DmgHeader))]
+public readonly record struct DmgTextInfo(int TextId, string Text);
+
+[JsonSerializable(typeof(DmgHeader), GenerationMode = JsonSourceGenerationMode.Serialization)]
 public sealed partial class DmgHeaderContext : JsonSerializerContext
 {
 }
-
-public readonly record struct DmgTextInfo(int TextId, string Text);
 
 [PublicAPI]
 public sealed class DmgHeader
@@ -33,6 +33,11 @@ public sealed class DmgHeader
     public const int FileHeader = 0x00474D44;
 
     public DmgTextInfo[] Texts { get; init; }
+
+    public DmgHeader(DmgTextInfo[] texts)
+    {
+        Texts = texts;
+    }
 
     public static DmgHeader GetHeaderFromStream(Stream stream)
     {
@@ -42,7 +47,7 @@ public sealed class DmgHeader
 
         var textCount = reader.ReadUInt32();
         var texts = new DmgTextInfo[textCount];
-        
+
         stream.Seek(reader.ReadUInt32(), SeekOrigin.Begin);
 
         var textOffsets = new uint[textCount];
@@ -51,26 +56,25 @@ public sealed class DmgHeader
         {
             textOffsets[i] = reader.ReadUInt32();
         }
-        
+
         for (var i = 0; i < textCount; i++)
         {
             stream.Seek(textOffsets[i], SeekOrigin.Begin);
 
             var textBuilder = new StringBuilder();
-            int id1, id2 = 0;
             char nextChar;
 
-            id1 = reader.ReadInt32();
-            id2 = reader.ReadInt32();
-            
+            var id = reader.ReadInt32();
+            _ = reader.ReadInt32();
+
             while ((nextChar = reader.ReadChar()) != '\0')
             {
                 textBuilder.Append(nextChar);
             }
 
-            texts[i] = new DmgTextInfo(id1, textBuilder.ToString());
+            texts[i] = new DmgTextInfo(id, textBuilder.ToString());
         }
 
-        return new DmgHeader { Texts = texts };
+        return new DmgHeader(texts);
     }
 }
