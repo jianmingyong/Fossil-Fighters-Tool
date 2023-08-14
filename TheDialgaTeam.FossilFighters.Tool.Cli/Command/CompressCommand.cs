@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.CommandLine;
+using System.Text.Json;
 using Microsoft.Extensions.FileSystemGlobbing;
 using TheDialgaTeam.FossilFighters.Assets.Archive;
 
@@ -64,17 +65,23 @@ internal sealed class CompressCommand : System.CommandLine.Command
 
         var matcher = new Matcher();
         matcher.AddIncludePatterns(includes);
+        
+        var mcmMetaFilePath = Path.GetFullPath(Path.Combine(folder, "meta.json"));
+        Dictionary<int, McmFileMetadata>? mcmMetadata = null;
+        
+        if (File.Exists(mcmMetaFilePath))
+        {
+            mcmMetadata = JsonSerializer.Deserialize(File.OpenRead(mcmMetaFilePath), McmFileMetadataContext.Default.DictionaryInt32McmFileMetadata);
+        }
 
         foreach (var file in matcher.GetResultsInFullPath(folder).OrderBy(s => int.Parse(Path.GetFileNameWithoutExtension(s))))
         {
             var marArchiveEntry = marArchive.CreateEntry();
             using var mcmFileStream = marArchiveEntry.OpenWrite();
-
-            var mcmMetaFilePath = Path.Combine(Path.GetDirectoryName(file) ?? string.Empty, $"{Path.GetFileNameWithoutExtension(file)}.meta");
             
-            if (File.Exists(mcmMetaFilePath))
+            if (mcmMetadata is not null)
             {
-                mcmFileStream.LoadFileMetadata(mcmMetaFilePath);
+                mcmFileStream.LoadMetadata(mcmMetadata[int.Parse(Path.GetFileNameWithoutExtension(file))]);
             }
             else
             {

@@ -18,6 +18,7 @@ using System.CommandLine;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.FileSystemGlobbing;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
@@ -61,6 +62,21 @@ internal sealed class DecompressCommand : System.CommandLine.Command
                         Directory.CreateDirectory(outputPath);
                     }
 
+                    Console.WriteLine(Localization.ExtractingNdsFile);
+
+                    ExportFile(ndsFileSystem.RootDirectory, outputPath);
+
+                    var matcher = new Matcher();
+                    matcher.AddInclude("**/*");
+                    matcher.AddExcludePatterns(excludes);
+
+                    foreach (var file in matcher.GetResultsInFullPath(outputPath))
+                    {
+                        Decompress(file, output);
+                    }
+
+                    continue;
+
                     void ExportFile(NitroRomDirectory targetDirectory, string targetLocation)
                     {
                         var currentDirectoryPath = Path.Combine(targetLocation, targetDirectory.Name);
@@ -84,21 +100,6 @@ internal sealed class DecompressCommand : System.CommandLine.Command
                             ExportFile(nitroRomDirectory, currentDirectoryPath);
                         }
                     }
-
-                    Console.WriteLine(Localization.ExtractingNdsFile);
-
-                    ExportFile(ndsFileSystem.RootDirectory, outputPath);
-
-                    var matcher = new Matcher();
-                    matcher.AddInclude("**/*");
-                    matcher.AddExcludePatterns(excludes);
-
-                    foreach (var file in matcher.GetResultsInFullPath(outputPath))
-                    {
-                        Decompress(file, output);
-                    }
-
-                    continue;
                 }
 
                 Decompress(input, output);
@@ -160,10 +161,6 @@ internal sealed class DecompressCommand : System.CommandLine.Command
                     {
                         mcmFileStream.CopyTo(outputStream);
                         mcmFileMetadata.Add(i, mcmFileStream.GetFileMetadata());
-                        
-                        //var mcmFileMetadataOutput = Path.Combine(output, $"{i}.meta");
-                        //mcmFileStream.SaveFileMetadata(mcmFileMetadataOutput);
-                        //Console.WriteLine(Localization.FileExtracted, mcmFileMetadataOutput);
                     }
                 }
 
@@ -342,7 +339,7 @@ internal sealed class DecompressCommand : System.CommandLine.Command
             }
             
             var mcmFileMetadataOutput = Path.Combine(output, "meta.json");
-            File.WriteAllText(mcmFileMetadataOutput, JsonSerializer.Serialize(mcmFileMetadata));
+            File.WriteAllText(mcmFileMetadataOutput, JsonSerializer.Serialize(mcmFileMetadata, McmFileMetadataContext.Default.DictionaryInt32McmFileMetadata));
             Console.WriteLine(Localization.FileExtracted, mcmFileMetadataOutput);
         }
         catch (Exception ex)

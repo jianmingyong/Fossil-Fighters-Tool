@@ -25,14 +25,7 @@ public sealed partial class DmgHeaderContext : JsonSerializerContext
 {
 }
 
-public readonly struct DmgTextInfo
-{
-    public int TextId { get; init; }
-
-    public int Unknown2 { get; init; }
-    
-    public string Text { get; init; }
-}
+public readonly record struct DmgTextInfo(int TextId, string Text);
 
 [PublicAPI]
 public sealed class DmgHeader
@@ -75,7 +68,7 @@ public sealed class DmgHeader
                 textBuilder.Append(nextChar);
             }
 
-            texts[i] = new DmgTextInfo { TextId = id1, Unknown2 = id2, Text = textBuilder.ToString() };
+            texts[i] = new DmgTextInfo(id1, textBuilder.ToString());
         }
 
         return new DmgHeader { Texts = texts };

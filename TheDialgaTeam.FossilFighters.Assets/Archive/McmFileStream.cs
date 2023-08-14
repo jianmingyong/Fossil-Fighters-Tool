@@ -15,22 +15,19 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.Buffers;
-using System.Text.Json;
 using System.Text.Json.Serialization;
 using JetBrains.Annotations;
 using TheDialgaTeam.FossilFighters.Assets.Archive.Compression;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Archive;
 
-[JsonSerializable(typeof(McmFileMetadata))]
+[JsonSourceGenerationOptions(WriteIndented = true)]
+[JsonSerializable(typeof(Dictionary<int, McmFileMetadata>))]
 public sealed partial class McmFileMetadataContext : JsonSerializerContext
 {
 }
 
-public sealed record McmFileMetadata(
-    uint MaxSizePerChunk,
-    McmFileCompressionType CompressionType1, 
-    McmFileCompressionType CompressionType2);
+public sealed record McmFileMetadata(uint MaxSizePerChunk, McmFileCompressionType CompressionType1, McmFileCompressionType CompressionType2);
 
 [PublicAPI]
 public sealed class McmFileStream : CompressibleStream
@@ -80,19 +77,11 @@ public sealed class McmFileStream : CompressibleStream
         return new McmFileMetadata(MaxSizePerChunk, CompressionType1, CompressionType2);
     }
 
-    public void LoadFileMetadata(string filePath)
+    public void LoadMetadata(McmFileMetadata metadata)
     {
-        using var file = File.OpenRead(filePath);
-        var (maxSizePerChunk, compressionType1, compressionType2) = JsonSerializer.Deserialize(file, McmFileMetadataContext.Default.McmFileMetadata) ?? new McmFileMetadata(MaxSizePerChunk, CompressionType1, CompressionType2);
-        
-        MaxSizePerChunk = maxSizePerChunk;
-        CompressionType1 = compressionType1;
-        CompressionType2 = compressionType2;
-    }
-
-    public void SaveFileMetadata(string filePath)
-    {
-        File.WriteAllText(filePath, JsonSerializer.Serialize(new McmFileMetadata(MaxSizePerChunk, CompressionType1, CompressionType2), McmFileMetadataContext.Default.McmFileMetadata));
+        MaxSizePerChunk = metadata.MaxSizePerChunk;
+        CompressionType1 = metadata.CompressionType1;
+        CompressionType2 = metadata.CompressionType2;
     }
 
     protected override void Decompress(BinaryReader reader, BinaryWriter writer, Stream inputStream, MemoryStream outputStream)
