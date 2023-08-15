@@ -10,6 +10,7 @@
         <TrimMode>copyused</TrimMode>
         <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
 
+        <IsPublishable>false</IsPublishable>
         <PublishSingleFile>true</PublishSingleFile>
         <PublishTrimmed>false</PublishTrimmed>
 

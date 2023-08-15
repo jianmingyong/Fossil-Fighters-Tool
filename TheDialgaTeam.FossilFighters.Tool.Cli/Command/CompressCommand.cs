@@ -28,29 +28,32 @@ internal sealed class CompressCommand : System.CommandLine.Command
         var inputArgument = new Argument<string>("input", "Target folder to compress.") { Arity = ArgumentArity.ExactlyOne };
         inputArgument.LegalFilePathsOnly();
 
-        var outputOption = new Option<string>(new[] { "--output", "-o" }, "Output file after compression.") { Arity = ArgumentArity.ExactlyOne, IsRequired = true };
+        var outputOption = new Option<string>(new[] { "--output", "-o" }, "Output file after compression.") { Arity = ArgumentArity.ExactlyOne, IsRequired = true, ArgumentHelpName = "file" };
 
-        var includeOption = new Option<string[]>(new[] { "--include", "-i" }, () => new[] { "*.bin" }, "Include files to be compressed. You can use wildcard (*) to specify one or more files.") { Arity = ArgumentArity.OneOrMore, IsRequired = false };
+        var includeOption = new Option<string[]>(new[] { "--include", "-i" }, () => new[] { "*.bin" }, "Include files to be compressed. You can use wildcard (*) to specify one or more files. E.g \"-i *.bin -i *.hex\"") { Arity = ArgumentArity.OneOrMore, IsRequired = false, ArgumentHelpName = "fileTypes" };
 
         var compressionTypeOption = new Option<McmFileCompressionType[]>(new[] { "--compress-type", "-c" }, () => new[] { McmFileCompressionType.None }, "Type of compression to be used. (Maximum 2) E.g \"-c Huffman -c Lzss\" Compression is done in reverse order. Make sure to put huffman first for better compression ratio.") { Arity = new ArgumentArity(1, 2), IsRequired = false };
         compressionTypeOption.AddCompletions(Enum.GetNames<McmFileCompressionType>());
 
         var maxSizePerChunkOption = new Option<uint>(new[] { "--max-size-per-chunk", "-m" }, () => 0x2000, "Split each file into chunks of <size> bytes when compressing.") { Arity = ArgumentArity.ExactlyOne, IsRequired = false, ArgumentHelpName = "size" };
 
+        var metaFileOption = new Option<string>(new[] { "--meta-file", "-mf" }, () => "meta.json", "Meta definition file to define the compression type and the chunk size.") { Arity = ArgumentArity.ExactlyOne, IsRequired = false, ArgumentHelpName = "file" };
+
         AddArgument(inputArgument);
         AddOption(outputOption);
         AddOption(includeOption);
         AddOption(compressionTypeOption);
         AddOption(maxSizePerChunkOption);
+        AddOption(metaFileOption);
 
-        this.SetHandler(Invoke, inputArgument, outputOption, includeOption, compressionTypeOption, maxSizePerChunkOption);
+        this.SetHandler(Invoke, inputArgument, outputOption, includeOption, compressionTypeOption, maxSizePerChunkOption, metaFileOption);
     }
 
-    private void Invoke(string input, string output, string[] includes, McmFileCompressionType[] compressionTypes, uint maxSizePerChunk)
+    private void Invoke(string input, string output, string[] includes, McmFileCompressionType[] compressionTypes, uint maxSizePerChunk, string metaFile)
     {
         if (Directory.Exists(input))
         {
-            Compress(input, output, includes, compressionTypes, maxSizePerChunk);
+            Compress(input, output, includes, compressionTypes, maxSizePerChunk, metaFile);
         }
         else
         {
@@ -58,7 +61,7 @@ internal sealed class CompressCommand : System.CommandLine.Command
         }
     }
 
-    private void Compress(string folder, string output, string[] includes, McmFileCompressionType[] compressionTypes, uint maxSizePerChunk)
+    private void Compress(string folder, string output, string[] includes, McmFileCompressionType[] compressionTypes, uint maxSizePerChunk, string metaFile)
     {
         using var outputFile = new FileStream(output, FileMode.Create, FileAccess.Write);
         using var marArchive = new MarArchive(outputFile, MarArchiveMode.Create);
@@ -66,12 +69,20 @@ internal sealed class CompressCommand : System.CommandLine.Command
         var matcher = new Matcher();
         matcher.AddIncludePatterns(includes);
         
-        var mcmMetaFilePath = Path.GetFullPath(Path.Combine(folder, "meta.json"));
         Dictionary<int, McmFileMetadata>? mcmMetadata = null;
-        
-        if (File.Exists(mcmMetaFilePath))
+
+        if (File.Exists(metaFile))
         {
-            mcmMetadata = JsonSerializer.Deserialize(File.OpenRead(mcmMetaFilePath), McmFileMetadataContext.Default.DictionaryInt32McmFileMetadata);
+            mcmMetadata = JsonSerializer.Deserialize(File.OpenRead(metaFile), McmFileMetadataContext.Default.DictionaryInt32McmFileMetadata);
+        }
+        else
+        {
+            var mcmMetaFilePath = Path.GetFullPath(Path.Combine(folder, metaFile));
+        
+            if (File.Exists(mcmMetaFilePath))
+            {
+                mcmMetadata = JsonSerializer.Deserialize(File.OpenRead(mcmMetaFilePath), McmFileMetadataContext.Default.DictionaryInt32McmFileMetadata);
+            }
         }
 
         foreach (var file in matcher.GetResultsInFullPath(folder).OrderBy(s => int.Parse(Path.GetFileNameWithoutExtension(s))))
