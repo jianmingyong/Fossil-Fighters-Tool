@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System.Buffers;
 using JetBrains.Annotations;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Archive.Compression;
@@ -28,10 +27,12 @@ public sealed class RleStream : CompressibleStream
 
     private const int MaxFlagDataLength = CompressFlag - 1;
 
-    private const int MinUncompressDataLength = 1;
-    private const int MaxRawDataLength = MaxFlagDataLength + MinUncompressDataLength;
+    private const int MinRawDataLength = 1;
+    private const int MaxRawDataLength = MaxFlagDataLength + MinRawDataLength;
     private const int MinCompressDataLength = 3;
     private const int MaxCompressDataLength = MaxFlagDataLength + MinCompressDataLength;
+
+    private const int MaxInputDataLength = (1 << 24) - 1;
 
     public RleStream(Stream stream, CompressibleStreamMode mode, bool leaveOpen = false) : base(stream, mode, leaveOpen)
     {
@@ -83,73 +84,69 @@ public sealed class RleStream : CompressibleStream
 
     protected override void Compress(BinaryReader reader, BinaryWriter writer, MemoryStream inputStream, MemoryStream outputStream)
     {
-        writer.Write((uint) (CompressionHeader | (inputStream.Length << 8)));
+        var dataLength = inputStream.Length;
+        if (dataLength > MaxInputDataLength) throw new InvalidDataException(string.Format(Localization.StreamDataTooLarge, "RLE"));
 
-        var tempBuffer = ArrayPool<byte>.Shared.Rent(MaxCompressDataLength);
-        var rawDataBuffer = ArrayPool<byte>.Shared.Rent(MaxRawDataLength);
+        writer.Write((uint) (CompressionHeader | (dataLength << 8)));
 
-        try
+        Span<byte> tempBuffer = stackalloc byte[MaxCompressDataLength];
+        Span<byte> rawDataBuffer = stackalloc byte[MaxRawDataLength];
+
+        int tempBufferLength;
+        var rawDataLength = 0;
+
+        while ((tempBufferLength = GetNextRepeatCount(tempBuffer)) > 0)
         {
-            int tempBufferLength;
-            var rawDataLength = 0;
-
-            while ((tempBufferLength = GetNextRepeatCount(tempBuffer)) > 0)
+            if (tempBufferLength >= MinCompressDataLength)
             {
-                if (tempBufferLength >= MinCompressDataLength)
+                if (rawDataLength > 0)
                 {
-                    if (rawDataLength > 0)
-                    {
-                        WriteUncompressed(rawDataBuffer.AsSpan(0, rawDataLength));
-                        rawDataLength = 0;
-                    }
+                    WriteUncompressed(rawDataBuffer[..rawDataLength]);
+                    rawDataLength = 0;
+                }
 
-                    WriteCompressed(tempBuffer[0], tempBufferLength);
+                WriteCompressed(tempBuffer[0], tempBufferLength);
+            }
+            else
+            {
+                var rawDataSpaceRemaining = MaxRawDataLength - rawDataLength;
+
+                if (rawDataSpaceRemaining == 0)
+                {
+                    WriteUncompressed(rawDataBuffer[..rawDataLength]);
+                    rawDataLength = 0;
+
+                    tempBuffer[..tempBufferLength].CopyTo(rawDataBuffer[rawDataLength..]);
+                    rawDataLength += tempBufferLength;
+                }
+                else if (tempBufferLength <= rawDataSpaceRemaining)
+                {
+                    tempBuffer[..tempBufferLength].CopyTo(rawDataBuffer[rawDataLength..]);
+                    rawDataLength += tempBufferLength;
                 }
                 else
                 {
-                    var rawDataSpaceRemaining = MaxRawDataLength - rawDataLength;
+                    tempBuffer[..rawDataSpaceRemaining].CopyTo(rawDataBuffer[rawDataLength..]);
+                    rawDataLength += rawDataSpaceRemaining;
 
-                    if (rawDataSpaceRemaining == 0)
-                    {
-                        WriteUncompressed(rawDataBuffer.AsSpan(0, rawDataLength));
-                        rawDataLength = 0;
+                    WriteUncompressed(rawDataBuffer[..rawDataLength]);
+                    rawDataLength = 0;
 
-                        tempBuffer.AsSpan(0, tempBufferLength).CopyTo(rawDataBuffer.AsSpan(rawDataLength));
-                        rawDataLength += tempBufferLength;
-                    }
-                    else if (tempBufferLength <= rawDataSpaceRemaining)
-                    {
-                        tempBuffer.AsSpan(0, tempBufferLength).CopyTo(rawDataBuffer.AsSpan(rawDataLength));
-                        rawDataLength += tempBufferLength;
-                    }
-                    else
-                    {
-                        tempBuffer.AsSpan(0, rawDataSpaceRemaining).CopyTo(rawDataBuffer.AsSpan(rawDataLength));
-                        rawDataLength += rawDataSpaceRemaining;
-                        
-                        WriteUncompressed(rawDataBuffer.AsSpan(0, rawDataLength));
-                        rawDataLength = 0;
-                        
-                        tempBuffer.AsSpan(rawDataSpaceRemaining, tempBufferLength - rawDataSpaceRemaining).CopyTo(rawDataBuffer.AsSpan(rawDataLength));
-                        rawDataLength += tempBufferLength - rawDataSpaceRemaining;
-                    }
+                    var remainingDataToCopy = tempBufferLength - rawDataSpaceRemaining;
+                    tempBuffer.Slice(rawDataSpaceRemaining, remainingDataToCopy).CopyTo(rawDataBuffer[rawDataLength..]);
+                    rawDataLength += remainingDataToCopy;
                 }
             }
-
-            if (rawDataLength > 0)
-            {
-                WriteUncompressed(rawDataBuffer.AsSpan(0, rawDataLength));
-            }
-
-            while (outputStream.Length % 4 != 0)
-            {
-                writer.Write((byte) 0);
-            }
         }
-        finally
+
+        if (rawDataLength > 0)
         {
-            ArrayPool<byte>.Shared.Return(tempBuffer);
-            ArrayPool<byte>.Shared.Return(rawDataBuffer);
+            WriteUncompressed(rawDataBuffer[..rawDataLength]);
+        }
+
+        while (outputStream.Length % 4 != 0)
+        {
+            writer.Write((byte) 0);
         }
 
         return;
@@ -162,7 +159,7 @@ public sealed class RleStream : CompressibleStream
 
         void WriteUncompressed(ReadOnlySpan<byte> buffer)
         {
-            writer.Write((byte) (buffer.Length - MinUncompressDataLength));
+            writer.Write((byte) (buffer.Length - MinRawDataLength));
             writer.Write(buffer);
         }
 

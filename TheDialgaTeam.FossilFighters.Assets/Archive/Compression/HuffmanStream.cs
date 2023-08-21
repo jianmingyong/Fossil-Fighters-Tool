@@ -32,6 +32,7 @@ public sealed class HuffmanStream : CompressibleStream
     }
 
     private const int CompressionHeader = 2 << 4;
+    private const int MaxInputDataLength = (1 << 24) - 1;
 
     private HuffmanDataSize _dataSize;
 
@@ -111,6 +112,94 @@ public sealed class HuffmanStream : CompressibleStream
 
     protected override void Compress(BinaryReader reader, BinaryWriter writer, MemoryStream inputStream, MemoryStream outputStream)
     {
+        var dataLength = inputStream.Length;
+        if (dataLength > MaxInputDataLength) throw new InvalidDataException(string.Format(Localization.StreamDataTooLarge, "Huffman"));
+
+        Dictionary<byte, int> huffmanFrequencyTable;
+
+        switch (_dataSize)
+        {
+            case HuffmanDataSize.Auto:
+            {
+                var fourBits = BuildHuffmanFourBitsTable();
+                var eightBits = BuildHuffmanEightBitsTable();
+
+                if (fourBits.Count < eightBits.Count)
+                {
+                    huffmanFrequencyTable = fourBits;
+                    _dataSize = HuffmanDataSize.FourBits;
+                }
+                else
+                {
+                    huffmanFrequencyTable = eightBits;
+                    _dataSize = HuffmanDataSize.EightBits;
+                }
+
+                break;
+            }
+
+            case HuffmanDataSize.FourBits:
+                huffmanFrequencyTable = BuildHuffmanFourBitsTable();
+                break;
+
+            case HuffmanDataSize.EightBits:
+                huffmanFrequencyTable = BuildHuffmanEightBitsTable();
+                break;
+
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+
+        if (huffmanFrequencyTable.Count < 2) throw new InvalidDataException(Localization.HuffmanStreamDatasetTooSmall);
+
+        var nodes = new PriorityQueue<HuffmanNode, int>();
+        var dataNodes = new Dictionary<byte, HuffmanNode>();
+
+        foreach (var table in huffmanFrequencyTable)
+        {
+            var node = new HuffmanNode { Data = table.Key, Value = table.Value };
+            nodes.Enqueue(node, table.Value);
+            dataNodes.Add(table.Key, node);
+        }
+
+        while (nodes.Count > 1)
+        {
+            var nodeA = nodes.Dequeue();
+            var nodeB = nodes.Dequeue();
+
+            var nodeC = new HuffmanNode { Left = nodeB, Right = nodeA, Value = nodeA.Value + nodeB.Value };
+            nodeA.Parent = nodeC;
+            nodeB.Parent = nodeC;
+
+            nodes.Enqueue(nodeC, nodeC.Value);
+        }
+
+        var rootNode = nodes.Dequeue();
+        var nodesCount = NodesCount(rootNode);
+
+        UpdateHuffmanNodes(rootNode);
+
+        writer.Write((uint) _dataSize | CompressionHeader | ((uint) inputStream.Length << 8));
+
+        var treeSize = (nodesCount - 1) / 2;
+        writer.Write((byte) treeSize);
+
+        var rootPosition = outputStream.Position;
+
+        WriteHuffmanNodes(rootNode);
+
+        var treeNodeLength = (treeSize + 1) * 2 - 1;
+        writer.Seek((int) (rootPosition + treeNodeLength), SeekOrigin.Begin);
+
+        WriteHuffmanBitstream(dataNodes);
+
+        while (writer.BaseStream.Length % 4 != 0)
+        {
+            writer.Write((byte) 0);
+        }
+
+        return;
+
         Dictionary<byte, int> BuildHuffmanFourBitsTable()
         {
             var result = new Dictionary<byte, int>();
@@ -170,7 +259,7 @@ public sealed class HuffmanStream : CompressibleStream
 
         int NodesCount(HuffmanNode node)
         {
-            if (node.Left != null && node.Right != null) return 1 + NodesCount(node.Left) + NodesCount(node.Right);
+            if (node is { Left: not null, Right: not null }) return 1 + NodesCount(node.Left) + NodesCount(node.Right);
             if (node.Left != null) return 1 + NodesCount(node.Left);
             if (node.Right != null) return 1 + NodesCount(node.Right);
             return 1;
@@ -330,89 +419,11 @@ public sealed class HuffmanStream : CompressibleStream
                 }
             }
 
-            if (bitsLeft > 0)
+            if (bitsLeft < 32)
             {
                 bitStream <<= bitsLeft;
                 writer.Write(bitStream);
             }
         }
-
-        Dictionary<byte, int> huffmanFrequencyTable;
-
-        switch (_dataSize)
-        {
-            case HuffmanDataSize.Auto:
-            {
-                var fourBits = BuildHuffmanFourBitsTable();
-                var eightBits = BuildHuffmanEightBitsTable();
-
-                if (fourBits.Count < eightBits.Count)
-                {
-                    huffmanFrequencyTable = fourBits;
-                    _dataSize = HuffmanDataSize.FourBits;
-                }
-                else
-                {
-                    huffmanFrequencyTable = eightBits;
-                    _dataSize = HuffmanDataSize.EightBits;
-                }
-
-                break;
-            }
-
-            case HuffmanDataSize.FourBits:
-                huffmanFrequencyTable = BuildHuffmanFourBitsTable();
-                break;
-
-            case HuffmanDataSize.EightBits:
-                huffmanFrequencyTable = BuildHuffmanEightBitsTable();
-                break;
-
-            default:
-                throw new ArgumentOutOfRangeException();
-        }
-
-        if (huffmanFrequencyTable.Count < 2) throw new InvalidDataException(Localization.HuffmanStreamDatasetTooSmall);
-
-        var nodes = new PriorityQueue<HuffmanNode, int>();
-        var dataNodes = new Dictionary<byte, HuffmanNode>();
-
-        foreach (var table in huffmanFrequencyTable)
-        {
-            var node = new HuffmanNode { Data = table.Key, Value = table.Value };
-            nodes.Enqueue(node, table.Value);
-            dataNodes.Add(table.Key, node);
-        }
-
-        while (nodes.Count > 1)
-        {
-            var nodeA = nodes.Dequeue();
-            var nodeB = nodes.Dequeue();
-
-            var nodeC = new HuffmanNode { Left = nodeA, Right = nodeB, Value = nodeA.Value + nodeB.Value };
-            nodeA.Parent = nodeC;
-            nodeB.Parent = nodeC;
-
-            nodes.Enqueue(nodeC, nodeC.Value);
-        }
-
-        var rootNode = nodes.Dequeue();
-        var nodesCount = NodesCount(rootNode);
-
-        UpdateHuffmanNodes(rootNode);
-
-        writer.Write((uint) _dataSize | CompressionHeader | ((uint) inputStream.Length << 8));
-
-        var treeSize = (nodesCount - 1) / 2;
-        writer.Write((byte) treeSize);
-
-        var rootPosition = outputStream.Position;
-
-        WriteHuffmanNodes(rootNode);
-
-        var treeNodeLength = (treeSize + 1) * 2 - 1;
-        writer.Seek((int) (rootPosition + treeNodeLength), SeekOrigin.Begin);
-
-        WriteHuffmanBitstream(dataNodes);
     }
 }

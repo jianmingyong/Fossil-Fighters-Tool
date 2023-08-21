@@ -60,6 +60,15 @@ namespace TheDialgaTeam.FossilFighters.Tool.Cli {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Compressing: {0}.
+        /// </summary>
+        internal static string CompressCommand_Compress_Compressing_File {
+            get {
+                return ResourceManager.GetString("CompressCommand_Compress_Compressing_File", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Compress files into MAR archive..
         /// </summary>
         internal static string CompressCommandDescription {

@@ -44,4 +44,7 @@
     <data name="ExtractingNdsFile" xml:space="preserve">
         <value>Extracting Nds file... This may take a while.</value>
     </data>
+    <data name="CompressCommand_Compress_Compressing_File" xml:space="preserve">
+        <value>Compressing: {0}</value>
+    </data>
 </root>

@@ -87,6 +87,15 @@ namespace TheDialgaTeam.FossilFighters.Assets {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The contents of the stream is too large to generate a proper {0} compression.
+        /// </summary>
+        internal static string StreamDataTooLarge {
+            get {
+                return ResourceManager.GetString("StreamDataTooLarge", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The contents of the stream do not match the expected output size. The file may be corrupted..
         /// </summary>
         internal static string StreamIsCorrupted {

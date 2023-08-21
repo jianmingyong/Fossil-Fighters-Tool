@@ -15,19 +15,15 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.Buffers;
-using System.Text.Json.Serialization;
 using JetBrains.Annotations;
 using TheDialgaTeam.FossilFighters.Assets.Archive.Compression;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Archive;
 
-[JsonSourceGenerationOptions(WriteIndented = true)]
-[JsonSerializable(typeof(Dictionary<int, McmFileMetadata>))]
-public sealed partial class McmFileMetadataContext : JsonSerializerContext
-{
-}
-
-public sealed record McmFileMetadata(uint MaxSizePerChunk, McmFileCompressionType CompressionType1, McmFileCompressionType CompressionType2);
+public sealed record McmFileMetadata(
+    uint MaxSizePerChunk,
+    McmFileCompressionType CompressionType1,
+    McmFileCompressionType CompressionType2);
 
 [PublicAPI]
 public sealed class McmFileStream : CompressibleStream
@@ -170,10 +166,12 @@ public sealed class McmFileStream : CompressibleStream
         writer.Write((byte) CompressionType2);
         writer.Write((short) 0);
 
-        writer.Write((int) outputStream.Position + 4 * numberOfChunks + 4);
-
         var chunkOffset = outputStream.Position;
-        var dataOffset = chunkOffset + 4 * numberOfChunks;
+        var dataOffset = chunkOffset + 4 * numberOfChunks + 4;
+
+        writer.Write((int) dataOffset);
+
+        chunkOffset += 4;
 
         for (var i = 0; i < numberOfChunks; i++)
         {

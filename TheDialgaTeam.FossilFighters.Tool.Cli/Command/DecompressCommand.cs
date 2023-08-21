@@ -18,10 +18,10 @@ using System.CommandLine;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Microsoft.Extensions.FileSystemGlobbing;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
+using TheDialgaTeam.FossilFighters.Assets;
 using TheDialgaTeam.FossilFighters.Assets.Archive;
 using TheDialgaTeam.FossilFighters.Assets.Header;
 using TheDialgaTeam.FossilFighters.Assets.Image;
@@ -165,7 +165,7 @@ internal sealed class DecompressCommand : System.CommandLine.Command
                 }
 
                 Console.WriteLine(Localization.FileExtracted, outputFile);
-                
+
                 // Handle Add-Ons
                 using (var fileStream = new FileStream(outputFile, FileMode.Open, FileAccess.Read))
                 {
@@ -176,10 +176,10 @@ internal sealed class DecompressCommand : System.CommandLine.Command
                             case AclHeader.FileHeader:
                             {
                                 fileStream.Seek(0, SeekOrigin.Begin);
-                                
+
                                 var header = AclHeader.GetHeaderFromStream(fileStream);
                                 var jsonOutputFilePath = Path.Combine(output, $"{i}.json");
-                                
+
                                 File.WriteAllText(jsonOutputFilePath, header.ToJsonString());
                                 Console.WriteLine(Localization.FileExtracted, jsonOutputFilePath);
                                 break;
@@ -188,15 +188,15 @@ internal sealed class DecompressCommand : System.CommandLine.Command
                             case DmsHeader.FileHeader:
                             {
                                 fileStream.Seek(0, SeekOrigin.Begin);
-                                
+
                                 var header = DmsHeader.GetHeaderFromStream(fileStream);
                                 var jsonOutputFilePath = Path.Combine(output, $"{i}.json");
-                                
+
                                 File.WriteAllText(jsonOutputFilePath, header.ToJsonString());
                                 Console.WriteLine(Localization.FileExtracted, jsonOutputFilePath);
                                 break;
                             }
-                            
+
                             case MmsHeader.FileHeader:
                             {
                                 fileStream.Seek(0, SeekOrigin.Begin);
@@ -218,7 +218,7 @@ internal sealed class DecompressCommand : System.CommandLine.Command
                                     var palText = colorPalettes[j].ToJascPalString();
                                     var palOutputFilePath = Path.Combine(output, $"{j}.pal");
                                     File.WriteAllText(palOutputFilePath, palText);
-                                
+
                                     Console.WriteLine(Localization.FileExtracted, palOutputFilePath);
                                 }
 
@@ -243,7 +243,7 @@ internal sealed class DecompressCommand : System.CommandLine.Command
                                         Console.WriteLine(Localization.FileExtracted, imageOutputFilePath);
                                     }
                                 }
-                                
+
                                 break;
                             }
 
@@ -277,7 +277,7 @@ internal sealed class DecompressCommand : System.CommandLine.Command
                                     using var image = ImageUtility.GetImage(mpmHeader, colorPalette, bitmap);
                                     var imageOutputFilePath = Path.Combine(output, $"{mpmHeader.BitmapFileIndex}.png");
                                     image.SaveAsPng(imageOutputFilePath);
-                                    
+
                                     Console.WriteLine(Localization.FileExtracted, imageOutputFilePath);
                                 }
                                 else
@@ -300,11 +300,11 @@ internal sealed class DecompressCommand : System.CommandLine.Command
 
                                     Console.WriteLine(Localization.FileExtracted, imageOutputFilePath);
                                 }
-                                
+
                                 var jsonText = mpmHeader.ToJsonString();
                                 var jsonOutputFilePath = Path.Combine(output, $"{i}.json");
                                 File.WriteAllText(jsonOutputFilePath, jsonText);
-                                
+
                                 Console.WriteLine(Localization.FileExtracted, jsonOutputFilePath);
 
                                 break;
@@ -325,7 +325,7 @@ internal sealed class DecompressCommand : System.CommandLine.Command
                             case DmgHeader.FileHeader:
                             {
                                 fileStream.Seek(0, SeekOrigin.Begin);
-                                
+
                                 var jsonText = JsonSerializer.Serialize(DmgHeader.GetHeaderFromStream(fileStream), typeof(DmgHeader), new DmgHeaderContext(new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping, WriteIndented = true }));
                                 var jsonOutputFilePath = Path.Combine(output, $"{i}.json");
 
@@ -337,9 +337,9 @@ internal sealed class DecompressCommand : System.CommandLine.Command
                     }
                 }
             }
-            
+
             var mcmFileMetadataOutput = Path.Combine(output, "meta.json");
-            File.WriteAllText(mcmFileMetadataOutput, JsonSerializer.Serialize(mcmFileMetadata, McmFileMetadataContext.Default.DictionaryInt32McmFileMetadata));
+            File.WriteAllText(mcmFileMetadataOutput, JsonSerializer.Serialize(mcmFileMetadata, CustomJsonSerializerContext.Custom.DictionaryInt32McmFileMetadata));
             Console.WriteLine(Localization.FileExtracted, mcmFileMetadataOutput);
         }
         catch (Exception ex)

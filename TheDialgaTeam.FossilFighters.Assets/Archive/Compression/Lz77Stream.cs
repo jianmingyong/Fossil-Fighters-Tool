@@ -29,6 +29,8 @@ public sealed class Lz77Stream : CompressibleStream
     private const int MinBytesToCopy = 3;
     private const int MaxBytesToCopy = 0xF + MinBytesToCopy;
 
+    private const int MaxInputDataLength = (1 << 24) - 1;
+
     public Lz77Stream(Stream stream, CompressibleStreamMode mode, bool leaveOpen = false) : base(stream, mode, leaveOpen)
     {
     }
@@ -79,47 +81,10 @@ public sealed class Lz77Stream : CompressibleStream
 
     protected override void Compress(BinaryReader reader, BinaryWriter writer, MemoryStream inputStream, MemoryStream outputStream)
     {
-        (int displacement, int bytesToCopy) SearchForNextToken(ReadOnlySpan<byte> buffer)
-        {
-            if (buffer.Length < MinDisplacement) return (0, 0);
+        var dataLength = inputStream.Length;
+        if (dataLength > MaxInputDataLength) throw new InvalidDataException(string.Format(Localization.StreamDataTooLarge, "LZ77"));
 
-            var searchOffset = inputStream.Position;
-            var biggestDisplacement = 0;
-            var biggestToCopy = 0;
-
-            for (var i = buffer.Length - MinDisplacement; i >= 0; i--)
-            {
-                inputStream.Seek(searchOffset, SeekOrigin.Begin);
-
-                var repeatCount = GetNextRepeatCount(buffer[i..]);
-                if (repeatCount < MinBytesToCopy) continue;
-                if (repeatCount <= biggestToCopy) continue;
-
-                biggestToCopy = repeatCount;
-                biggestDisplacement = buffer.Length - i;
-            }
-
-            inputStream.Seek(searchOffset + biggestToCopy, SeekOrigin.Begin);
-
-            return (biggestDisplacement, biggestToCopy);
-        }
-
-        int GetNextRepeatCount(ReadOnlySpan<byte> buffer)
-        {
-            if (inputStream.Position == inputStream.Length) return 0;
-
-            var bufferIndex = 0;
-
-            while (bufferIndex < MaxBytesToCopy && inputStream.Position < inputStream.Length)
-            {
-                if (buffer[bufferIndex % buffer.Length] != reader.ReadByte()) break;
-                bufferIndex++;
-            }
-
-            return bufferIndex;
-        }
-
-        writer.Write((uint) (CompressHeader | (inputStream.Length << 8)));
+        writer.Write((uint) (CompressHeader | (dataLength << 8)));
 
         Span<byte> tempBuffer = stackalloc byte[16];
         var tempBufferSize = 0;
@@ -170,6 +135,48 @@ public sealed class Lz77Stream : CompressibleStream
         while (outputStream.Length % 4 != 0)
         {
             writer.Write((byte) 0);
+        }
+
+        return;
+
+        (int displacement, int bytesToCopy) SearchForNextToken(ReadOnlySpan<byte> buffer)
+        {
+            if (buffer.Length < MinDisplacement) return (0, 0);
+
+            var searchOffset = inputStream.Position;
+            var biggestDisplacement = 0;
+            var biggestToCopy = 0;
+
+            for (var i = buffer.Length - MinDisplacement; i >= 0; i--)
+            {
+                inputStream.Seek(searchOffset, SeekOrigin.Begin);
+
+                var repeatCount = GetNextRepeatCount(buffer[i..]);
+                if (repeatCount < MinBytesToCopy) continue;
+                if (repeatCount <= biggestToCopy) continue;
+
+                biggestToCopy = repeatCount;
+                biggestDisplacement = buffer.Length - i;
+            }
+
+            inputStream.Seek(searchOffset + biggestToCopy, SeekOrigin.Begin);
+
+            return (biggestDisplacement, biggestToCopy);
+        }
+
+        int GetNextRepeatCount(ReadOnlySpan<byte> buffer)
+        {
+            if (inputStream.Position >= inputStream.Length) return 0;
+
+            var bufferIndex = 0;
+
+            while (bufferIndex < MaxBytesToCopy && inputStream.Position < inputStream.Length)
+            {
+                if (buffer[bufferIndex % buffer.Length] != reader.ReadByte()) break;
+                bufferIndex++;
+            }
+
+            return bufferIndex;
         }
     }
 }

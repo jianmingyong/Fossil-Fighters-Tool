@@ -17,6 +17,7 @@
 using System.CommandLine;
 using System.Text.Json;
 using Microsoft.Extensions.FileSystemGlobbing;
+using TheDialgaTeam.FossilFighters.Assets;
 using TheDialgaTeam.FossilFighters.Assets.Archive;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Cli.Command;
@@ -68,20 +69,20 @@ internal sealed class CompressCommand : System.CommandLine.Command
 
         var matcher = new Matcher();
         matcher.AddIncludePatterns(includes);
-        
+
         Dictionary<int, McmFileMetadata>? mcmMetadata = null;
 
         if (File.Exists(metaFile))
         {
-            mcmMetadata = JsonSerializer.Deserialize(File.OpenRead(metaFile), McmFileMetadataContext.Default.DictionaryInt32McmFileMetadata);
+            mcmMetadata = JsonSerializer.Deserialize(File.OpenRead(metaFile), CustomJsonSerializerContext.Custom.DictionaryInt32McmFileMetadata);
         }
         else
         {
             var mcmMetaFilePath = Path.GetFullPath(Path.Combine(folder, metaFile));
-        
+
             if (File.Exists(mcmMetaFilePath))
             {
-                mcmMetadata = JsonSerializer.Deserialize(File.OpenRead(mcmMetaFilePath), McmFileMetadataContext.Default.DictionaryInt32McmFileMetadata);
+                mcmMetadata = JsonSerializer.Deserialize(File.OpenRead(mcmMetaFilePath), CustomJsonSerializerContext.Custom.DictionaryInt32McmFileMetadata);
             }
         }
 
@@ -89,7 +90,7 @@ internal sealed class CompressCommand : System.CommandLine.Command
         {
             var marArchiveEntry = marArchive.CreateEntry();
             using var mcmFileStream = marArchiveEntry.OpenWrite();
-            
+
             if (mcmMetadata is not null)
             {
                 mcmFileStream.LoadMetadata(mcmMetadata[int.Parse(Path.GetFileNameWithoutExtension(file))]);
@@ -108,7 +109,9 @@ internal sealed class CompressCommand : System.CommandLine.Command
                     mcmFileStream.CompressionType2 = compressionTypes[1];
                 }
             }
-            
+
+            Console.WriteLine(Localization.CompressCommand_Compress_Compressing_File, file);
+
             using var fileStream = File.OpenRead(file);
             fileStream.CopyTo(mcmFileStream);
         }
