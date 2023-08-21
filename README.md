@@ -25,7 +25,7 @@ Fossil Fighters seems to be using a [custom archive format](https://github.com/j
 
 ## Built Instructions
 
-This project is build with [dotnet 6.0](https://dotnet.microsoft.com/download/dotnet/6.0).
+This project is build with [dotnet 7.0](https://dotnet.microsoft.com/download/dotnet/7.0).
 
 1. Clone / Download the git repository source code. <br />
 Git CLI: `git clone https://github.com/jianmingyong/Fossil-Fighters-Tool.git`
