@@ -45,7 +45,7 @@ public abstract class ViewModelBase : ReactiveObject
 
         if (string.IsNullOrWhiteSpace(title))
         {
-            title = Window.Title;
+            title = Window.Title ?? string.Empty;
         }
 
         var messageBox = new MessageBoxWindow();

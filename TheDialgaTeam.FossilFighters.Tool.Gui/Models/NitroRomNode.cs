@@ -16,11 +16,13 @@
 
 using System;
 using System.Collections.ObjectModel;
+using ReactiveUI;
+using ReactiveUI.Fody.Helpers;
 using TheDialgaTeam.FossilFighters.Assets.Rom;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Gui.Models;
 
-public sealed class NitroRomNode
+public sealed class NitroRomNode : ReactiveObject
 {
     public ObservableCollection<NitroRomNode> ChildNodes { get; } = new();
 
@@ -35,6 +37,9 @@ public sealed class NitroRomNode
     public bool IsFile => _nitroRom is NitroRomFile;
 
     public long Size => (_nitroRom as NitroRomFile)?.Size ?? 0;
+
+    [Reactive]
+    public int Version { get; set; }
 
     private const string FileFolderTypeName = "File Folder";
     private const string FileTypeName = "File";
@@ -51,7 +56,7 @@ public sealed class NitroRomNode
             NitroRomType.FileFolder => FileFolderTypeName,
             NitroRomType.File => FileTypeName,
             NitroRomType.MarArchive => MarArchiveTypeName,
-            var _ => throw new ArgumentOutOfRangeException()
+            var _ => throw new ArgumentOutOfRangeException(nameof(nitroRom))
         };
 
         if (nitroRom is not NitroRomDirectory nitroRomDirectory) return;

@@ -55,7 +55,7 @@ internal sealed class DecompressCommand : System.CommandLine.Command
                 if (Path.GetExtension(input).Equals(".nds", StringComparison.OrdinalIgnoreCase))
                 {
                     var ndsFileSystem = NdsFilesystem.FromFile(input);
-                    var outputPath = Path.Combine(Path.GetDirectoryName(input)!, ndsFileSystem.GameCode);
+                    var outputPath = Path.Combine(Path.GetDirectoryName(input)!, ndsFileSystem.GameCode.AsSpan().ToString());
 
                     if (!Directory.Exists(outputPath))
                     {

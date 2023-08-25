@@ -18,15 +18,13 @@ namespace TheDialgaTeam.FossilFighters.Assets.Archive.Compression;
 
 public sealed class HuffmanNode
 {
-    public HuffmanNode? Parent { get; set; }
+    public HuffmanNode? Left { get; init; }
 
-    public HuffmanNode? Left { get; set; }
+    public HuffmanNode? Right { get; init; }
 
-    public HuffmanNode? Right { get; set; }
+    public byte? Data { get; init; }
 
-    public byte? Data { get; set; }
-
-    public int Value { get; set; }
+    public int Value { get; init; }
 
     public long Position { get; set; } = 5;
 
@@ -40,6 +38,8 @@ public sealed class HuffmanNode
 
     public HuffmanNode(BinaryReader reader, long position, long endPosition, HuffmanDataSize dataSize, bool isData)
     {
+        Position = position;
+
         reader.BaseStream.Seek(position, SeekOrigin.Begin);
 
         var rawByte = reader.ReadByte();

@@ -6,10 +6,9 @@
         mc:Ignorable="d" d:DesignWidth="300" d:DesignHeight="100"
         x:Class="TheDialgaTeam.FossilFighters.Tool.Gui.Views.MessageBoxWindow"
         x:DataType="vm:MessageBoxWindowViewModel"
-        x:CompileBindings="True"
-        Title="{CompiledBinding Title}"
+        Title="{Binding Title}"
         MinWidth="300" MinHeight="100" MaxWidth="600" MaxHeight="540" WindowStartupLocation="CenterScreen"
-        SizeToContent="WidthAndHeight" Background="{x:Null}">
+        SizeToContent="WidthAndHeight">
 
     <Design.DataContext>
         <vm:MessageBoxWindowViewModel>
@@ -20,10 +19,12 @@
             </x:Arguments>
         </vm:MessageBoxWindowViewModel>
     </Design.DataContext>
-
+    
     <Grid RowDefinitions="*, Auto">
-        <TextBlock Grid.Row="0" Text="{CompiledBinding Message}" VerticalAlignment="Center" TextWrapping="Wrap" />
-        <Button Grid.Row="1" HorizontalAlignment="Right" Command="{CompiledBinding CloseCommand}">
+        <ScrollViewer Grid.Row="0">
+            <TextBlock Text="{Binding Message}" VerticalAlignment="Center" TextWrapping="Wrap" />
+        </ScrollViewer>
+        <Button Grid.Row="1" HorizontalAlignment="Right" Command="{Binding CloseCommand}">
             <TextBlock Text="OK" />
         </Button>
     </Grid>

@@ -1,5 +1,5 @@
 ﻿// Fossil Fighters Tool is used to decompress and compress MAR archives used in Fossil Fighters game.
-// Copyright (C) 2022 Yong Jian Ming
+// Copyright (C) 2023 Yong Jian Ming
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,16 +17,21 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Controls.Selection;
-using JetBrains.Annotations;
+using Avalonia.Platform.Storage;
+using Microsoft.Extensions.FileSystemGlobbing;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
+using TheDialgaTeam.FossilFighters.Assets;
 using TheDialgaTeam.FossilFighters.Assets.Archive;
 using TheDialgaTeam.FossilFighters.Assets.Rom;
 using TheDialgaTeam.FossilFighters.Tool.Gui.Models;
@@ -36,7 +41,6 @@ namespace TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels;
 public sealed class MainWindowViewModel : ViewModelBase
 {
     [ObservableAsProperty]
-    [UsedImplicitly]
     public bool IsRomLoaded { get; }
 
     public HierarchicalTreeDataGridSource<NitroRomNode> NitroRomNodeSource { get; }
@@ -63,7 +67,7 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     public MainWindowViewModel(Window window) : base(window)
     {
-        this.WhenAnyValue(model => model.LoadedRom).Select(filesystem => filesystem != null).ToPropertyEx(this, model => model.IsRomLoaded);
+        this.WhenAnyValue(model => model.LoadedRom).Select(filesystem => filesystem is not null).ToPropertyEx(this, model => model.IsRomLoaded);
 
         NitroRomNodeSource = new HierarchicalTreeDataGridSource<NitroRomNode>(NitroRomNodes)
         {
@@ -78,7 +82,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         NitroRomNodeSource.RowSelection!.SelectionChanged += NitroContentSourceOnSelectionChanged;
 
         OpenFileCommand = ReactiveCommand.CreateFromTask(OpenFile);
-        SaveFileCommand = ReactiveCommand.CreateFromTask(SaveFile, this.WhenAnyValue(model => model.LoadedRom).Select(filesystem => filesystem != null).AsObservable());
+        SaveFileCommand = ReactiveCommand.CreateFromTask(SaveFile, this.WhenAnyValue(model => model.LoadedRom).Select(filesystem => filesystem is not null).AsObservable());
         ImportFileCommand = ReactiveCommand.CreateFromTask(ImportFile, this.WhenAnyValue(model => model.SelectedNitroRomNode).Select(node => node?.IsFile ?? false).AsObservable());
         ExportFileCommand = ReactiveCommand.CreateFromTask(ExportFile);
         CompressFileCommand = ReactiveCommand.CreateFromTask(CompressFile, this.WhenAnyValue(model => model.SelectedNitroRomNode).Select(node => node?.FileType == NitroRomType.MarArchive).AsObservable());
@@ -94,11 +98,23 @@ public sealed class MainWindowViewModel : ViewModelBase
     {
         try
         {
-            var fileDialog = new OpenFileDialog { AllowMultiple = false, Filters = new List<FileDialogFilter> { new() { Extensions = { "nds" } } } };
-            var selectedFile = await fileDialog.ShowAsync(Window);
-            if (selectedFile == null) return;
+            var selectedFiles = await Window.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Select Fossil Fighter ROM",
+                AllowMultiple = false,
+                FileTypeFilter = new[]
+                {
+                    new FilePickerFileType("Nintendo DS ROM")
+                    {
+                        Patterns = new[] { "*.nds" },
+                        MimeTypes = new[] { "application/x-nintendo-ds-rom" }
+                    }
+                }
+            });
 
-            LoadedRom = NdsFilesystem.FromFile(selectedFile[0]);
+            if (selectedFiles.Count == 0) return;
+
+            LoadedRom = NdsFilesystem.FromFile(selectedFiles[0].TryGetLocalPath()!);
             NitroRomNodes.Clear();
 
             foreach (var subDirectory in LoadedRom.RootDirectory.SubDirectories)
@@ -119,9 +135,27 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     private async Task SaveFile()
     {
+        Debug.Assert(LoadedRom != null, nameof(LoadedRom) + " != null");
+
         try
         {
-            throw new NotImplementedException();
+            var selectedFile = await Window.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                FileTypeChoices = new[]
+                {
+                    new FilePickerFileType("Nintendo DS ROM")
+                    {
+                        Patterns = new[] { "*.nds" },
+                        MimeTypes = new[] { "application/x-nintendo-ds-rom" }
+                    }
+                },
+                ShowOverwritePrompt = true
+            });
+
+            if (selectedFile is null) return;
+
+            LoadedRom.SaveChanges(selectedFile.TryGetLocalPath()!);
+            await ShowDialog("Save completed.");
         }
         catch (Exception ex)
         {
@@ -131,9 +165,23 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     private async Task ImportFile()
     {
+        Debug.Assert(LoadedRom != null, nameof(LoadedRom) + " != null");
+        Debug.Assert(SelectedNitroRomNode != null, nameof(SelectedNitroRomNode) + " != null");
+
         try
         {
-            throw new NotImplementedException();
+            var selectedFiles = await Window.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                AllowMultiple = false,
+                Title = $"Select file to import into {SelectedNitroRomNode.Name}"
+            });
+
+            if (selectedFiles.Count == 0) return;
+
+            await LoadedRom.GetFileByPath(SelectedNitroRomNode.FullPath).WriteFromAsync(await selectedFiles[0].OpenReadAsync());
+            SelectedNitroRomNode.Version++;
+
+            await ShowDialog("Import completed.");
         }
         catch (Exception ex)
         {
@@ -143,13 +191,14 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     private async Task ExportFile()
     {
+        Debug.Assert(SelectedNitroRomNode != null, nameof(SelectedNitroRomNode) + " != null");
+
         try
         {
-            var folderDialog = new OpenFolderDialog();
-            var selectedFolder = await folderDialog.ShowAsync(Window);
-            if (selectedFolder == null) return;
+            var selectedFolders = await Window.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions());
+            if (selectedFolders.Count == 0) return;
 
-            ExportFile(SelectedNitroRomNode!, selectedFolder);
+            ExportFile(SelectedNitroRomNode, selectedFolders[0].TryGetLocalPath()!);
 
             await ShowDialog("Export completed.");
         }
@@ -161,9 +210,53 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     private async Task CompressFile()
     {
+        Debug.Assert(LoadedRom != null, nameof(LoadedRom) + " != null");
+        Debug.Assert(SelectedNitroRomNode != null, nameof(SelectedNitroRomNode) + " != null");
+
         try
         {
-            throw new NotImplementedException();
+            var selectedFolders = await Window.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            {
+                AllowMultiple = false,
+                Title = $"Select folder to compress into {SelectedNitroRomNode.Name}"
+            });
+
+            if (selectedFolders.Count == 0) return;
+
+            var metaFilePath = Path.Combine(selectedFolders[0].TryGetLocalPath()!, "meta.json");
+
+            if (!File.Exists(metaFilePath))
+            {
+                await ShowDialog("Error", "meta.json file does not exist. Please decompress the file first to generate a meta file.");
+                return;
+            }
+
+            var mcmMetadata = JsonSerializer.Deserialize(File.OpenRead(metaFilePath), CustomJsonSerializerContext.Custom.DictionaryInt32McmFileMetadata);
+
+            using var outputFile = new MemoryStream();
+
+            using (var marArchive = new MarArchive(outputFile, MarArchiveMode.Create, true))
+            {
+                var matcher = new Matcher();
+                matcher.AddIncludePatterns(new[] { "*.bin" });
+
+                foreach (var file in matcher.GetResultsInFullPath(selectedFolders[0].TryGetLocalPath()!).OrderBy(s => int.Parse(Path.GetFileNameWithoutExtension(s))))
+                {
+                    var marArchiveEntry = marArchive.CreateEntry();
+                    await using var mcmFileStream = marArchiveEntry.OpenWrite();
+
+                    if (mcmMetadata is not null)
+                    {
+                        mcmFileStream.LoadMetadata(mcmMetadata[int.Parse(Path.GetFileNameWithoutExtension(file))]);
+                    }
+
+                    await using var fileStream = File.OpenRead(file);
+                    await fileStream.CopyToAsync(mcmFileStream);
+                }
+            }
+
+            outputFile.Seek(0, SeekOrigin.Begin);
+            await LoadedRom.GetFileByPath(SelectedNitroRomNode.FullPath).WriteFromAsync(outputFile);
         }
         catch (Exception ex)
         {
@@ -173,13 +266,19 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     private async Task DecompressFile()
     {
+        Debug.Assert(SelectedNitroRomNode != null, nameof(SelectedNitroRomNode) + " != null");
+
         try
         {
-            var folderDialog = new OpenFolderDialog();
-            var selectedFolder = await folderDialog.ShowAsync(Window);
-            if (selectedFolder == null) return;
+            var selectedFolders = await Window.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            {
+                AllowMultiple = false,
+                Title = "Select output folder for decompressed archive"
+            });
 
-            DecompressFile(SelectedNitroRomNode!, selectedFolder);
+            if (selectedFolders.Count == 0) return;
+
+            DecompressFile(SelectedNitroRomNode, selectedFolders[0].TryGetLocalPath()!);
 
             await ShowDialog("Decompress completed.");
         }
@@ -191,6 +290,8 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     private void DecompressFile(NitroRomNode targetFile, string targetLocation)
     {
+        Debug.Assert(LoadedRom != null, nameof(LoadedRom) + " != null");
+
         if (targetFile.IsFile)
         {
             if (targetFile.FileType != NitroRomType.MarArchive)
@@ -199,8 +300,10 @@ public sealed class MainWindowViewModel : ViewModelBase
             }
             else
             {
-                using var nitroRomFile = LoadedRom!.GetFileByPath(targetFile.FullPath).OpenRead();
+                using var nitroRomFile = LoadedRom.GetFileByPath(targetFile.FullPath).OpenRead();
                 using var marArchive = new MarArchive(nitroRomFile);
+
+                var mcmFileMetadata = new Dictionary<int, McmFileMetadata>();
 
                 for (var index = 0; index < marArchive.Entries.Count; index++)
                 {
@@ -215,7 +318,11 @@ public sealed class MainWindowViewModel : ViewModelBase
                     using var mcmFile = marArchiveEntry.OpenRead();
                     using var outputFile = File.Open(Path.Combine(outputFileDirectory, $"{index}.bin"), FileMode.Create);
                     mcmFile.CopyTo(outputFile);
+                    mcmFileMetadata.Add(index, mcmFile.GetFileMetadata());
                 }
+
+                var mcmFileMetadataOutput = Path.Combine(targetLocation, targetFile.Name, "meta.json");
+                File.WriteAllText(mcmFileMetadataOutput, JsonSerializer.Serialize(mcmFileMetadata, CustomJsonSerializerContext.Custom.DictionaryInt32McmFileMetadata));
             }
         }
         else
@@ -229,6 +336,8 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     private void ExportFile(NitroRomNode targetFile, string targetLocation)
     {
+        Debug.Assert(LoadedRom != null, nameof(LoadedRom) + " != null");
+
         if (targetFile.IsFile)
         {
             if (!Directory.Exists(targetLocation))
@@ -236,8 +345,8 @@ public sealed class MainWindowViewModel : ViewModelBase
                 Directory.CreateDirectory(targetLocation);
             }
 
-            using var outputFile = File.Open(Path.Combine(targetLocation, targetFile.Name), FileMode.Create);
-            using var nitroRomFile = LoadedRom!.GetFileByPath(targetFile.FullPath).OpenRead();
+            using var outputFile = File.OpenWrite(Path.Combine(targetLocation, targetFile.Name));
+            using var nitroRomFile = LoadedRom.GetFileByPath(targetFile.FullPath).OpenRead();
             nitroRomFile.CopyTo(outputFile);
         }
         else

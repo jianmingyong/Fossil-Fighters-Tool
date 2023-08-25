@@ -166,10 +166,7 @@ public sealed class HuffmanStream : CompressibleStream
         {
             var nodeA = nodes.Dequeue();
             var nodeB = nodes.Dequeue();
-
-            var nodeC = new HuffmanNode { Left = nodeB, Right = nodeA, Value = nodeA.Value + nodeB.Value };
-            nodeA.Parent = nodeC;
-            nodeB.Parent = nodeC;
+            var nodeC = new HuffmanNode { Left = nodeA, Right = nodeB, Value = nodeA.Value + nodeB.Value };
 
             nodes.Enqueue(nodeC, nodeC.Value);
         }

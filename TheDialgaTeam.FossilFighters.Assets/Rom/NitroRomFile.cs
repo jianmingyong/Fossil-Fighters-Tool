@@ -15,12 +15,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.Buffers;
-using JetBrains.Annotations;
 using TheDialgaTeam.FossilFighters.Assets.Archive;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Rom;
 
-[PublicAPI]
 public sealed class NitroRomFile : INitroRom
 {
     public NitroRomDirectory Directory { get; }
@@ -33,11 +31,11 @@ public sealed class NitroRomFile : INitroRom
 
     public NitroRomType FileType { get; }
 
-    public long Size => IsDirty ? NitroRomData.Length : OriginalSize;
+    public uint Size => IsDirty ? (uint) NitroRomData.Length : OriginalSize;
 
-    public long OriginalOffset { get; }
+    public uint OriginalOffset { get; }
 
-    public long OriginalSize { get; }
+    public uint OriginalSize { get; }
 
     internal MemoryStream NitroRomData { get; } = new();
 
@@ -56,7 +54,7 @@ public sealed class NitroRomFile : INitroRom
         Id = id;
         Name = name;
 
-        var stream = ndsFilesystem.BaseStream;
+        var stream = ndsFilesystem.Reader.BaseStream;
         var reader = ndsFilesystem.Reader;
 
         stream.Seek(ndsFilesystem.FileAllocationTableOffset + id * 8, SeekOrigin.Begin);
@@ -78,13 +76,13 @@ public sealed class NitroRomFile : INitroRom
     {
         if (!_isLoaded && !IsDirty)
         {
-            var stream = _ndsFilesystem.BaseStream;
+            var stream = _ndsFilesystem.Reader.BaseStream;
             stream.Seek(OriginalOffset, SeekOrigin.Begin);
 
             NitroRomData.Seek(0, SeekOrigin.Begin);
             NitroRomData.SetLength(0);
 
-            var remainingSize = OriginalSize;
+            long remainingSize = OriginalSize;
 
             var bufferSize = (int) Math.Min(4096, remainingSize);
             var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
@@ -147,11 +145,16 @@ public sealed class NitroRomFile : INitroRom
         return stream.CopyToAsync(NitroRomData, cancellationToken);
     }
 
-    private void BeforeWrite()
+    private void BeforeWrite(int capacity = 0)
     {
         IsDirty = true;
         NitroRomData.Seek(0, SeekOrigin.Begin);
         NitroRomData.SetLength(0);
+
+        if (capacity > 0)
+        {
+            NitroRomData.Capacity = capacity;
+        }
     }
 
     internal void Dispose()
