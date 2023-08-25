@@ -22,12 +22,15 @@
         <RepositoryUrl>https://github.com/jianmingyong/Fossil-Fighters-Tool</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
     </PropertyGroup>
+
     <PropertyGroup Condition="'$(Configuration)' == 'Release'">
         <DebugType>none</DebugType>
     </PropertyGroup>
+
     <ItemGroup>
         <AvaloniaResource Include="Assets\**"/>
     </ItemGroup>
+
     <ItemGroup>
         <PackageReference Include="Avalonia" Version="11.0.4"/>
         <PackageReference Include="Avalonia.Controls.TreeDataGrid" Version="11.0.0"/>
@@ -39,6 +42,7 @@
         <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="7.0.0"/>
         <PackageReference Include="ReactiveUI.Fody" Version="19.4.1"/>
     </ItemGroup>
+
     <ItemGroup>
         <ProjectReference Include="..\TheDialgaTeam.FossilFighters.Assets\TheDialgaTeam.FossilFighters.Assets.csproj"/>
     </ItemGroup>
