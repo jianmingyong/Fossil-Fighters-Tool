@@ -94,8 +94,6 @@ internal sealed class CompressCommand : System.CommandLine.Command
             if (mcmMetadata is not null)
             {
                 mcmFileStream.LoadMetadata(mcmMetadata[int.Parse(Path.GetFileNameWithoutExtension(file))]);
-                mcmFileStream.CompressionType1 = McmFileCompressionType.None;
-                mcmFileStream.CompressionType2 = McmFileCompressionType.None;
             }
             else
             {
