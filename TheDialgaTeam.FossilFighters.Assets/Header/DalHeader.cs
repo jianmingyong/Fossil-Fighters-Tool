@@ -15,11 +15,9 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.Text;
-using JetBrains.Annotations;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Header;
 
-[PublicAPI]
 public sealed class DalHeader
 {
     public const int FileHeader = 0x004C4144;

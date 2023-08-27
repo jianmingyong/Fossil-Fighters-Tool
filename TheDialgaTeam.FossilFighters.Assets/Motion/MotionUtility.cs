@@ -15,13 +15,9 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.Text;
-using JetBrains.Annotations;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Motion;
 
-[PublicAPI]
 public static class MotionUtility
 {
     public static ColorPalette GetColorPalette(Stream stream)
@@ -36,7 +32,7 @@ public static class MotionUtility
         {
             var rawValue = reader.ReadUInt16();
             table[i] = new Rgba32((byte) ((rawValue & 0x1F) << 3), (byte) (((rawValue >> 5) & 0x1F) << 3), (byte) (((rawValue >> 10) & 0x1F) << 3), (byte) (i == 0 ? 0 : 255));
-            
+
             colorTable2.Add(new Bgra5551((rawValue & 0x1F) / 31f, ((rawValue >> 5) & 0x1F) / 31f, ((rawValue >> 10) & 0x1F) / 31f, colorTable2.Count == 0 ? 0 : 1));
         }
 

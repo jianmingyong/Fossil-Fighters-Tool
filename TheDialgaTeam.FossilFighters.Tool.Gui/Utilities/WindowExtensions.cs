@@ -1,5 +1,5 @@
 ﻿// Fossil Fighters Tool is used to decompress and compress MAR archives used in Fossil Fighters game.
-// Copyright (C) 2022 Yong Jian Ming
+// Copyright (C) 2023 Yong Jian Ming
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -14,52 +14,33 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System.Reactive;
 using System.Threading.Tasks;
 using Avalonia.Controls;
-using ReactiveUI;
+using TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels;
 using TheDialgaTeam.FossilFighters.Tool.Gui.Views;
 
-namespace TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels;
+namespace TheDialgaTeam.FossilFighters.Tool.Gui.Utilities;
 
-public abstract class ViewModelBase : ReactiveObject
+public static class WindowExtensions
 {
-    public ReactiveCommand<Unit, Unit> CloseCommand { get; }
-
-    protected Window Window { get; }
-
-    protected ViewModelBase(Window window)
+    public static Task ShowMessageBox(this Window window, string message)
     {
-        Window = window;
-        CloseCommand = ReactiveCommand.Create(CloseWindow);
+        return ShowMessageBox(window, string.Empty, message);
     }
 
-    protected Task ShowDialog(string message)
-    {
-        return ShowDialog(string.Empty, message);
-    }
-
-    protected Task ShowDialog(string title, string message)
+    public static Task ShowMessageBox(this Window window, string title, string message)
     {
         if (string.IsNullOrWhiteSpace(message)) return Task.CompletedTask;
 
         if (string.IsNullOrWhiteSpace(title))
         {
-            title = Window.Title ?? string.Empty;
+            title = window.Title ?? string.Empty;
         }
 
-        var messageBox = new MessageBoxWindow();
-        messageBox.DataContext = new MessageBoxWindowViewModel(messageBox, title, message);
-        return messageBox.ShowDialog(Window);
-    }
-
-    protected virtual bool Close()
-    {
-        return true;
-    }
-
-    private void CloseWindow()
-    {
-        if (Close()) Window.Close();
+        var messageBox = new MessageBoxWindow
+        {
+            DataContext = new MessageBoxWindowViewModel(title, message)
+        };
+        return messageBox.ShowDialog(window);
     }
 }

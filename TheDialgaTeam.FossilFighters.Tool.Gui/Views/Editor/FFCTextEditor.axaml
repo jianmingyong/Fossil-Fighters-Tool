@@ -1,0 +1,36 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels.Editor"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="TheDialgaTeam.FossilFighters.Tool.Gui.Views.Editor.FFCTextEditor"
+        x:DataType="vm:FFCTextEditorViewModel"
+        Title="Fossil Fighters Tool - Text Editor"
+        Width="640" Height="512" MinWidth="640" MinHeight="512" WindowStartupLocation="CenterScreen">
+
+    <Design.DataContext>
+        <vm:FFCTextEditorViewModel>
+            <x:Arguments>
+                <x:Null />
+            </x:Arguments>
+        </vm:FFCTextEditorViewModel>
+    </Design.DataContext>
+
+    <Window.Background>
+        <ImageBrush Source="/Assets/967.png" Stretch="Fill" />
+    </Window.Background>
+
+    <Grid RowDefinitions="Auto, *">
+        <Grid Grid.Row="0" ColumnDefinitions="Auto, *">
+            <TextBlock Grid.Column="0" Text="Text Category:" VerticalAlignment="Center" Padding="0, 0, 4, 0" />
+            <ComboBox Grid.Column="1" ItemsSource="{Binding DtxDataFiles}" SelectedItem="{Binding SelectedDtxDataFile}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding DisplayName}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+        </Grid>
+    </Grid>
+</Window>

@@ -15,7 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.Buffers;
-using JetBrains.Annotations;
 using TheDialgaTeam.FossilFighters.Assets.Archive.Compression;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Archive;
@@ -25,7 +24,6 @@ public sealed record McmFileMetadata(
     McmFileCompressionType CompressionType1,
     McmFileCompressionType CompressionType2);
 
-[PublicAPI]
 public sealed class McmFileStream : CompressibleStream
 {
     public uint MaxSizePerChunk

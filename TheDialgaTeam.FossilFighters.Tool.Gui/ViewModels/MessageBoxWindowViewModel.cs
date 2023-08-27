@@ -14,19 +14,34 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using Avalonia.Controls;
+using System.Reactive;
+using System.Reactive.Disposables;
+using System.Reactive.Linq;
+using ReactiveUI;
+using ReactiveUI.Fody.Helpers;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels;
 
-public sealed class MessageBoxWindowViewModel : ViewModelBase
+public sealed class MessageBoxWindowViewModel : ReactiveObject, IActivatableViewModel
 {
+    public ViewModelActivator Activator { get; }
+
+    public Interaction<Unit, Unit> CloseWindow { get; } = new();
+
     public string Title { get; }
 
     public string Message { get; }
 
-    public MessageBoxWindowViewModel(Window window, string title, string message) : base(window)
+    [Reactive]
+    public ReactiveCommand<Unit, Unit>? Okay { get; private set; }
+
+    public MessageBoxWindowViewModel(string title, string message)
     {
+        Activator = new ViewModelActivator();
+
         Title = title;
         Message = message;
+
+        this.WhenActivated(disposable => { Okay = ReactiveCommand.CreateFromTask(async () => await CloseWindow.Handle(Unit.Default)).DisposeWith(disposable); });
     }
 }

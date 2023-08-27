@@ -15,18 +15,16 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.Buffers;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Rom;
 
 public sealed class NdsFilesystem : IDisposable
 {
-    public const string FF1EnglishGameCode = "YKHE";
-    public const string FF1JapaneseGameCode = "YKHJ";
-    public const string FFCEnglishGameCode = "VDEE";
-    public const string FFCJapaneseGameCode = "VDEJ";
-
     public char[] GameCode { get; }
+
+    public FossilFightersGameType GameType { get; }
 
     public uint FileNameTableOffset { get; }
 
@@ -38,7 +36,7 @@ public sealed class NdsFilesystem : IDisposable
 
     public NitroRomDirectory RootDirectory { get; }
 
-    internal BinaryReader Reader { get; }
+    internal MemoryStream Stream { get; }
 
     internal Dictionary<ushort, NitroRomDirectory> NitroRomDirectories { get; } = new();
 
@@ -46,88 +44,92 @@ public sealed class NdsFilesystem : IDisposable
 
     internal Dictionary<string, NitroRomFile> NitroRomFilesByPath { get; } = new();
 
-    private NdsFilesystem(Stream stream)
+    private NdsFilesystem(MemoryStream stream)
     {
-        if (!stream.CanRead) throw new ArgumentException(Localization.StreamIsNotReadable, nameof(stream));
-
-        Reader = new BinaryReader(stream, Encoding.ASCII);
-
+        Stream = stream;
         stream.Seek(0xC, SeekOrigin.Begin);
 
-        GameCode = Reader.ReadChars(4);
+        using var reader = new BinaryReader(stream, Encoding.ASCII, true);
 
-        var gameCode = GameCode.AsSpan();
+        GameCode = reader.ReadChars(4);
 
-        if (!gameCode.SequenceEqual(FF1EnglishGameCode) && !gameCode.SequenceEqual(FF1JapaneseGameCode) &&
-            !gameCode.SequenceEqual(FFCEnglishGameCode) && !gameCode.SequenceEqual(FFCJapaneseGameCode))
+        GameType = GameCode.AsSpan() switch
         {
-            throw new InvalidDataException(string.Format(Localization.StreamIsNotFormat, "FF1/FFC"));
-        }
+            FF1EnglishGameCode => FossilFightersGameType.FF1English,
+            FF1JapaneseGameCode => FossilFightersGameType.FF1Japanese,
+            FFCEnglishGameCode => FossilFightersGameType.FFCEnglish,
+            FFCJapaneseGameCode => FossilFightersGameType.FFCJapanese,
+            var _ => throw new InvalidDataException(string.Format(Localization.StreamIsNotFormat, "FF1/FFC"))
+        };
 
         stream.Seek(0x40, SeekOrigin.Begin);
 
-        FileNameTableOffset = Reader.ReadUInt32();
-        FileNameTableSize = Reader.ReadUInt32();
+        FileNameTableOffset = reader.ReadUInt32();
+        FileNameTableSize = reader.ReadUInt32();
 
-        FileAllocationTableOffset = Reader.ReadUInt32();
-        FileAllocationTableSize = Reader.ReadUInt32();
+        FileAllocationTableOffset = reader.ReadUInt32();
+        FileAllocationTableSize = reader.ReadUInt32();
 
         RootDirectory = new NitroRomDirectory(this, 0xF000, string.Empty);
     }
 
     public static NdsFilesystem FromFile(string filePath)
     {
-        return new NdsFilesystem(new FileStream(filePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None));
+        using var fileStream = File.OpenRead(filePath);
+        var memoryStream = new MemoryStream();
+        fileStream.CopyTo(memoryStream);
+        return new NdsFilesystem(memoryStream);
     }
 
-    public NitroRomFile GetFileById(ushort id)
+    public static NdsFilesystem FromFile(Stream stream)
     {
-        return NitroRomFilesById[id];
+        var memoryStream = new MemoryStream();
+        stream.CopyTo(memoryStream);
+        return new NdsFilesystem(memoryStream);
     }
 
-    public NitroRomFile GetFileByPath(string filePath)
+    public static async Task<NdsFilesystem> FromFileAsync(string filePath)
     {
-        return NitroRomFilesByPath[filePath];
+        await using var fileStream = File.OpenRead(filePath);
+        var memoryStream = new MemoryStream();
+        await fileStream.CopyToAsync(memoryStream).ConfigureAwait(false);
+        return new NdsFilesystem(memoryStream);
     }
 
-    public void SaveChanges(string targetFile)
+    public static async Task<NdsFilesystem> FromFileAsync(Stream stream)
+    {
+        var memoryStream = new MemoryStream();
+        await stream.CopyToAsync(memoryStream).ConfigureAwait(false);
+        return new NdsFilesystem(memoryStream);
+    }
+
+    public bool TryGetFileById(ushort id, [MaybeNullWhen(false)] out NitroRomFile nitroRomFile)
+    {
+        return NitroRomFilesById.TryGetValue(id, out nitroRomFile);
+    }
+
+    public bool TryGetFileByPath(string nitroRomFilePath, [MaybeNullWhen(false)] out NitroRomFile nitroRomFile)
+    {
+        return NitroRomFilesByPath.TryGetValue(nitroRomFilePath, out nitroRomFile);
+    }
+
+    public void WriteTo(Stream stream)
     {
         using var newRomMemoryStream = new MemoryStream();
-        using var binaryReader = new BinaryReader(newRomMemoryStream, Encoding.ASCII);
-        using var binaryWriter = new BinaryWriter(newRomMemoryStream, Encoding.ASCII);
+        using var newRomBinaryWriter = new BinaryWriter(newRomMemoryStream, Encoding.ASCII);
 
-        var lastFileId = NitroRomFilesById.Last().Value.Id;
-        var offset = NitroRomFilesById.First().Value.OriginalOffset;
+        var offset = NitroRomFilesById.Values.First().OriginalOffset;
+        var lastFileId = NitroRomFilesById.Values.Last().Id;
 
-        long remainingSize = offset;
-        var bufferSize = (int) Math.Min(4096, remainingSize);
-        var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
-
-        Reader.BaseStream.Seek(0, SeekOrigin.Begin);
-
-        try
-        {
-            while (remainingSize > 0)
-            {
-                int read;
-                if ((read = Reader.BaseStream.Read(buffer, 0, bufferSize)) == 0) throw new EndOfStreamException();
-
-                newRomMemoryStream.Write(buffer, 0, (int) Math.Min(remainingSize, read));
-                remainingSize -= read;
-            }
-        }
-        finally
-        {
-            ArrayPool<byte>.Shared.Return(buffer);
-        }
+        newRomMemoryStream.Write(Stream.GetBuffer().AsSpan(0, (int) offset));
 
         foreach (var nitroRomFile in NitroRomFilesById.Values)
         {
             var endOffset = offset + nitroRomFile.Size;
 
             newRomMemoryStream.Seek(FileAllocationTableOffset + nitroRomFile.Id * 8, SeekOrigin.Begin);
-            binaryWriter.Write(offset);
-            binaryWriter.Write(endOffset);
+            newRomBinaryWriter.Write(offset);
+            newRomBinaryWriter.Write(endOffset);
 
             newRomMemoryStream.Seek(offset, SeekOrigin.Begin);
 
@@ -160,14 +162,74 @@ public sealed class NdsFilesystem : IDisposable
             }
         }
 
-        using var targetFileStream = File.OpenWrite(targetFile);
         newRomMemoryStream.Seek(0, SeekOrigin.Begin);
-        newRomMemoryStream.CopyTo(targetFileStream);
+        newRomMemoryStream.CopyTo(stream);
+    }
+
+    public async Task WriteToAsync(Stream stream)
+    {
+        using var newRomMemoryStream = new MemoryStream();
+        await using var newRomBinaryWriter = new BinaryWriter(newRomMemoryStream, Encoding.ASCII);
+
+        var offset = NitroRomFilesById.Values.First().OriginalOffset;
+        var lastFileId = NitroRomFilesById.Values.Last().Id;
+
+        newRomMemoryStream.Write(Stream.GetBuffer().AsSpan(0, (int) offset));
+
+        foreach (var nitroRomFile in NitroRomFilesById.Values)
+        {
+            var endOffset = offset + nitroRomFile.Size;
+
+            newRomMemoryStream.Seek(FileAllocationTableOffset + nitroRomFile.Id * 8, SeekOrigin.Begin);
+            newRomBinaryWriter.Write(offset);
+            newRomBinaryWriter.Write(endOffset);
+
+            newRomMemoryStream.Seek(offset, SeekOrigin.Begin);
+
+            using var file = nitroRomFile.OpenRead();
+            await file.CopyToAsync(newRomMemoryStream).ConfigureAwait(false);
+
+            if (nitroRomFile.Id != lastFileId && file.Length % 0x200 > 0)
+            {
+                var paddingRequired = 0x200 - file.Length % 0x200;
+                var paddingBuffer = ArrayPool<byte>.Shared.Rent((int) paddingRequired);
+
+                try
+                {
+                    paddingBuffer.AsSpan(0, (int) paddingRequired).Fill(0xFF);
+                    newRomMemoryStream.Write(paddingBuffer, 0, (int) paddingRequired);
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(paddingBuffer);
+                }
+            }
+
+            if (endOffset % 0x200 > 0)
+            {
+                offset = endOffset + 0x200 - endOffset % 0x200;
+            }
+            else
+            {
+                offset = endOffset;
+            }
+        }
+
+        newRomMemoryStream.Seek(0, SeekOrigin.Begin);
+        await newRomMemoryStream.CopyToAsync(stream).ConfigureAwait(false);
     }
 
     public void Dispose()
     {
-        Reader.Dispose();
         RootDirectory.Dispose();
+        Stream.Dispose();
     }
+
+    // ReSharper disable InconsistentNaming
+    private const string FF1EnglishGameCode = "YKHE";
+    private const string FF1JapaneseGameCode = "YKHJ";
+    private const string FFCEnglishGameCode = "VDEE";
+
+    private const string FFCJapaneseGameCode = "VDEJ";
+    // ReSharper restore InconsistentNaming
 }

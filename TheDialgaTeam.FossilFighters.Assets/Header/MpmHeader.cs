@@ -17,7 +17,6 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using JetBrains.Annotations;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Header;
 
@@ -27,7 +26,6 @@ public sealed partial class MpmHeaderContext : JsonSerializerContext
 {
 }
 
-[PublicAPI]
 public sealed class MpmHeader
 {
     public const int FileHeader = 0x004D504D;

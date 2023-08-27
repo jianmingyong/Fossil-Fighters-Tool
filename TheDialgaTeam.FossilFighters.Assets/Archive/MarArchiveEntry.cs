@@ -16,11 +16,9 @@
 
 using System.Buffers;
 using System.Text;
-using JetBrains.Annotations;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Archive;
 
-[PublicAPI]
 public sealed class MarArchiveEntry
 {
     internal readonly MemoryStream MemoryStream;

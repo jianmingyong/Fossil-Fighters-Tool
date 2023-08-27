@@ -14,11 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using JetBrains.Annotations;
-
 namespace TheDialgaTeam.FossilFighters.Assets.Archive.Compression;
 
-[PublicAPI]
 public sealed class Lz77Stream : CompressibleStream
 {
     private const int CompressHeader = 0x10;

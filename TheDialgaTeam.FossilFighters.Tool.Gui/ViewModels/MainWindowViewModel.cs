@@ -19,7 +19,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Text.Json;
@@ -28,7 +27,6 @@ using Avalonia.Controls;
 using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Controls.Selection;
 using Avalonia.Platform.Storage;
-using Microsoft.Extensions.FileSystemGlobbing;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using TheDialgaTeam.FossilFighters.Assets;
@@ -38,69 +36,93 @@ using TheDialgaTeam.FossilFighters.Tool.Gui.Models;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels;
 
-public sealed class MainWindowViewModel : ViewModelBase
+public sealed class MainWindowViewModel : ReactiveObject
 {
     [ObservableAsProperty]
     public bool IsRomLoaded { get; }
 
+    [ObservableAsProperty]
+    public bool IsBusy { get; }
+
+    public Interaction<string, Task> ShowMessageBox { get; } = new();
+
+    public Interaction<Exception, Task> ShowErrorMessageBox { get; } = new();
+
+    public Interaction<FilePickerOpenOptions, IReadOnlyList<IStorageFile>> OpenFilePicker { get; } = new();
+
+    public Interaction<FilePickerSaveOptions, IStorageFile?> SaveFilePicker { get; } = new();
+
+    public Interaction<FolderPickerOpenOptions, IReadOnlyList<IStorageFolder>> OpenFolderPicker { get; } = new();
+
+    public Interaction<Uri, IStorageFile?> TryGetFileFromPath { get; } = new();
+
+    public ReactiveCommand<Unit, Unit> OpenFile { get; }
+
+    public ReactiveCommand<Unit, Unit> SaveFile { get; }
+
+    public ReactiveCommand<Unit, Unit> ImportFile { get; }
+
+    public ReactiveCommand<Unit, Unit> ExportFile { get; }
+
+    public ReactiveCommand<Unit, Unit> CompressFile { get; }
+
+    public ReactiveCommand<Unit, Unit> DecompressFile { get; }
+
     public HierarchicalTreeDataGridSource<NitroRomNode> NitroRomNodeSource { get; }
 
-    public ReactiveCommand<Unit, Unit> OpenFileCommand { get; }
-
-    public ReactiveCommand<Unit, Unit> SaveFileCommand { get; }
-
-    public ReactiveCommand<Unit, Unit> ImportFileCommand { get; }
-
-    public ReactiveCommand<Unit, Unit> ExportFileCommand { get; }
-
-    public ReactiveCommand<Unit, Unit> CompressFileCommand { get; }
-
-    public ReactiveCommand<Unit, Unit> DecompressFileCommand { get; }
-
-    private ObservableCollection<NitroRomNode> NitroRomNodes { get; } = new();
+    private readonly ObservableCollection<NitroRomNode> _nitroRomNodes = new();
 
     [Reactive]
     private NdsFilesystem? LoadedRom { get; set; }
 
-    [Reactive]
+    [ObservableAsProperty]
     private NitroRomNode? SelectedNitroRomNode { get; set; }
 
-    public MainWindowViewModel(Window window) : base(window)
+    public MainWindowViewModel()
     {
-        this.WhenAnyValue(model => model.LoadedRom).Select(filesystem => filesystem is not null).ToPropertyEx(this, model => model.IsRomLoaded);
+        this.WhenAnyValue(model => model.LoadedRom)
+            .Select(filesystem => filesystem is not null)
+            .ToPropertyEx(this, model => model.IsRomLoaded);
 
-        NitroRomNodeSource = new HierarchicalTreeDataGridSource<NitroRomNode>(NitroRomNodes)
+        NitroRomNodeSource = new HierarchicalTreeDataGridSource<NitroRomNode>(_nitroRomNodes)
         {
             Columns =
             {
                 new HierarchicalExpanderColumn<NitroRomNode>(new TextColumn<NitroRomNode, string>("Name", node => node.Name), node => node.ChildNodes, node => node.ChildNodes.Count > 0),
                 new TextColumn<NitroRomNode, string>("Type", node => node.FileTypeDisplay),
-                new TextColumn<NitroRomNode, string>("Size", node => !node.IsFile ? string.Empty : $"{node.Size:N0} B")
+                new TextColumn<NitroRomNode, string>("Size", node => node.FileType == NitroRomType.FileFolder ? string.Empty : $"{node.Size:N0} B")
             }
         };
 
-        NitroRomNodeSource.RowSelection!.SelectionChanged += NitroContentSourceOnSelectionChanged;
+        Observable.FromEventPattern<EventHandler<TreeSelectionModelSelectionChangedEventArgs<NitroRomNode>>, TreeSelectionModelSelectionChangedEventArgs<NitroRomNode>>(
+                handler => NitroRomNodeSource.RowSelection!.SelectionChanged += handler,
+                handler => NitroRomNodeSource.RowSelection!.SelectionChanged -= handler)
+            .Select(pattern => pattern.EventArgs.SelectedItems[0])
+            .ToPropertyEx(this, model => model.SelectedNitroRomNode);
 
-        OpenFileCommand = ReactiveCommand.CreateFromTask(OpenFile);
-        SaveFileCommand = ReactiveCommand.CreateFromTask(SaveFile, this.WhenAnyValue(model => model.LoadedRom).Select(filesystem => filesystem is not null).AsObservable());
-        ImportFileCommand = ReactiveCommand.CreateFromTask(ImportFile, this.WhenAnyValue(model => model.SelectedNitroRomNode).Select(node => node?.IsFile ?? false).AsObservable());
-        ExportFileCommand = ReactiveCommand.CreateFromTask(ExportFile);
-        CompressFileCommand = ReactiveCommand.CreateFromTask(CompressFile, this.WhenAnyValue(model => model.SelectedNitroRomNode).Select(node => node?.FileType == NitroRomType.MarArchive).AsObservable());
-        DecompressFileCommand = ReactiveCommand.CreateFromTask(DecompressFile, this.WhenAnyValue(model => model.SelectedNitroRomNode).Select(node => node?.FileType is NitroRomType.MarArchive or NitroRomType.FileFolder).AsObservable());
+        OpenFile = ReactiveCommand.CreateFromTask(OpenFileImplementation, this.WhenAnyValue(model => model.IsBusy).Select(isBusy => !isBusy));
+        SaveFile = ReactiveCommand.CreateFromTask(SaveFileImplementation, this.WhenAnyValue(model => model.IsRomLoaded, model => model.IsBusy, (isRomLoaded, isBusy) => isRomLoaded && !isBusy));
+
+        ImportFile = ReactiveCommand.CreateFromTask(ImportFileImplementation, this.WhenAnyValue(model => model.SelectedNitroRomNode, model => model.IsBusy, (selectedNode, isBusy) => selectedNode?.FileType is NitroRomType.File or NitroRomType.MarArchive && !isBusy));
+        ExportFile = ReactiveCommand.CreateFromTask(ExportFileImplementation, this.WhenAnyValue(model => model.SelectedNitroRomNode, model => model.IsBusy, (selectedNode, isBusy) => selectedNode is not null && !isBusy));
+        CompressFile = ReactiveCommand.CreateFromTask(CompressFileImplementation, this.WhenAnyValue(model => model.SelectedNitroRomNode, model => model.IsBusy, (selectedNode, isBusy) => selectedNode?.FileType is NitroRomType.MarArchive && !isBusy));
+        DecompressFile = ReactiveCommand.CreateFromTask(DecompressFileImplementation, this.WhenAnyValue(model => model.SelectedNitroRomNode, model => model.IsBusy, (selectedNode, isBusy) => selectedNode?.FileType is NitroRomType.MarArchive or NitroRomType.FileFolder && !isBusy));
+
+        this.WhenAnyObservable(model => model.OpenFile.IsExecuting).ToPropertyEx(this, model => model.IsBusy);
+        this.WhenAnyObservable(model => model.SaveFile.IsExecuting).ToPropertyEx(this, model => model.IsBusy);
+        this.WhenAnyObservable(model => model.ImportFile.IsExecuting).ToPropertyEx(this, model => model.IsBusy);
+        this.WhenAnyObservable(model => model.ExportFile.IsExecuting).ToPropertyEx(this, model => model.IsBusy);
+        this.WhenAnyObservable(model => model.CompressFile.IsExecuting).ToPropertyEx(this, model => model.IsBusy);
+        this.WhenAnyObservable(model => model.DecompressFile.IsExecuting).ToPropertyEx(this, model => model.IsBusy);
     }
 
-    private void NitroContentSourceOnSelectionChanged(object? sender, TreeSelectionModelSelectionChangedEventArgs<NitroRomNode> e)
-    {
-        SelectedNitroRomNode = e.SelectedItems[0];
-    }
-
-    private async Task OpenFile()
+    private async Task OpenFileImplementation()
     {
         try
         {
-            var selectedFiles = await Window.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            var selectedFiles = await OpenFilePicker.Handle(new FilePickerOpenOptions
             {
-                Title = "Select Fossil Fighter ROM",
+                Title = "Select Fossil Fighters ROM",
                 AllowMultiple = false,
                 FileTypeFilter = new[]
                 {
@@ -114,32 +136,34 @@ public sealed class MainWindowViewModel : ViewModelBase
 
             if (selectedFiles.Count == 0) return;
 
-            LoadedRom = NdsFilesystem.FromFile(selectedFiles[0].TryGetLocalPath()!);
-            NitroRomNodes.Clear();
+            await using var fileStream = await selectedFiles[0].OpenReadAsync();
+            LoadedRom = await NdsFilesystem.FromFileAsync(fileStream);
+
+            _nitroRomNodes.Clear();
 
             foreach (var subDirectory in LoadedRom.RootDirectory.SubDirectories)
             {
-                NitroRomNodes.Add(new NitroRomNode(subDirectory));
+                _nitroRomNodes.Add(new NitroRomNode(subDirectory));
             }
 
             foreach (var file in LoadedRom.RootDirectory.Files)
             {
-                NitroRomNodes.Add(new NitroRomNode(file));
+                _nitroRomNodes.Add(new NitroRomNode(file));
             }
         }
         catch (Exception ex)
         {
-            await ShowDialog("Error", ex.ToString());
+            await ShowErrorMessageBox.Handle(ex);
         }
     }
 
-    private async Task SaveFile()
+    private async Task SaveFileImplementation()
     {
-        Debug.Assert(LoadedRom != null, nameof(LoadedRom) + " != null");
-
         try
         {
-            var selectedFile = await Window.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            Debug.Assert(LoadedRom != null, nameof(LoadedRom) + " != null");
+
+            var selectedFile = await SaveFilePicker.Handle(new FilePickerSaveOptions
             {
                 FileTypeChoices = new[]
                 {
@@ -154,23 +178,25 @@ public sealed class MainWindowViewModel : ViewModelBase
 
             if (selectedFile is null) return;
 
-            LoadedRom.SaveChanges(selectedFile.TryGetLocalPath()!);
-            await ShowDialog("Save completed.");
+            await using var outputFile = await selectedFile.OpenWriteAsync();
+            await LoadedRom.WriteToAsync(outputFile);
+
+            await ShowMessageBox.Handle("Save completed.");
         }
         catch (Exception ex)
         {
-            await ShowDialog("Error", ex.ToString());
+            await ShowErrorMessageBox.Handle(ex);
         }
     }
 
-    private async Task ImportFile()
+    private async Task ImportFileImplementation()
     {
-        Debug.Assert(LoadedRom != null, nameof(LoadedRom) + " != null");
-        Debug.Assert(SelectedNitroRomNode != null, nameof(SelectedNitroRomNode) + " != null");
-
         try
         {
-            var selectedFiles = await Window.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            Debug.Assert(LoadedRom != null, nameof(LoadedRom) + " != null");
+            Debug.Assert(SelectedNitroRomNode != null, nameof(SelectedNitroRomNode) + " != null");
+
+            var selectedFiles = await OpenFilePicker.Handle(new FilePickerOpenOptions
             {
                 AllowMultiple = false,
                 Title = $"Select file to import into {SelectedNitroRomNode.Name}"
@@ -178,44 +204,44 @@ public sealed class MainWindowViewModel : ViewModelBase
 
             if (selectedFiles.Count == 0) return;
 
-            await LoadedRom.GetFileByPath(SelectedNitroRomNode.FullPath).WriteFromAsync(await selectedFiles[0].OpenReadAsync());
-            SelectedNitroRomNode.Version++;
+            await using var file = await selectedFiles[0].OpenReadAsync();
+            await SelectedNitroRomNode.WriteFromAsync(file);
 
-            await ShowDialog("Import completed.");
+            await ShowMessageBox.Handle("Import completed.");
         }
         catch (Exception ex)
         {
-            await ShowDialog("Error", ex.ToString());
+            await ShowErrorMessageBox.Handle(ex);
         }
     }
 
-    private async Task ExportFile()
+    private async Task ExportFileImplementation()
     {
-        Debug.Assert(SelectedNitroRomNode != null, nameof(SelectedNitroRomNode) + " != null");
-
         try
         {
-            var selectedFolders = await Window.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions());
+            Debug.Assert(SelectedNitroRomNode != null, nameof(SelectedNitroRomNode) + " != null");
+
+            var selectedFolders = await OpenFolderPicker.Handle(new FolderPickerOpenOptions());
             if (selectedFolders.Count == 0) return;
 
-            ExportFile(SelectedNitroRomNode, selectedFolders[0].TryGetLocalPath()!);
+            await SelectedNitroRomNode.ExportFilesAsync(selectedFolders[0]);
 
-            await ShowDialog("Export completed.");
+            await ShowMessageBox.Handle("Export completed.");
         }
         catch (Exception ex)
         {
-            await ShowDialog("Error", ex.ToString());
+            await ShowErrorMessageBox.Handle(ex);
         }
     }
 
-    private async Task CompressFile()
+    private async Task CompressFileImplementation()
     {
-        Debug.Assert(LoadedRom != null, nameof(LoadedRom) + " != null");
-        Debug.Assert(SelectedNitroRomNode != null, nameof(SelectedNitroRomNode) + " != null");
-
         try
         {
-            var selectedFolders = await Window.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            Debug.Assert(LoadedRom != null, nameof(LoadedRom) + " != null");
+            Debug.Assert(SelectedNitroRomNode != null, nameof(SelectedNitroRomNode) + " != null");
+
+            var selectedFolders = await OpenFolderPicker.Handle(new FolderPickerOpenOptions
             {
                 AllowMultiple = false,
                 Title = $"Select folder to compress into {SelectedNitroRomNode.Name}"
@@ -223,138 +249,84 @@ public sealed class MainWindowViewModel : ViewModelBase
 
             if (selectedFolders.Count == 0) return;
 
-            var metaFilePath = Path.Combine(selectedFolders[0].TryGetLocalPath()!, "meta.json");
+            IStorageItem? metaFileItem = null;
+            var binFileItems = new SortedList<int, IStorageItem>();
 
-            if (!File.Exists(metaFilePath))
+            await foreach (var item in selectedFolders[0].GetItemsAsync())
             {
-                await ShowDialog("Error", "meta.json file does not exist. Please decompress the file first to generate a meta file.");
-                return;
+                if (item.Name.Equals("meta.json"))
+                {
+                    metaFileItem = item;
+                }
+
+                if (item.Name.EndsWith(".bin") && int.TryParse(Path.GetFileNameWithoutExtension(item.Name), out var fileIndex))
+                {
+                    binFileItems.Add(fileIndex, item);
+                }
             }
 
-            var mcmMetadata = JsonSerializer.Deserialize(File.OpenRead(metaFilePath), CustomJsonSerializerContext.Custom.DictionaryInt32McmFileMetadata);
+            if (metaFileItem is null) throw new FileNotFoundException("meta.json file does not exist. Please decompress the file first to generate a meta file.");
+
+            var metaFile = await TryGetFileFromPath.Handle(metaFileItem.Path);
+            if (metaFile is null) throw new FileNotFoundException("meta.json file does not exist. Please decompress the file first to generate a meta file.");
+
+            await using var metaFileStream = await metaFile.OpenReadAsync();
+            var metadata = JsonSerializer.Deserialize(metaFileStream, CustomJsonSerializerContext.Custom.DictionaryInt32McmFileMetadata);
 
             using var outputFile = new MemoryStream();
 
             using (var marArchive = new MarArchive(outputFile, MarArchiveMode.Create, true))
             {
-                var matcher = new Matcher();
-                matcher.AddIncludePatterns(new[] { "*.bin" });
-
-                foreach (var file in matcher.GetResultsInFullPath(selectedFolders[0].TryGetLocalPath()!).OrderBy(s => int.Parse(Path.GetFileNameWithoutExtension(s))))
+                foreach (var (fileIndex, value) in binFileItems)
                 {
+                    var binFile = await TryGetFileFromPath.Handle(value.Path);
+                    if (binFile is null) throw new FileNotFoundException(null, value.Name);
+
                     var marArchiveEntry = marArchive.CreateEntry();
                     await using var mcmFileStream = marArchiveEntry.OpenWrite();
 
-                    if (mcmMetadata is not null)
+                    if (metadata is not null && metadata.TryGetValue(fileIndex, out var mcmFileMetadata))
                     {
-                        mcmFileStream.LoadMetadata(mcmMetadata[int.Parse(Path.GetFileNameWithoutExtension(file))]);
+                        mcmFileStream.LoadMetadata(mcmFileMetadata);
                     }
 
-                    await using var fileStream = File.OpenRead(file);
-                    await fileStream.CopyToAsync(mcmFileStream);
+                    await using var binFileStream = await binFile.OpenReadAsync();
+                    await binFileStream.CopyToAsync(mcmFileStream);
                 }
             }
 
             outputFile.Seek(0, SeekOrigin.Begin);
-            await LoadedRom.GetFileByPath(SelectedNitroRomNode.FullPath).WriteFromAsync(outputFile);
+            await SelectedNitroRomNode.WriteFromAsync(outputFile);
+
+            await ShowMessageBox.Handle("Compress completed.");
         }
         catch (Exception ex)
         {
-            await ShowDialog("Error", ex.ToString());
+            await ShowErrorMessageBox.Handle(ex);
         }
     }
 
-    private async Task DecompressFile()
+    private async Task DecompressFileImplementation()
     {
-        Debug.Assert(SelectedNitroRomNode != null, nameof(SelectedNitroRomNode) + " != null");
-
         try
         {
-            var selectedFolders = await Window.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            Debug.Assert(SelectedNitroRomNode != null, nameof(SelectedNitroRomNode) + " != null");
+
+            var selectedFolders = await OpenFolderPicker.Handle(new FolderPickerOpenOptions
             {
                 AllowMultiple = false,
-                Title = "Select output folder for decompressed archive"
+                Title = "Select output folder to store decompress archives."
             });
 
             if (selectedFolders.Count == 0) return;
 
-            DecompressFile(SelectedNitroRomNode, selectedFolders[0].TryGetLocalPath()!);
+            await SelectedNitroRomNode.DecompressFilesAsync(selectedFolders[0]);
 
-            await ShowDialog("Decompress completed.");
+            await ShowMessageBox.Handle("Decompress completed.");
         }
         catch (Exception ex)
         {
-            await ShowDialog("Error", ex.ToString());
-        }
-    }
-
-    private void DecompressFile(NitroRomNode targetFile, string targetLocation)
-    {
-        Debug.Assert(LoadedRom != null, nameof(LoadedRom) + " != null");
-
-        if (targetFile.IsFile)
-        {
-            if (targetFile.FileType != NitroRomType.MarArchive)
-            {
-                ExportFile(targetFile, targetLocation);
-            }
-            else
-            {
-                using var nitroRomFile = LoadedRom.GetFileByPath(targetFile.FullPath).OpenRead();
-                using var marArchive = new MarArchive(nitroRomFile);
-
-                var mcmFileMetadata = new Dictionary<int, McmFileMetadata>();
-
-                for (var index = 0; index < marArchive.Entries.Count; index++)
-                {
-                    var marArchiveEntry = marArchive.Entries[index];
-                    var outputFileDirectory = Path.Combine(targetLocation, targetFile.Name);
-
-                    if (!Directory.Exists(outputFileDirectory))
-                    {
-                        Directory.CreateDirectory(outputFileDirectory);
-                    }
-
-                    using var mcmFile = marArchiveEntry.OpenRead();
-                    using var outputFile = File.Open(Path.Combine(outputFileDirectory, $"{index}.bin"), FileMode.Create);
-                    mcmFile.CopyTo(outputFile);
-                    mcmFileMetadata.Add(index, mcmFile.GetFileMetadata());
-                }
-
-                var mcmFileMetadataOutput = Path.Combine(targetLocation, targetFile.Name, "meta.json");
-                File.WriteAllText(mcmFileMetadataOutput, JsonSerializer.Serialize(mcmFileMetadata, CustomJsonSerializerContext.Custom.DictionaryInt32McmFileMetadata));
-            }
-        }
-        else
-        {
-            foreach (var targetFolderChildNode in targetFile.ChildNodes)
-            {
-                DecompressFile(targetFolderChildNode, targetFolderChildNode.IsFile ? targetLocation : Path.Combine(targetLocation, targetFolderChildNode.Name));
-            }
-        }
-    }
-
-    private void ExportFile(NitroRomNode targetFile, string targetLocation)
-    {
-        Debug.Assert(LoadedRom != null, nameof(LoadedRom) + " != null");
-
-        if (targetFile.IsFile)
-        {
-            if (!Directory.Exists(targetLocation))
-            {
-                Directory.CreateDirectory(targetLocation);
-            }
-
-            using var outputFile = File.OpenWrite(Path.Combine(targetLocation, targetFile.Name));
-            using var nitroRomFile = LoadedRom.GetFileByPath(targetFile.FullPath).OpenRead();
-            nitroRomFile.CopyTo(outputFile);
-        }
-        else
-        {
-            foreach (var targetFolderChildNode in targetFile.ChildNodes)
-            {
-                ExportFile(targetFolderChildNode, targetFolderChildNode.IsFile ? targetLocation : Path.Combine(targetLocation, targetFolderChildNode.Name));
-            }
+            await ShowErrorMessageBox.Handle(ex);
         }
     }
 }

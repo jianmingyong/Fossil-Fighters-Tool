@@ -312,13 +312,13 @@ internal sealed class DecompressCommand : System.CommandLine.Command
 
                             case DtxHeader.FileHeader:
                             {
-                                fileStream.Seek(0, SeekOrigin.Begin);
-                                var dtxHeader = new DtxHeader(fileStream);
-                                var jsonText = JsonSerializer.Serialize(dtxHeader, typeof(DtxHeader), new DtxHeaderContext(new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping, WriteIndented = true }));
-                                var jsonOutputFilePath = Path.Combine(output, $"{i}.json");
+                                //fileStream.Seek(0, SeekOrigin.Begin);
+                                //var dtxHeader = new DtxHeader(fileStream);
+                                //var jsonText = JsonSerializer.Serialize(dtxHeader, typeof(DtxHeader), new DtxHeaderContext(new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping, WriteIndented = true }));
+                                //var jsonOutputFilePath = Path.Combine(output, $"{i}.json");
 
-                                File.WriteAllText(jsonOutputFilePath, jsonText);
-                                Console.WriteLine(Localization.FileExtracted, jsonOutputFilePath);
+                                //File.WriteAllText(jsonOutputFilePath, jsonText);
+                                //Console.WriteLine(Localization.FileExtracted, jsonOutputFilePath);
                                 break;
                             }
 

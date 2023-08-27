@@ -16,7 +16,6 @@
 
 using System.Text;
 using System.Text.Json.Serialization;
-using JetBrains.Annotations;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Header;
 
@@ -27,7 +26,6 @@ public sealed partial class DmgHeaderContext : JsonSerializerContext
 {
 }
 
-[PublicAPI]
 public sealed class DmgHeader
 {
     public const int FileHeader = 0x00474D44;

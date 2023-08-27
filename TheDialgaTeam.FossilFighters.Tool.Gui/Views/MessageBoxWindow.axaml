@@ -6,6 +6,7 @@
         mc:Ignorable="d" d:DesignWidth="300" d:DesignHeight="100"
         x:Class="TheDialgaTeam.FossilFighters.Tool.Gui.Views.MessageBoxWindow"
         x:DataType="vm:MessageBoxWindowViewModel"
+        Name="Window"
         Title="{Binding Title}"
         MinWidth="300" MinHeight="100" MaxWidth="600" MaxHeight="540" WindowStartupLocation="CenterScreen"
         SizeToContent="WidthAndHeight">
@@ -13,7 +14,6 @@
     <Design.DataContext>
         <vm:MessageBoxWindowViewModel>
             <x:Arguments>
-                <x:Null />
                 <x:String>Title</x:String>
                 <x:String>Testing Error Message!</x:String>
             </x:Arguments>
@@ -24,7 +24,8 @@
         <ScrollViewer Grid.Row="0">
             <TextBlock Text="{Binding Message}" VerticalAlignment="Center" TextWrapping="Wrap" />
         </ScrollViewer>
-        <Button Grid.Row="1" HorizontalAlignment="Right" Command="{Binding CloseCommand}">
+
+        <Button Grid.Row="1" HorizontalAlignment="Right" Command="{Binding Okay}">
             <TextBlock Text="OK" />
         </Button>
     </Grid>

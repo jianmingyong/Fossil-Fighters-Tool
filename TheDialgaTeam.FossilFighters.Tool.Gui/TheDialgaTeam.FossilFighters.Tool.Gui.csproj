@@ -10,7 +10,6 @@
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
 
-        <IsPublishable>true</IsPublishable>
         <PublishSingleFile>true</PublishSingleFile>
         <PublishTrimmed>true</PublishTrimmed>
 
@@ -39,7 +38,10 @@
         <PackageReference Include="Avalonia.Fonts.Inter" Version="11.0.4"/>
         <PackageReference Include="Avalonia.ReactiveUI" Version="11.0.4"/>
         <PackageReference Include="Avalonia.Themes.Fluent" Version="11.0.4"/>
-        <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="7.0.0"/>
+        <PackageReference Include="ReactiveMarbles.ObservableEvents.SourceGenerator" Version="1.2.3">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
         <PackageReference Include="ReactiveUI.Fody" Version="19.4.1"/>
     </ItemGroup>
 

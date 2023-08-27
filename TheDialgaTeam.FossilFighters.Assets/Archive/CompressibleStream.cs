@@ -16,11 +16,9 @@
 
 using System.Runtime.CompilerServices;
 using System.Text;
-using JetBrains.Annotations;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Archive;
 
-[PublicAPI]
 public abstract class CompressibleStream : Stream
 {
     public override bool CanRead => Mode == CompressibleStreamMode.Decompress && BaseStream.CanRead;

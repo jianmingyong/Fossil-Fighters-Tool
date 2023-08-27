@@ -1,5 +1,5 @@
 ﻿// Fossil Fighters Tool is used to decompress and compress MAR archives used in Fossil Fighters game.
-// Copyright (C) 2022 Yong Jian Ming
+// Copyright (C) 2023 Yong Jian Ming
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -14,14 +14,30 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using Avalonia.Controls;
+using System.Diagnostics;
+using System.Reactive;
+using System.Reactive.Disposables;
+using Avalonia.ReactiveUI;
+using ReactiveUI;
+using TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Gui.Views;
 
-public partial class MessageBoxWindow : Window
+public partial class MessageBoxWindow : ReactiveWindow<MessageBoxWindowViewModel>
 {
     public MessageBoxWindow()
     {
         InitializeComponent();
+
+        this.WhenActivated(disposable =>
+        {
+            Debug.Assert(ViewModel != null, nameof(ViewModel) + " != null");
+
+            ViewModel.CloseWindow.RegisterHandler(context =>
+            {
+                Window.Close();
+                context.SetOutput(Unit.Default);
+            }).DisposeWith(disposable);
+        });
     }
 }

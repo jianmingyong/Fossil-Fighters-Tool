@@ -14,22 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using JetBrains.Annotations;
-
 namespace TheDialgaTeam.FossilFighters.Assets.Image;
 
-[PublicAPI]
 public enum ColorPaletteType
 {
     Color16 = 0,
     Color256 = 1
 }
 
-[PublicAPI]
 public readonly struct ColorPalette
 {
     public ColorPaletteType Type { get; }
-    
+
     public Bgra5551[] Colors { get; }
 
     public ColorPalette(ColorPaletteType type, Bgra5551[] colors)

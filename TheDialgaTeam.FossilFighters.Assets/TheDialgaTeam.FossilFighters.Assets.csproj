@@ -23,7 +23,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="JetBrains.Annotations" Version="2023.2.0" PrivateAssets="All"/>
         <PackageReference Include="SixLabors.ImageSharp" Version="3.0.1" />
     </ItemGroup>
 
@@ -41,5 +40,6 @@
             <DependentUpon>Localization.resx</DependentUpon>
         </Compile>
     </ItemGroup>
+
 
 </Project>

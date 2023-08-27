@@ -14,33 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using JetBrains.Annotations;
+using System.Text;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Rom;
 
-[PublicAPI]
 public sealed class NitroRomDirectory : INitroRom
 {
     public string FullPath
     {
         get
         {
-            if (_fullPath == null)
+            if (_fullPath is not null) return _fullPath;
+
+            var temp = new List<string> { Name };
+            var currentDirectory = this;
+
+            while (currentDirectory._parentDirectory is not null)
             {
-                var temp = new List<string> { Name };
-                var currentDirectory = this;
-
-                while (currentDirectory._parentDirectory != null)
-                {
-                    temp.Add(currentDirectory._parentDirectory.Name);
-                    currentDirectory = currentDirectory._parentDirectory;
-                }
-
-                temp.Reverse();
-
-                _fullPath = string.Join("/", temp);
+                temp.Add(currentDirectory._parentDirectory.Name);
+                currentDirectory = currentDirectory._parentDirectory;
             }
 
+            _fullPath = string.Join("/", temp.AsEnumerable().Reverse());
             return _fullPath;
         }
     }
@@ -52,9 +47,9 @@ public sealed class NitroRomDirectory : INitroRom
     public List<NitroRomDirectory> SubDirectories { get; } = new();
 
     public List<NitroRomFile> Files { get; } = new();
+    private readonly NitroRomDirectory? _parentDirectory;
 
     private string? _fullPath;
-    private NitroRomDirectory? _parentDirectory;
 
     public NitroRomDirectory(NdsFilesystem ndsFilesystem, ushort id, string name)
     {
@@ -62,8 +57,8 @@ public sealed class NitroRomDirectory : INitroRom
 
         Name = name;
 
-        var stream = ndsFilesystem.Reader.BaseStream;
-        var reader = ndsFilesystem.Reader;
+        var stream = ndsFilesystem.Stream;
+        using var reader = new BinaryReader(stream, Encoding.ASCII, true);
 
         stream.Seek(ndsFilesystem.FileNameTableOffset + (id & 0xFFF) * 8, SeekOrigin.Begin);
 
@@ -82,26 +77,32 @@ public sealed class NitroRomDirectory : INitroRom
 
         while ((subTableType = reader.ReadByte()) != 0)
         {
-            if (subTableType > 0x80)
+            switch (subTableType)
             {
-                // Directories
-                var directoryName = reader.ReadChars(subTableType - 0x80).AsSpan().ToString();
-                var subDirectoryId = reader.ReadUInt16();
+                case > 0x80:
+                {
+                    // Directories
+                    var directoryName = reader.ReadChars(subTableType - 0x80).AsSpan().ToString();
+                    var subDirectoryId = reader.ReadUInt16();
 
-                var tempPosition = stream.Position;
-                SubDirectories.Add(new NitroRomDirectory(ndsFilesystem, subDirectoryId, directoryName));
-                stream.Seek(tempPosition, SeekOrigin.Begin);
-            }
-            else if (subTableType < 0x80)
-            {
-                // Files
-                var fileName = reader.ReadChars(subTableType).AsSpan().ToString();
+                    var tempPosition = stream.Position;
+                    SubDirectories.Add(new NitroRomDirectory(ndsFilesystem, subDirectoryId, directoryName));
+                    stream.Seek(tempPosition, SeekOrigin.Begin);
+                    break;
+                }
 
-                var tempPosition = stream.Position;
-                Files.Add(new NitroRomFile(ndsFilesystem, this, firstFileId, fileName));
-                stream.Seek(tempPosition, SeekOrigin.Begin);
+                case < 0x80:
+                {
+                    // Files
+                    var fileName = reader.ReadChars(subTableType).AsSpan().ToString();
 
-                firstFileId++;
+                    var tempPosition = stream.Position;
+                    Files.Add(new NitroRomFile(ndsFilesystem, this, firstFileId, fileName));
+                    stream.Seek(tempPosition, SeekOrigin.Begin);
+
+                    firstFileId++;
+                    break;
+                }
             }
         }
     }

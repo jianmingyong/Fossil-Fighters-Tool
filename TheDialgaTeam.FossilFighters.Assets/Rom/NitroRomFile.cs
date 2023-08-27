@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System.Buffers;
+using System.Diagnostics;
+using System.Text;
 using TheDialgaTeam.FossilFighters.Assets.Archive;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Rom;
@@ -29,21 +30,16 @@ public sealed class NitroRomFile : INitroRom
 
     public string Name { get; }
 
-    public NitroRomType FileType { get; }
-
-    public uint Size => IsDirty ? (uint) NitroRomData.Length : OriginalSize;
+    public uint Size => (uint) (_nitroRomData?.Length ?? OriginalSize);
 
     public uint OriginalOffset { get; }
 
     public uint OriginalSize { get; }
 
-    internal MemoryStream NitroRomData { get; } = new();
-
-    internal bool IsDirty { get; private set; }
+    public NitroRomType FileType { get; private set; }
 
     private readonly NdsFilesystem _ndsFilesystem;
-
-    private bool _isLoaded;
+    private MemoryStream? _nitroRomData;
 
     public NitroRomFile(NdsFilesystem ndsFilesystem, NitroRomDirectory directory, ushort id, string name)
     {
@@ -54,8 +50,8 @@ public sealed class NitroRomFile : INitroRom
         Id = id;
         Name = name;
 
-        var stream = ndsFilesystem.Reader.BaseStream;
-        var reader = ndsFilesystem.Reader;
+        var stream = ndsFilesystem.Stream;
+        using var reader = new BinaryReader(stream, Encoding.ASCII, true);
 
         stream.Seek(ndsFilesystem.FileAllocationTableOffset + id * 8, SeekOrigin.Begin);
 
@@ -64,8 +60,7 @@ public sealed class NitroRomFile : INitroRom
 
         stream.Seek(OriginalOffset, SeekOrigin.Begin);
 
-        var fileHeader = reader.ReadInt32();
-
+        var fileHeader = reader.ReadUInt32();
         FileType = MarArchive.HeaderId == fileHeader ? NitroRomType.MarArchive : NitroRomType.File;
 
         ndsFilesystem.NitroRomFilesById.Add(id, this);
@@ -74,91 +69,120 @@ public sealed class NitroRomFile : INitroRom
 
     public MemoryStream OpenRead()
     {
-        if (!_isLoaded && !IsDirty)
-        {
-            var stream = _ndsFilesystem.Reader.BaseStream;
-            stream.Seek(OriginalOffset, SeekOrigin.Begin);
-
-            NitroRomData.Seek(0, SeekOrigin.Begin);
-            NitroRomData.SetLength(0);
-
-            long remainingSize = OriginalSize;
-
-            var bufferSize = (int) Math.Min(4096, remainingSize);
-            var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
-
-            try
-            {
-                while (remainingSize > 0)
-                {
-                    int read;
-                    if ((read = stream.Read(buffer, 0, bufferSize)) == 0) throw new EndOfStreamException();
-
-                    NitroRomData.Write(buffer, 0, (int) Math.Min(remainingSize, read));
-                    remainingSize -= read;
-                }
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(buffer);
-            }
-
-            _isLoaded = true;
-        }
-
-        return new MemoryStream(NitroRomData.GetBuffer(), 0, (int) NitroRomData.Length, false, true);
+        return _nitroRomData is not null ? new MemoryStream(_nitroRomData.GetBuffer(), 0, (int) _nitroRomData.Length, false, true) : new MemoryStream(_ndsFilesystem.Stream.GetBuffer(), (int) OriginalOffset, (int) OriginalSize, false, true);
     }
 
     public void WriteFrom(byte[] buffer, int offset, int count)
     {
         BeforeWrite();
-        NitroRomData.Write(buffer, offset, count);
+
+        try
+        {
+            Debug.Assert(_nitroRomData != null, nameof(_nitroRomData) + " != null");
+            _nitroRomData.Write(buffer, offset, count);
+        }
+        finally
+        {
+            AfterWrite();
+        }
     }
 
     public void WriteFrom(ReadOnlySpan<byte> buffer)
     {
         BeforeWrite();
-        NitroRomData.Write(buffer);
+
+        try
+        {
+            Debug.Assert(_nitroRomData != null, nameof(_nitroRomData) + " != null");
+            _nitroRomData.Write(buffer);
+        }
+        finally
+        {
+            AfterWrite();
+        }
     }
 
     public void WriteFrom(Stream stream)
     {
         BeforeWrite();
-        stream.CopyTo(NitroRomData);
+
+        try
+        {
+            Debug.Assert(_nitroRomData != null, nameof(_nitroRomData) + " != null");
+            stream.CopyTo(_nitroRomData);
+        }
+        finally
+        {
+            AfterWrite();
+        }
     }
 
     public Task WriteFromAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default)
     {
         BeforeWrite();
-        return NitroRomData.WriteAsync(buffer, offset, count, cancellationToken);
+
+        try
+        {
+            Debug.Assert(_nitroRomData != null, nameof(_nitroRomData) + " != null");
+            return _nitroRomData.WriteAsync(buffer, offset, count, cancellationToken);
+        }
+        finally
+        {
+            AfterWrite();
+        }
     }
 
     public ValueTask WriteFromAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
     {
         BeforeWrite();
-        return NitroRomData.WriteAsync(buffer, cancellationToken);
+
+        try
+        {
+            Debug.Assert(_nitroRomData != null, nameof(_nitroRomData) + " != null");
+            return _nitroRomData.WriteAsync(buffer, cancellationToken);
+        }
+        finally
+        {
+            AfterWrite();
+        }
     }
 
     public Task WriteFromAsync(Stream stream, CancellationToken cancellationToken = default)
     {
         BeforeWrite();
-        return stream.CopyToAsync(NitroRomData, cancellationToken);
+
+        try
+        {
+            Debug.Assert(_nitroRomData != null, nameof(_nitroRomData) + " != null");
+            return stream.CopyToAsync(_nitroRomData, cancellationToken);
+        }
+        finally
+        {
+            AfterWrite();
+        }
     }
 
-    private void BeforeWrite(int capacity = 0)
+    private void BeforeWrite()
     {
-        IsDirty = true;
-        NitroRomData.Seek(0, SeekOrigin.Begin);
-        NitroRomData.SetLength(0);
+        _nitroRomData ??= new MemoryStream();
+        _nitroRomData.Seek(0, SeekOrigin.Begin);
+        _nitroRomData.SetLength(0);
+    }
 
-        if (capacity > 0)
-        {
-            NitroRomData.Capacity = capacity;
-        }
+    private void AfterWrite()
+    {
+        Debug.Assert(_nitroRomData != null, nameof(_nitroRomData) + " != null");
+
+        _nitroRomData.Seek(0, SeekOrigin.Begin);
+
+        using var reader = new BinaryReader(_nitroRomData, Encoding.ASCII, true);
+        var fileHeader = reader.ReadUInt32();
+
+        FileType = MarArchive.HeaderId == fileHeader ? NitroRomType.MarArchive : NitroRomType.File;
     }
 
     internal void Dispose()
     {
-        NitroRomData.Dispose();
+        _nitroRomData?.Dispose();
     }
 }

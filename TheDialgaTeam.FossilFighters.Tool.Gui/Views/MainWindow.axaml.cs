@@ -14,14 +14,52 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using Avalonia.Controls;
+using System.Diagnostics;
+using System.Reactive.Disposables;
+using Avalonia.ReactiveUI;
+using ReactiveUI;
+using TheDialgaTeam.FossilFighters.Tool.Gui.Utilities;
+using TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Gui.Views;
 
-public partial class MainWindow : Window
+public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
 {
     public MainWindow()
     {
         InitializeComponent();
+
+        this.WhenActivated(disposable =>
+        {
+            Debug.Assert(ViewModel != null, nameof(ViewModel) + " != null");
+
+            ViewModel.ShowMessageBox.RegisterHandler(context => { context.SetOutput(this.ShowMessageBox(context.Input)); }).DisposeWith(disposable);
+
+            ViewModel.ShowErrorMessageBox.RegisterHandler(context => { context.SetOutput(this.ShowMessageBox("Error", context.Input.ToString())); }).DisposeWith(disposable);
+
+            ViewModel.OpenFilePicker.RegisterHandler(async context =>
+            {
+                var result = await StorageProvider.OpenFilePickerAsync(context.Input);
+                context.SetOutput(result);
+            }).DisposeWith(disposable);
+
+            ViewModel.SaveFilePicker.RegisterHandler(async context =>
+            {
+                var result = await StorageProvider.SaveFilePickerAsync(context.Input);
+                context.SetOutput(result);
+            }).DisposeWith(disposable);
+
+            ViewModel.OpenFolderPicker.RegisterHandler(async context =>
+            {
+                var result = await StorageProvider.OpenFolderPickerAsync(context.Input);
+                context.SetOutput(result);
+            }).DisposeWith(disposable);
+
+            ViewModel.TryGetFileFromPath.RegisterHandler(async context =>
+            {
+                var result = await StorageProvider.TryGetFileFromPathAsync(context.Input);
+                context.SetOutput(result);
+            }).DisposeWith(disposable);
+        });
     }
 }

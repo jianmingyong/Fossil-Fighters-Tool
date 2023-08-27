@@ -14,15 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using JetBrains.Annotations;
-
 namespace TheDialgaTeam.FossilFighters.Assets.Rom;
 
-[PublicAPI]
 public interface INitroRom
 {
-    public string FullPath { get; }
-
     public string Name { get; }
 
     public NitroRomType FileType { get; }

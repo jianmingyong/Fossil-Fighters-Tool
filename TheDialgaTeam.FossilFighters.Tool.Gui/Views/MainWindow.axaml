@@ -6,43 +6,41 @@
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="TheDialgaTeam.FossilFighters.Tool.Gui.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
+        Name="Window"
         Title="Fossil Fighters Tool"
         Width="640" Height="512" MinWidth="640" MinHeight="512" WindowStartupLocation="CenterScreen">
 
     <Design.DataContext>
-        <vm:MainWindowViewModel>
-            <x:Arguments>
-                <x:Null />
-            </x:Arguments>
-        </vm:MainWindowViewModel>
+        <vm:MainWindowViewModel />
     </Design.DataContext>
 
     <Window.Background>
         <ImageBrush Source="/Assets/967.png" Stretch="Fill" />
     </Window.Background>
-
+    
     <Grid RowDefinitions="Auto, *">
-        <Grid Grid.Row="0" RowDefinitions="*" ColumnDefinitions="*">
+        <Grid Grid.Row="0">
             <Menu Background="{DynamicResource SystemAltHighColor}">
                 <MenuItem Header="_File">
-                    <MenuItem Header="_Open" Command="{Binding OpenFileCommand}" />
-                    <MenuItem Header="_Save" Command="{Binding SaveFileCommand}" />
-                    <Separator />
-                    <MenuItem Header="_Exit" Command="{Binding CloseCommand}" />
+                    <MenuItem Header="_Open" Command="{Binding OpenFile}" />
+                    <MenuItem Header="_Save As" Command="{Binding SaveFile}" />
                 </MenuItem>
-                <MenuItem Header="_Editor" IsVisible="False" />
+                <MenuItem Header="_Editor" IsEnabled="{Binding IsRomLoaded}">
+                    <MenuItem Header="_Text Editor" />
+                </MenuItem>
             </Menu>
         </Grid>
 
-        <Grid Grid.Row="1" IsVisible="{Binding IsRomLoaded}">
-            <TreeDataGrid Source="{Binding NitroRomNodeSource}" Background="{DynamicResource SystemAltHighColor}">
+        <Grid Grid.Row="1">
+            <TreeDataGrid IsVisible="{Binding IsRomLoaded}" Source="{Binding NitroRomNodeSource}"
+                          Background="{DynamicResource SystemAltHighColor}">
                 <TreeDataGrid.ContextMenu>
                     <ContextMenu>
-                        <MenuItem Header="Import" Command="{Binding ImportFileCommand}" />
-                        <MenuItem Header="Export" Command="{Binding ExportFileCommand}" />
+                        <MenuItem Header="Import" Command="{Binding ImportFile}" />
+                        <MenuItem Header="Export" Command="{Binding ExportFile}" />
                         <Separator />
-                        <MenuItem Header="Compress" Command="{Binding CompressFileCommand}" />
-                        <MenuItem Header="Decompress" Command="{Binding DecompressFileCommand}" />
+                        <MenuItem Header="Compress" Command="{Binding CompressFile}" />
+                        <MenuItem Header="Decompress" Command="{Binding DecompressFile}" />
                     </ContextMenu>
                 </TreeDataGrid.ContextMenu>
             </TreeDataGrid>

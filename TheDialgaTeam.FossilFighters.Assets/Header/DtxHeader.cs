@@ -15,21 +15,16 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.Text;
-using System.Text.Json.Serialization;
-using JetBrains.Annotations;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Header;
 
-[JsonSerializable(typeof(DtxHeader))]
-public sealed partial class DtxHeaderContext : JsonSerializerContext
-{
-    
-}
-
-[PublicAPI]
 public sealed class DtxHeader
 {
     public const int FileHeader = 0x00585444;
+
+    public uint TextCount { get; }
+
+    public uint StartingOffset { get; } = 0xC;
 
     public string[] Texts { get; }
 
@@ -42,19 +37,19 @@ public sealed class DtxHeader
 
         if (reader.ReadInt32() != FileHeader) throw new InvalidDataException(string.Format(Localization.StreamIsNotFormat, "DTX"));
 
-        var textCount = reader.ReadUInt32();
-        Texts = new string[textCount];
+        TextCount = reader.ReadUInt32();
+        Texts = new string[TextCount];
 
         stream.Seek(reader.ReadUInt32(), SeekOrigin.Begin);
 
-        var textOffsets = new uint[textCount];
+        var textOffsets = new uint[TextCount];
 
-        for (var i = 0; i < textCount; i++)
+        for (var i = 0; i < TextCount; i++)
         {
             textOffsets[i] = reader.ReadUInt32();
         }
-        
-        for (var i = 0; i < textCount; i++)
+
+        for (var i = 0; i < TextCount; i++)
         {
             stream.Seek(textOffsets[i], SeekOrigin.Begin);
 
@@ -65,7 +60,7 @@ public sealed class DtxHeader
             {
                 textBuilder.Append(nextChar);
             }
-            
+
             Texts[i] = textBuilder.ToString();
         }
     }

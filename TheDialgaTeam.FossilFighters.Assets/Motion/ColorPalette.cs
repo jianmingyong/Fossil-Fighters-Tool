@@ -15,24 +15,21 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.Text;
-using JetBrains.Annotations;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Motion;
 
-[PublicAPI]
 public enum ColorPaletteType
 {
     Color16 = 0,
     Color256 = 1
 }
 
-[PublicAPI]
 public readonly struct ColorPalette
 {
     public ColorPaletteType Type { get; }
 
     public Rgba32[] Table { get; }
-    
+
     public Bgra5551[] Colors { get; }
 
     public ColorPalette(ColorPaletteType type, Rgba32[] table, Bgra5551[] colors)
@@ -53,7 +50,7 @@ public readonly struct ColorPalette
         {
             var rgba32 = new Rgba32();
             color.ToRgba32(ref rgba32);
-            
+
             builder.AppendLine($"{rgba32.R} {rgba32.G} {rgba32.B}");
         }
 
