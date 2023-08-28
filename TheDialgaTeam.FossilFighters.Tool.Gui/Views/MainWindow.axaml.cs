@@ -1,5 +1,5 @@
 // Fossil Fighters Tool is used to decompress and compress MAR archives used in Fossil Fighters game.
-// Copyright (C) 2022 Yong Jian Ming
+// Copyright (C) 2023 Yong Jian Ming
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System.Diagnostics;
 using System.Reactive.Disposables;
+using System.Threading.Tasks;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
 using TheDialgaTeam.FossilFighters.Tool.Gui.Utilities;
@@ -31,31 +31,43 @@ public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
 
         this.WhenActivated(disposable =>
         {
-            Debug.Assert(ViewModel != null, nameof(ViewModel) + " != null");
+            this.BindInteraction(ViewModel, viewModel => viewModel.ShowMessageBox, context =>
+            {
+                context.SetOutput(this.ShowMessageBox(context.Input));
+                return Task.CompletedTask;
+            }).DisposeWith(disposable);
 
-            ViewModel.ShowMessageBox.RegisterHandler(context => { context.SetOutput(this.ShowMessageBox(context.Input)); }).DisposeWith(disposable);
+            this.BindInteraction(ViewModel, viewModel => viewModel.ShowErrorMessageBox, context =>
+            {
+                context.SetOutput(this.ShowMessageBox("Error", context.Input.ToString()));
+                return Task.CompletedTask;
+            }).DisposeWith(disposable);
 
-            ViewModel.ShowErrorMessageBox.RegisterHandler(context => { context.SetOutput(this.ShowMessageBox("Error", context.Input.ToString())); }).DisposeWith(disposable);
+            this.BindInteraction(ViewModel, viewModel => viewModel.ShowProgressBar, context =>
+            {
+                context.SetOutput(this.ShowProgressBar(context.Input));
+                return Task.CompletedTask;
+            }).DisposeWith(disposable);
 
-            ViewModel.OpenFilePicker.RegisterHandler(async context =>
+            this.BindInteraction(ViewModel, viewModel => viewModel.OpenFilePicker, async context =>
             {
                 var result = await StorageProvider.OpenFilePickerAsync(context.Input);
                 context.SetOutput(result);
             }).DisposeWith(disposable);
 
-            ViewModel.SaveFilePicker.RegisterHandler(async context =>
+            this.BindInteraction(ViewModel, viewModel => viewModel.SaveFilePicker, async context =>
             {
                 var result = await StorageProvider.SaveFilePickerAsync(context.Input);
                 context.SetOutput(result);
             }).DisposeWith(disposable);
 
-            ViewModel.OpenFolderPicker.RegisterHandler(async context =>
+            this.BindInteraction(ViewModel, viewModel => viewModel.OpenFolderPicker, async context =>
             {
                 var result = await StorageProvider.OpenFolderPickerAsync(context.Input);
                 context.SetOutput(result);
             }).DisposeWith(disposable);
 
-            ViewModel.TryGetFileFromPath.RegisterHandler(async context =>
+            this.BindInteraction(ViewModel, viewModel => viewModel.TryGetFileFromPath, async context =>
             {
                 var result = await StorageProvider.TryGetFileFromPathAsync(context.Input);
                 context.SetOutput(result);

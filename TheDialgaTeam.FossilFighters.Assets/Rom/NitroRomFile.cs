@@ -69,7 +69,7 @@ public sealed class NitroRomFile : INitroRom
 
     public MemoryStream OpenRead()
     {
-        return _nitroRomData is not null ? new MemoryStream(_nitroRomData.GetBuffer(), 0, (int) _nitroRomData.Length, false, true) : new MemoryStream(_ndsFilesystem.Stream.GetBuffer(), (int) OriginalOffset, (int) OriginalSize, false, true);
+        return _nitroRomData is not null ? new MemoryStream(_nitroRomData.GetBuffer(), 0, (int) _nitroRomData.Length, false, true) : new MemoryStream(_ndsFilesystem.Stream.GetBuffer(), (int) OriginalOffset, (int) OriginalSize, false);
     }
 
     public void WriteFrom(byte[] buffer, int offset, int count)

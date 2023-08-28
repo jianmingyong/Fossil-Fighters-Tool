@@ -43,4 +43,14 @@ public static class WindowExtensions
         };
         return messageBox.ShowDialog(window);
     }
+
+    public static Task ShowProgressBar(this Window window, ProgressBarViewModel progressBarViewModel)
+    {
+        var progressBar = new ProgressBarWindow
+        {
+            DataContext = progressBarViewModel
+        };
+
+        return progressBar.ShowDialog(window);
+    }
 }

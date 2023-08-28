@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System.Diagnostics;
-using System.Reactive;
+using System;
 using System.Reactive.Disposables;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
@@ -31,12 +30,18 @@ public partial class MessageBoxWindow : ReactiveWindow<MessageBoxWindowViewModel
 
         this.WhenActivated(disposable =>
         {
-            Debug.Assert(ViewModel != null, nameof(ViewModel) + " != null");
+            this.Bind(ViewModel, viewModel => viewModel.Title, view => view.Title)
+                .DisposeWith(disposable);
 
-            ViewModel.CloseWindow.RegisterHandler(context =>
+            this.Bind(ViewModel, viewModel => viewModel.Message, view => view.MessageTextBlock.Text)
+                .DisposeWith(disposable);
+
+            this.BindCommand(ViewModel, viewModel => viewModel.Okay, view => view.OkayButton)
+                .DisposeWith(disposable);
+
+            this.WhenAnyValue(view => view.ViewModel!.Close).Subscribe(close =>
             {
-                Window.Close();
-                context.SetOutput(Unit.Default);
+                if (close) Window.Close();
             }).DisposeWith(disposable);
         });
     }

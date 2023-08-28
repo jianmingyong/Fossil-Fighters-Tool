@@ -6,7 +6,6 @@
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="TheDialgaTeam.FossilFighters.Tool.Gui.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Name="Window"
         Title="Fossil Fighters Tool"
         Width="640" Height="512" MinWidth="640" MinHeight="512" WindowStartupLocation="CenterScreen">
 
@@ -20,10 +19,10 @@
     
     <Grid RowDefinitions="Auto, *">
         <Grid Grid.Row="0">
-            <Menu Background="{DynamicResource SystemAltHighColor}">
+            <Menu Background="{DynamicResource SystemAltMediumHighColor}">
                 <MenuItem Header="_File">
                     <MenuItem Header="_Open" Command="{Binding OpenFile}" />
-                    <MenuItem Header="_Save As" Command="{Binding SaveFile}" />
+                    <MenuItem Header="_Save As..." Command="{Binding SaveFile}" />
                 </MenuItem>
                 <MenuItem Header="_Editor" IsEnabled="{Binding IsRomLoaded}">
                     <MenuItem Header="_Text Editor" />
@@ -33,7 +32,7 @@
 
         <Grid Grid.Row="1">
             <TreeDataGrid IsVisible="{Binding IsRomLoaded}" Source="{Binding NitroRomNodeSource}"
-                          Background="{DynamicResource SystemAltHighColor}">
+                          Background="{DynamicResource SystemAltMediumHighColor}">
                 <TreeDataGrid.ContextMenu>
                     <ContextMenu>
                         <MenuItem Header="Import" Command="{Binding ImportFile}" />

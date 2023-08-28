@@ -8,6 +8,7 @@
         <entry key="TheDialgaTeam.FossilFighters.Tool.Gui/Views/Editor/FFCTextEditor.axaml" value="TheDialgaTeam.FossilFighters.Tool.Gui/TheDialgaTeam.FossilFighters.Tool.Gui.csproj" />
         <entry key="TheDialgaTeam.FossilFighters.Tool.Gui/Views/MainWindow.axaml" value="TheDialgaTeam.FossilFighters.Tool.Gui/TheDialgaTeam.FossilFighters.Tool.Gui.csproj" />
         <entry key="TheDialgaTeam.FossilFighters.Tool.Gui/Views/MessageBoxWindow.axaml" value="TheDialgaTeam.FossilFighters.Tool.Gui/TheDialgaTeam.FossilFighters.Tool.Gui.csproj" />
+        <entry key="TheDialgaTeam.FossilFighters.Tool.Gui/Views/ProgressBarWindow.axaml" value="TheDialgaTeam.FossilFighters.Tool.Gui/TheDialgaTeam.FossilFighters.Tool.Gui.csproj" />
       </map>
     </option>
   </component>

@@ -32,7 +32,34 @@ public sealed class MarArchiveEntry
     {
         if (reader.BaseStream is MemoryStream memoryStream)
         {
-            MemoryStream = new MemoryStream(memoryStream.GetBuffer(), fileOffset, fileLength);
+            if (memoryStream.TryGetBuffer(out var arraySegment))
+            {
+                MemoryStream = new MemoryStream(arraySegment.Array!, fileOffset, fileLength);
+            }
+            else
+            {
+                MemoryStream = new MemoryStream(Math.Max(0, fileLength));
+                reader.BaseStream.Seek(fileOffset, SeekOrigin.Begin);
+
+                var buffer = ArrayPool<byte>.Shared.Rent(4096);
+                var fileRemaining = fileLength;
+
+                try
+                {
+                    while (fileRemaining > 0)
+                    {
+                        var read = reader.Read(buffer, 0, 4096);
+                        if (read == 0) throw new EndOfStreamException();
+
+                        MemoryStream.Write(buffer, 0, read > fileRemaining ? fileRemaining : read);
+                        fileRemaining -= read;
+                    }
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(buffer);
+                }
+            }
         }
         else
         {

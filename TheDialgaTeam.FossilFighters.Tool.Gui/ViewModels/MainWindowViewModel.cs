@@ -36,7 +36,7 @@ using TheDialgaTeam.FossilFighters.Tool.Gui.Models;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels;
 
-public sealed class MainWindowViewModel : ReactiveObject
+public sealed class MainWindowViewModel : ViewModel
 {
     [ObservableAsProperty]
     public bool IsRomLoaded { get; }
@@ -47,6 +47,8 @@ public sealed class MainWindowViewModel : ReactiveObject
     public Interaction<string, Task> ShowMessageBox { get; } = new();
 
     public Interaction<Exception, Task> ShowErrorMessageBox { get; } = new();
+
+    public Interaction<ProgressBarViewModel, Task> ShowProgressBar { get; } = new();
 
     public Interaction<FilePickerOpenOptions, IReadOnlyList<IStorageFile>> OpenFilePicker { get; } = new();
 
@@ -118,6 +120,8 @@ public sealed class MainWindowViewModel : ReactiveObject
 
     private async Task OpenFileImplementation()
     {
+        using var progress = new ProgressBarViewModel { IsIndeterminate = true };
+
         try
         {
             var selectedFiles = await OpenFilePicker.Handle(new FilePickerOpenOptions
@@ -135,6 +139,8 @@ public sealed class MainWindowViewModel : ReactiveObject
             });
 
             if (selectedFiles.Count == 0) return;
+
+            await ShowProgressBar.Handle(progress);
 
             await using var fileStream = await selectedFiles[0].OpenReadAsync();
             LoadedRom = await NdsFilesystem.FromFileAsync(fileStream);
@@ -159,6 +165,8 @@ public sealed class MainWindowViewModel : ReactiveObject
 
     private async Task SaveFileImplementation()
     {
+        using var progress = new ProgressBarViewModel { IsIndeterminate = true };
+
         try
         {
             Debug.Assert(LoadedRom != null, nameof(LoadedRom) + " != null");
@@ -178,6 +186,8 @@ public sealed class MainWindowViewModel : ReactiveObject
 
             if (selectedFile is null) return;
 
+            await ShowProgressBar.Handle(progress);
+
             await using var outputFile = await selectedFile.OpenWriteAsync();
             await LoadedRom.WriteToAsync(outputFile);
 
@@ -191,6 +201,8 @@ public sealed class MainWindowViewModel : ReactiveObject
 
     private async Task ImportFileImplementation()
     {
+        using var progress = new ProgressBarViewModel { IsIndeterminate = true };
+
         try
         {
             Debug.Assert(LoadedRom != null, nameof(LoadedRom) + " != null");
@@ -203,6 +215,8 @@ public sealed class MainWindowViewModel : ReactiveObject
             });
 
             if (selectedFiles.Count == 0) return;
+
+            await ShowProgressBar.Handle(progress);
 
             await using var file = await selectedFiles[0].OpenReadAsync();
             await SelectedNitroRomNode.WriteFromAsync(file);
@@ -217,12 +231,16 @@ public sealed class MainWindowViewModel : ReactiveObject
 
     private async Task ExportFileImplementation()
     {
+        using var progress = new ProgressBarViewModel { IsIndeterminate = true };
+
         try
         {
             Debug.Assert(SelectedNitroRomNode != null, nameof(SelectedNitroRomNode) + " != null");
 
             var selectedFolders = await OpenFolderPicker.Handle(new FolderPickerOpenOptions());
             if (selectedFolders.Count == 0) return;
+
+            await ShowProgressBar.Handle(progress);
 
             await SelectedNitroRomNode.ExportFilesAsync(selectedFolders[0]);
 
@@ -236,6 +254,8 @@ public sealed class MainWindowViewModel : ReactiveObject
 
     private async Task CompressFileImplementation()
     {
+        using var progress = new ProgressBarViewModel { IsIndeterminate = false, IsCancellable = true };
+
         try
         {
             Debug.Assert(LoadedRom != null, nameof(LoadedRom) + " != null");
@@ -248,6 +268,8 @@ public sealed class MainWindowViewModel : ReactiveObject
             });
 
             if (selectedFolders.Count == 0) return;
+
+            await ShowProgressBar.Handle(progress);
 
             IStorageItem? metaFileItem = null;
             var binFileItems = new SortedList<int, IStorageItem>();
@@ -264,6 +286,8 @@ public sealed class MainWindowViewModel : ReactiveObject
                     binFileItems.Add(fileIndex, item);
                 }
             }
+
+            progress.MaxValue = binFileItems.Count;
 
             if (metaFileItem is null) throw new FileNotFoundException("meta.json file does not exist. Please decompress the file first to generate a meta file.");
 
@@ -292,13 +316,21 @@ public sealed class MainWindowViewModel : ReactiveObject
 
                     await using var binFileStream = await binFile.OpenReadAsync();
                     await binFileStream.CopyToAsync(mcmFileStream);
+
+                    if (progress.CancellationToken.IsCancellationRequested) return;
+                    progress.Value++;
                 }
             }
+
+            if (progress.CancellationToken.IsCancellationRequested) return;
 
             outputFile.Seek(0, SeekOrigin.Begin);
             await SelectedNitroRomNode.WriteFromAsync(outputFile);
 
             await ShowMessageBox.Handle("Compress completed.");
+        }
+        catch (OperationCanceledException)
+        {
         }
         catch (Exception ex)
         {
@@ -308,6 +340,8 @@ public sealed class MainWindowViewModel : ReactiveObject
 
     private async Task DecompressFileImplementation()
     {
+        using var progress = new ProgressBarViewModel { IsIndeterminate = false };
+
         try
         {
             Debug.Assert(SelectedNitroRomNode != null, nameof(SelectedNitroRomNode) + " != null");
@@ -319,6 +353,8 @@ public sealed class MainWindowViewModel : ReactiveObject
             });
 
             if (selectedFolders.Count == 0) return;
+
+            await ShowProgressBar.Handle(progress);
 
             await SelectedNitroRomNode.DecompressFilesAsync(selectedFolders[0]);
 
