@@ -56,13 +56,12 @@ public sealed class ProgressBarViewModel : ActivatableViewModel, IDisposable
                 .DisposeWith(disposable);
 
             Cancel = ReactiveCommand.Create(() => { _cancellationTokenSource.Cancel(); }).DisposeWith(disposable);
-
-            _cancellationTokenSource.DisposeWith(disposable);
         });
     }
 
     public void Dispose()
     {
         Value = MaxValue;
+        _cancellationTokenSource.Dispose();
     }
 }

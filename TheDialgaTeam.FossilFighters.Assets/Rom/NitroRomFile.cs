@@ -41,7 +41,7 @@ public sealed class NitroRomFile : INitroRom
     private readonly NdsFilesystem _ndsFilesystem;
     private MemoryStream? _nitroRomData;
 
-    public NitroRomFile(NdsFilesystem ndsFilesystem, NitroRomDirectory directory, ushort id, string name)
+    public NitroRomFile(NdsFilesystem ndsFilesystem, NitroRomDirectory directory, ushort id, string name, bool overlay = false)
     {
         _ndsFilesystem = ndsFilesystem;
 
@@ -63,13 +63,20 @@ public sealed class NitroRomFile : INitroRom
         var fileHeader = reader.ReadUInt32();
         FileType = MarArchive.HeaderId == fileHeader ? NitroRomType.MarArchive : NitroRomType.File;
 
-        ndsFilesystem.NitroRomFilesById.Add(id, this);
-        ndsFilesystem.NitroRomFilesByPath.Add(FullPath, this);
+        if (overlay)
+        {
+            ndsFilesystem.OverlayFilesById.Add(id, this);
+        }
+        else
+        {
+            ndsFilesystem.NitroRomFilesById.Add(id, this);
+            ndsFilesystem.NitroRomFilesByPath.Add(FullPath, this);
+        }
     }
 
     public MemoryStream OpenRead()
     {
-        return _nitroRomData is not null ? new MemoryStream(_nitroRomData.GetBuffer(), 0, (int) _nitroRomData.Length, false, true) : new MemoryStream(_ndsFilesystem.Stream.GetBuffer(), (int) OriginalOffset, (int) OriginalSize, false);
+        return _nitroRomData is not null ? new MemoryStream(_nitroRomData.GetBuffer(), 0, (int) _nitroRomData.Length, false) : new MemoryStream(_ndsFilesystem.Stream.GetBuffer(), (int) OriginalOffset, (int) OriginalSize, false);
     }
 
     public void WriteFrom(byte[] buffer, int offset, int count)
