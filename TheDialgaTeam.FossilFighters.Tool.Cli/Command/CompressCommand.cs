@@ -1,5 +1,5 @@
 ﻿// Fossil Fighters Tool is used to decompress and compress MAR archives used in Fossil Fighters game.
-// Copyright (C) 2022 Yong Jian Ming
+// Copyright (C) 2023 Yong Jian Ming
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -31,14 +31,14 @@ internal sealed class CompressCommand : System.CommandLine.Command
 
         var outputOption = new Option<string>(new[] { "--output", "-o" }, "Output file after compression.") { Arity = ArgumentArity.ExactlyOne, IsRequired = true, ArgumentHelpName = "file" };
 
-        var includeOption = new Option<string[]>(new[] { "--include", "-i" }, () => new[] { "*.bin" }, "Include files to be compressed. You can use wildcard (*) to specify one or more files. E.g \"-i *.bin -i *.hex\"") { Arity = ArgumentArity.OneOrMore, IsRequired = false, ArgumentHelpName = "fileTypes" };
+        var includeOption = new Option<string[]>(new[] { "--include", "-i" }, static () => new[] { "*.bin" }, "Include files to be compressed. You can use wildcard (*) to specify one or more files. E.g \"-i *.bin -i *.hex\"") { Arity = ArgumentArity.OneOrMore, IsRequired = false, ArgumentHelpName = "fileTypes" };
 
-        var compressionTypeOption = new Option<McmFileCompressionType[]>(new[] { "--compress-type", "-c" }, () => new[] { McmFileCompressionType.None }, "Type of compression to be used. (Maximum 2) E.g \"-c Huffman -c Lzss\" Compression is done in reverse order. Make sure to put huffman first for better compression ratio.") { Arity = new ArgumentArity(1, 2), IsRequired = false };
+        var compressionTypeOption = new Option<McmFileCompressionType[]>(new[] { "--compress-type", "-c" }, static () => Array.Empty<McmFileCompressionType>(), "Type of compression to be used. (Maximum 2) E.g \"-c Huffman -c Lzss\" Compression is done in reverse order. Make sure to put huffman first for better compression ratio.") { Arity = new ArgumentArity(1, 2), IsRequired = false };
         compressionTypeOption.AddCompletions(Enum.GetNames<McmFileCompressionType>());
 
-        var maxSizePerChunkOption = new Option<uint>(new[] { "--max-size-per-chunk", "-m" }, () => 0x2000, "Split each file into chunks of <size> bytes when compressing.") { Arity = ArgumentArity.ExactlyOne, IsRequired = false, ArgumentHelpName = "size" };
+        var maxSizePerChunkOption = new Option<uint>(new[] { "--max-size-per-chunk", "-m" }, static () => 0x2000, "Split each file into chunks of <size> bytes when compressing.") { Arity = ArgumentArity.ExactlyOne, IsRequired = false, ArgumentHelpName = "size" };
 
-        var metaFileOption = new Option<string>(new[] { "--meta-file", "-mf" }, () => "meta.json", "Meta definition file to define the compression type and the chunk size.") { Arity = ArgumentArity.ExactlyOne, IsRequired = false, ArgumentHelpName = "file" };
+        var metaFileOption = new Option<string>(new[] { "--meta-file", "-mf" }, static () => "meta.json", "Meta definition file to define the compression type and the chunk size.") { Arity = ArgumentArity.ExactlyOne, IsRequired = false, ArgumentHelpName = "file" };
 
         AddArgument(inputArgument);
         AddOption(outputOption);
@@ -50,7 +50,7 @@ internal sealed class CompressCommand : System.CommandLine.Command
         this.SetHandler(Invoke, inputArgument, outputOption, includeOption, compressionTypeOption, maxSizePerChunkOption, metaFileOption);
     }
 
-    private void Invoke(string input, string output, string[] includes, McmFileCompressionType[] compressionTypes, uint maxSizePerChunk, string metaFile)
+    private static void Invoke(string input, string output, string[] includes, McmFileCompressionType[] compressionTypes, uint maxSizePerChunk, string metaFile)
     {
         if (Directory.Exists(input))
         {
@@ -62,31 +62,42 @@ internal sealed class CompressCommand : System.CommandLine.Command
         }
     }
 
-    private void Compress(string folder, string output, string[] includes, McmFileCompressionType[] compressionTypes, uint maxSizePerChunk, string metaFile)
+    private static void Compress(string inputFolder, string outputFile, IEnumerable<string> includes, IReadOnlyList<McmFileCompressionType> compressionTypes, uint maxSizePerChunk, string metaFile)
     {
-        using var outputFile = new FileStream(output, FileMode.Create, FileAccess.Write);
-        using var marArchive = new MarArchive(outputFile, MarArchiveMode.Create);
+        using var outputFileStream = File.OpenWrite(outputFile);
+        using var marArchive = new MarArchive(outputFileStream, MarArchiveMode.Create);
 
         var matcher = new Matcher();
         matcher.AddIncludePatterns(includes);
 
+        if (Path.GetDirectoryName(outputFile) == inputFolder)
+        {
+            matcher.AddExclude(Path.GetFileName(outputFile));
+        }
+
         Dictionary<int, McmFileMetadata>? mcmMetadata = null;
 
-        if (File.Exists(metaFile))
+        if (compressionTypes.Count == 0)
         {
-            mcmMetadata = JsonSerializer.Deserialize(File.OpenRead(metaFile), CustomJsonSerializerContext.Custom.DictionaryInt32McmFileMetadata);
-        }
-        else
-        {
-            var mcmMetaFilePath = Path.GetFullPath(Path.Combine(folder, metaFile));
-
-            if (File.Exists(mcmMetaFilePath))
+            if (File.Exists(metaFile))
             {
-                mcmMetadata = JsonSerializer.Deserialize(File.OpenRead(mcmMetaFilePath), CustomJsonSerializerContext.Custom.DictionaryInt32McmFileMetadata);
+                mcmMetadata = JsonSerializer.Deserialize(File.OpenRead(metaFile), CustomJsonSerializerContext.Custom.DictionaryInt32McmFileMetadata);
+            }
+            else
+            {
+                var mcmMetaFilePath = Path.GetFullPath(Path.Combine(inputFolder, metaFile));
+
+                if (File.Exists(mcmMetaFilePath))
+                {
+                    mcmMetadata = JsonSerializer.Deserialize(File.OpenRead(mcmMetaFilePath), CustomJsonSerializerContext.Custom.DictionaryInt32McmFileMetadata);
+                }
             }
         }
 
-        foreach (var file in matcher.GetResultsInFullPath(folder).OrderBy(s => int.Parse(Path.GetFileNameWithoutExtension(s))))
+        foreach (var file in matcher.GetResultsInFullPath(inputFolder)
+                     .Where(s => int.TryParse(Path.GetFileNameWithoutExtension(s), out var _))
+                     .OrderBy(s => int.Parse(Path.GetFileNameWithoutExtension(s)))
+                     .ToArray())
         {
             var marArchiveEntry = marArchive.CreateEntry();
             using var mcmFileStream = marArchiveEntry.OpenWrite();
@@ -99,14 +110,21 @@ internal sealed class CompressCommand : System.CommandLine.Command
             {
                 mcmFileStream.MaxSizePerChunk = maxSizePerChunk;
 
-                if (compressionTypes.Length == 1)
+                if (compressionTypes.Count == 1)
                 {
                     mcmFileStream.CompressionType1 = compressionTypes[0];
                 }
                 else
                 {
-                    mcmFileStream.CompressionType1 = compressionTypes[0];
-                    mcmFileStream.CompressionType2 = compressionTypes[1];
+                    if (compressionTypes[0] == McmFileCompressionType.None && compressionTypes[1] != McmFileCompressionType.None)
+                    {
+                        mcmFileStream.CompressionType1 = compressionTypes[1];
+                    }
+                    else
+                    {
+                        mcmFileStream.CompressionType1 = compressionTypes[0];
+                        mcmFileStream.CompressionType2 = compressionTypes[1];
+                    }
                 }
             }
 

@@ -28,6 +28,7 @@ internal static class Program
         var rootCommand = new RootCommand(Localization.FossilFightersToolDescription);
         rootCommand.AddCommand(new DecompressCommand());
         rootCommand.AddCommand(new CompressCommand());
+        rootCommand.AddCommand(new ConvertCommand());
 
         if (args.Length > 0)
         {

@@ -21,6 +21,7 @@ using TheDialgaTeam.FossilFighters.Assets.Archive;
 
 namespace TheDialgaTeam.FossilFighters.Assets;
 
+[JsonSerializable(typeof(string[]))]
 [JsonSerializable(typeof(Dictionary<int, McmFileMetadata>))]
 public sealed partial class CustomJsonSerializerContext : JsonSerializerContext
 {

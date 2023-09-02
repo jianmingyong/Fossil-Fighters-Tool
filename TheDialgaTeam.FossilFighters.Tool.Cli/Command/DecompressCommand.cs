@@ -23,6 +23,7 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
 using TheDialgaTeam.FossilFighters.Assets;
 using TheDialgaTeam.FossilFighters.Assets.Archive;
+using TheDialgaTeam.FossilFighters.Assets.GameData;
 using TheDialgaTeam.FossilFighters.Assets.Header;
 using TheDialgaTeam.FossilFighters.Assets.Image;
 using TheDialgaTeam.FossilFighters.Assets.Motion;
@@ -172,7 +173,7 @@ internal sealed class DecompressCommand : System.CommandLine.Command
                 {
                     using (var reader = new BinaryReader(fileStream, Encoding.UTF8))
                     {
-                        switch (reader.ReadInt32())
+                        switch (reader.ReadUInt32())
                         {
                             case AclHeader.FileHeader:
                             {
@@ -311,15 +312,18 @@ internal sealed class DecompressCommand : System.CommandLine.Command
                                 break;
                             }
 
-                            case DtxHeader.FileHeader:
+                            case DtxFile.FileHeader:
                             {
-                                //fileStream.Seek(0, SeekOrigin.Begin);
-                                //var dtxHeader = new DtxHeader(fileStream);
-                                //var jsonText = JsonSerializer.Serialize(dtxHeader, typeof(DtxHeader), new DtxHeaderContext(new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping, WriteIndented = true }));
-                                //var jsonOutputFilePath = Path.Combine(output, $"{i}.json");
+                                fileStream.Seek(0, SeekOrigin.Begin);
 
-                                //File.WriteAllText(jsonOutputFilePath, jsonText);
-                                //Console.WriteLine(Localization.FileExtracted, jsonOutputFilePath);
+                                var dtxFile = DtxFile.ReadFromStream(fileStream);
+
+                                var jsonOutputFilePath = Path.Combine(output, $"{i}.json");
+                                using var jsonOutputStream = File.OpenWrite(jsonOutputFilePath);
+
+                                JsonSerializer.Serialize(jsonOutputStream, dtxFile.Texts, CustomJsonSerializerContext.Custom.StringArray);
+
+                                Console.WriteLine(Localization.FileExtracted, jsonOutputFilePath);
                                 break;
                             }
 

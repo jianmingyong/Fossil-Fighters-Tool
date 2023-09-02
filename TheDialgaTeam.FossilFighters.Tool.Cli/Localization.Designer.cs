@@ -78,6 +78,15 @@ namespace TheDialgaTeam.FossilFighters.Tool.Cli {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Converted: {0} to {1}.
+        /// </summary>
+        internal static string ConvertDtxFileCommand_ConvertDtxFileCommand_Converted {
+            get {
+                return ResourceManager.GetString("ConvertDtxFileCommand_ConvertDtxFileCommand_Converted", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Decompress MAR archives into raw binary files..
         /// </summary>
         internal static string DecompressCommandDescription {

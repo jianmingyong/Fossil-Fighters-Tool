@@ -16,7 +16,7 @@
 
 namespace TheDialgaTeam.FossilFighters.Assets.Archive.Compression;
 
-public sealed class Lz77Stream : CompressibleStream
+public sealed class LzssStream : CompressibleStream
 {
     private const int CompressHeader = 0x10;
 
@@ -28,7 +28,7 @@ public sealed class Lz77Stream : CompressibleStream
 
     private const int MaxInputDataLength = (1 << 24) - 1;
 
-    public Lz77Stream(Stream stream, CompressibleStreamMode mode, bool leaveOpen = false) : base(stream, mode, leaveOpen)
+    public LzssStream(Stream stream, CompressibleStreamMode mode, bool leaveOpen = false) : base(stream, mode, leaveOpen)
     {
     }
 

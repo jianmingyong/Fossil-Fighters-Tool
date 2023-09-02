@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -75,33 +76,10 @@ public abstract class CompressibleStream : Stream
         return Read(buffer) > 0 ? buffer[0] : -1;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override int Read(byte[] buffer, int offset, int count)
     {
-        if (Mode == CompressibleStreamMode.Compress) throw new NotSupportedException();
-        if (_hasDisposed) throw new ObjectDisposedException(nameof(CompressibleStream));
-
-        if (!_hasDecompressed)
-        {
-            if (BaseStream.CanSeek)
-            {
-                Decompress(_reader, _writer, BaseStream, _outputStream!);
-            }
-            else
-            {
-                using var inputStream = new MemoryStream();
-                using var reader = new BinaryReader(inputStream);
-
-                BaseStream.CopyTo(inputStream);
-                inputStream.Seek(0, SeekOrigin.Begin);
-
-                Decompress(reader, _writer, inputStream, _outputStream!);
-            }
-
-            _outputStream!.Seek(0, SeekOrigin.Begin);
-            _hasDecompressed = true;
-        }
-
-        return _outputStream!.Read(buffer, offset, count);
+        return Read(buffer.AsSpan(offset, count));
     }
 
     public override int Read(Span<byte> buffer)
@@ -109,28 +87,29 @@ public abstract class CompressibleStream : Stream
         if (Mode == CompressibleStreamMode.Compress) throw new NotSupportedException();
         if (_hasDisposed) throw new ObjectDisposedException(nameof(CompressibleStream));
 
-        if (!_hasDecompressed)
+        Debug.Assert(_outputStream is not null);
+
+        if (_hasDecompressed) return _outputStream.Read(buffer);
+
+        if (BaseStream.CanSeek)
         {
-            if (BaseStream.CanSeek)
-            {
-                Decompress(_reader, _writer, BaseStream, _outputStream!);
-            }
-            else
-            {
-                using var inputStream = new MemoryStream();
-                using var reader = new BinaryReader(inputStream);
+            Decompress(_reader, _writer, BaseStream, _outputStream);
+        }
+        else
+        {
+            using var inputStream = new MemoryStream();
+            using var reader = new BinaryReader(inputStream);
 
-                BaseStream.CopyTo(inputStream);
-                inputStream.Seek(0, SeekOrigin.Begin);
+            BaseStream.CopyTo(inputStream);
+            inputStream.Seek(0, SeekOrigin.Begin);
 
-                Decompress(reader, _writer, inputStream, _outputStream!);
-            }
-
-            _outputStream!.Seek(0, SeekOrigin.Begin);
-            _hasDecompressed = true;
+            Decompress(reader, _writer, inputStream, _outputStream);
         }
 
-        return _outputStream!.Read(buffer);
+        _outputStream.Seek(0, SeekOrigin.Begin);
+        _hasDecompressed = true;
+
+        return _outputStream.Read(buffer);
     }
 
     public override void WriteByte(byte value)
@@ -138,15 +117,15 @@ public abstract class CompressibleStream : Stream
         if (Mode == CompressibleStreamMode.Decompress) throw new NotSupportedException();
         if (_hasDisposed) throw new ObjectDisposedException(nameof(CompressibleStream));
 
-        _inputStream!.WriteByte(value);
+        Debug.Assert(_inputStream is not null);
+
+        _inputStream.WriteByte(value);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override void Write(byte[] buffer, int offset, int count)
     {
-        if (Mode == CompressibleStreamMode.Decompress) throw new NotSupportedException();
-        if (_hasDisposed) throw new ObjectDisposedException(nameof(CompressibleStream));
-
-        _inputStream!.Write(buffer, offset, count);
+        Write(buffer.AsSpan(offset, count));
     }
 
     public override void Write(ReadOnlySpan<byte> buffer)
@@ -154,7 +133,9 @@ public abstract class CompressibleStream : Stream
         if (Mode == CompressibleStreamMode.Decompress) throw new NotSupportedException();
         if (_hasDisposed) throw new ObjectDisposedException(nameof(CompressibleStream));
 
-        _inputStream!.Write(buffer);
+        Debug.Assert(_inputStream is not null);
+
+        _inputStream.Write(buffer);
     }
 
     public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
@@ -162,7 +143,9 @@ public abstract class CompressibleStream : Stream
         if (Mode == CompressibleStreamMode.Decompress) throw new NotSupportedException();
         if (_hasDisposed) throw new ObjectDisposedException(nameof(CompressibleStream));
 
-        return _inputStream!.WriteAsync(buffer, offset, count, cancellationToken);
+        Debug.Assert(_inputStream is not null);
+
+        return _inputStream.WriteAsync(buffer, offset, count, cancellationToken);
     }
 
     public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
@@ -170,21 +153,26 @@ public abstract class CompressibleStream : Stream
         if (Mode == CompressibleStreamMode.Decompress) throw new NotSupportedException();
         if (_hasDisposed) throw new ObjectDisposedException(nameof(CompressibleStream));
 
-        return _inputStream!.WriteAsync(buffer, cancellationToken);
+        Debug.Assert(_inputStream is not null);
+
+        return _inputStream.WriteAsync(buffer, cancellationToken);
     }
 
     public override void Flush()
     {
         if (Mode == CompressibleStreamMode.Decompress) return;
         if (_hasDisposed) throw new ObjectDisposedException(nameof(CompressibleStream));
-        if (_inputStream!.Length == 0) return;
+
+        Debug.Assert(_inputStream is not null);
+
+        if (_inputStream.Length == 0) return;
 
         _inputStream.Seek(0, SeekOrigin.Begin);
 
         using var outputStream = new MemoryStream();
         using var writer = new BinaryWriter(outputStream);
 
-        Compress(_reader, writer, _inputStream!, outputStream);
+        Compress(_reader, writer, _inputStream, outputStream);
 
         _inputStream.Seek(0, SeekOrigin.Begin);
         _inputStream.SetLength(0);

@@ -34,13 +34,13 @@ public sealed class NdsFilesystem : IDisposable
     public uint FileAllocationTableOffset { get; }
 
     public uint FileAllocationTableSize { get; }
-    
+
     public uint Arm9OverlayOffset { get; }
-    
+
     public uint Arm9OverlaySize { get; }
-    
+
     public uint Arm7OverlayOffset { get; }
-    
+
     public uint Arm7OverlaySize { get; }
 
     public NitroRomDirectory RootDirectory { get; }
@@ -49,20 +49,20 @@ public sealed class NdsFilesystem : IDisposable
 
     internal Dictionary<ushort, NitroRomDirectory> NitroRomDirectories { get; } = new();
 
-    internal SortedDictionary<ushort, NitroRomFile> NitroRomFilesById { get; } = new();
+    internal Dictionary<ushort, NitroRomFile> NitroRomFilesById { get; } = new();
 
     internal Dictionary<string, NitroRomFile> NitroRomFilesByPath { get; } = new();
 
     internal Dictionary<ushort, NitroRomFile> OverlayFilesById { get; } = new();
 
-    private static Dictionary<ushort, uint> _iconBannerSize = new()
+    private static readonly Dictionary<ushort, uint> IconBannerSize = new()
     {
         { 0x0001, 0x0840 },
         { 0x0002, 0x0940 },
         { 0x0003, 0x1240 },
         { 0x0103, 0x23C0 }
     };
-    
+
     private NdsFilesystem(MemoryStream stream)
     {
         Stream = stream;
@@ -122,33 +122,35 @@ public sealed class NdsFilesystem : IDisposable
         return NitroRomFilesByPath.TryGetValue(nitroRomFilePath, out nitroRomFile);
     }
 
-    public void WriteTo(Stream stream)
+    public void WriteTo(Stream outputStream)
     {
-        using var newRomMemoryStream = new MemoryStream();
-        using var newRomBinaryWriter = new BinaryWriter(newRomMemoryStream, Encoding.ASCII);
+        if (!outputStream.CanWrite) throw new ArgumentException(Localization.StreamIsNotWriteable, nameof(outputStream));
+        if (!outputStream.CanSeek) throw new ArgumentException(Localization.StreamIsNotSeekable, nameof(outputStream));
+
+        using var outputBinaryWriter = new BinaryWriter(outputStream, Encoding.ASCII);
         using var binaryReader = new BinaryReader(Stream, Encoding.ASCII);
-        
+
         // Write the header first (we will update the header at the end eventually)
-        newRomMemoryStream.Write(Stream.GetBuffer().AsSpan(0, 0x4000));
-        
+        outputStream.Write(Stream.GetBuffer().AsSpan(0, 0x4000));
+
         // Write Arm9RomData
         Stream.Seek(0x20, SeekOrigin.Begin);
         var arm9RomDataOffset = binaryReader.ReadUInt32();
         Stream.Seek(0x2C, SeekOrigin.Begin);
         var arm9RomDataSize = binaryReader.ReadUInt32() + 12;
-        
-        newRomMemoryStream.Write(Stream.GetBuffer().AsSpan((int) arm9RomDataOffset, (int) arm9RomDataSize));
-        Align(newRomBinaryWriter, 0x200);
-        
+
+        outputStream.Write(Stream.GetBuffer().AsSpan((int) arm9RomDataOffset, (int) arm9RomDataSize));
+        Align(outputBinaryWriter, 0x200);
+
         if (Arm9OverlaySize > 0)
         {
             // Write Arm9OverlayTable
-            newRomMemoryStream.Write(Stream.GetBuffer().AsSpan((int) Arm9OverlayOffset, (int) Arm9OverlaySize));
-            Align(newRomBinaryWriter, 0x200);
-            
+            outputStream.Write(Stream.GetBuffer().AsSpan((int) Arm9OverlayOffset, (int) Arm9OverlaySize));
+            Align(outputBinaryWriter, 0x200);
+
             // Write Arm9Overlay
             Stream.Seek(Arm9OverlayOffset, SeekOrigin.Begin);
-            
+
             while (Stream.Position < Arm9OverlayOffset + Arm9OverlaySize)
             {
                 var tempPosition = Stream.Position;
@@ -158,33 +160,33 @@ public sealed class NdsFilesystem : IDisposable
                 if (OverlayFilesById.TryGetValue((ushort) fileId, out var nitroRomFile))
                 {
                     using var nitroRomFileStream = nitroRomFile.OpenRead();
-                    nitroRomFileStream.CopyTo(newRomMemoryStream);
+                    nitroRomFileStream.CopyTo(outputStream);
                 }
-                
-                Align(newRomBinaryWriter, 0x200);
-                
+
+                Align(outputBinaryWriter, 0x200);
+
                 Stream.Seek(tempPosition + 0x20, SeekOrigin.Begin);
             }
         }
-        
+
         // Write Arm7RomData
         Stream.Seek(0x30, SeekOrigin.Begin);
         var arm7RomDataOffset = binaryReader.ReadUInt32();
         Stream.Seek(0x3C, SeekOrigin.Begin);
         var arm7RomDataSize = binaryReader.ReadUInt32();
-        
-        newRomMemoryStream.Write(Stream.GetBuffer().AsSpan((int) arm7RomDataOffset, (int) arm7RomDataSize));
-        Align(newRomBinaryWriter, 0x200);
-        
+
+        outputStream.Write(Stream.GetBuffer().AsSpan((int) arm7RomDataOffset, (int) arm7RomDataSize));
+        Align(outputBinaryWriter, 0x200);
+
         if (Arm7OverlaySize > 0)
         {
             // Write Arm7OverlayTable
-            newRomMemoryStream.Write(Stream.GetBuffer().AsSpan((int) Arm7OverlayOffset, (int) Arm7OverlaySize));
-            Align(newRomBinaryWriter, 0x200);
-            
+            outputStream.Write(Stream.GetBuffer().AsSpan((int) Arm7OverlayOffset, (int) Arm7OverlaySize));
+            Align(outputBinaryWriter, 0x200);
+
             // Write Arm7Overlay
             Stream.Seek(Arm7OverlayOffset, SeekOrigin.Begin);
-            
+
             while (Stream.Position < Arm7OverlayOffset + Arm7OverlaySize)
             {
                 var tempPosition = Stream.Position;
@@ -194,24 +196,24 @@ public sealed class NdsFilesystem : IDisposable
                 if (OverlayFilesById.TryGetValue((ushort) fileId, out var nitroRomFile))
                 {
                     using var nitroRomFileStream = nitroRomFile.OpenRead();
-                    nitroRomFileStream.CopyTo(newRomMemoryStream);
+                    nitroRomFileStream.CopyTo(outputStream);
                 }
-                
-                Align(newRomBinaryWriter, 0x200);
-                
+
+                Align(outputBinaryWriter, 0x200);
+
                 Stream.Seek(tempPosition + 0x20, SeekOrigin.Begin);
             }
         }
-        
+
         // Write FNT
-        newRomMemoryStream.Write(Stream.GetBuffer().AsSpan((int) FileNameTableOffset, (int) FileNameTableSize));
-        Align(newRomBinaryWriter, 0x200);
-        
+        outputStream.Write(Stream.GetBuffer().AsSpan((int) FileNameTableOffset, (int) FileNameTableSize));
+        Align(outputBinaryWriter, 0x200);
+
         // Write FAT
-        var newRomFileAllocationTableOffset = newRomMemoryStream.Position;
-        newRomMemoryStream.Write(Stream.GetBuffer().AsSpan((int) FileAllocationTableOffset, (int) FileAllocationTableSize));
-        Align(newRomBinaryWriter, 0x200);
-        
+        var newRomFileAllocationTableOffset = outputStream.Position;
+        outputStream.Write(Stream.GetBuffer().AsSpan((int) FileAllocationTableOffset, (int) FileAllocationTableSize));
+        Align(outputBinaryWriter, 0x200);
+
         // Write Icon Stuff
         Stream.Seek(0x68, SeekOrigin.Begin);
         var iconOffset = binaryReader.ReadUInt32();
@@ -219,12 +221,12 @@ public sealed class NdsFilesystem : IDisposable
         if (iconOffset != 0)
         {
             Stream.Seek(iconOffset, SeekOrigin.Begin);
-            var iconSize = _iconBannerSize[binaryReader.ReadUInt16()];
-        
-            newRomMemoryStream.Write(Stream.GetBuffer().AsSpan((int) iconOffset, (int) iconSize));
-            Align(newRomBinaryWriter, 0x200);
+            var iconSize = IconBannerSize[binaryReader.ReadUInt16()];
+
+            outputStream.Write(Stream.GetBuffer().AsSpan((int) iconOffset, (int) iconSize));
+            Align(outputBinaryWriter, 0x200);
         }
-        
+
         // Write Debug Rom
         Stream.Seek(0x160, SeekOrigin.Begin);
         var debugRomOffset = binaryReader.ReadUInt32();
@@ -232,52 +234,48 @@ public sealed class NdsFilesystem : IDisposable
         if (debugRomOffset != 0)
         {
             var debugRomSize = binaryReader.ReadUInt32();
-            newRomMemoryStream.Write(Stream.GetBuffer().AsSpan((int) debugRomOffset, (int) debugRomSize));
-            Align(newRomBinaryWriter, 0x200);
+            outputStream.Write(Stream.GetBuffer().AsSpan((int) debugRomOffset, (int) debugRomSize));
+            Align(outputBinaryWriter, 0x200);
         }
-        
+
         // Write NitroRomFiles
-        var offset = (uint) newRomMemoryStream.Position;
-        var lastFileId = NitroRomFilesById.Values.Last().Id;
+        var offset = (uint) outputStream.Position;
 
         foreach (var nitroRomFile in NitroRomFilesById.Values)
         {
             var endOffset = offset + nitroRomFile.Size;
 
-            newRomMemoryStream.Seek(newRomFileAllocationTableOffset + nitroRomFile.Id * 8, SeekOrigin.Begin);
-            newRomBinaryWriter.Write(offset);
-            newRomBinaryWriter.Write(endOffset);
+            outputStream.Seek(newRomFileAllocationTableOffset + nitroRomFile.Id * 8, SeekOrigin.Begin);
+            outputBinaryWriter.Write(offset);
+            outputBinaryWriter.Write(endOffset);
 
-            newRomMemoryStream.Seek(offset, SeekOrigin.Begin);
+            outputStream.Seek(offset, SeekOrigin.Begin);
 
             using var file = nitroRomFile.OpenRead();
-            file.CopyTo(newRomMemoryStream);
+            file.CopyTo(outputStream);
 
-            if (nitroRomFile.Id != lastFileId)
-            {
-                Align(newRomBinaryWriter, 0x200);
-            }
+            Align(outputBinaryWriter, 0x200);
 
-            offset = (uint) newRomMemoryStream.Position;
+            offset = (uint) outputStream.Position;
         }
-        
+
         // Patch Unitcode (Only NDS mode)
-        newRomMemoryStream.Seek(0x12, SeekOrigin.Begin);
-        newRomBinaryWriter.Write((byte) 0);
-        
+        outputStream.Seek(0x12, SeekOrigin.Begin);
+        outputBinaryWriter.Write((byte) 0);
+
         // Patch 0x1C - 0x1D (NDS Region)
-        newRomMemoryStream.Seek(0x1C, SeekOrigin.Begin);
-        newRomBinaryWriter.Write((byte) 0);
-        newRomBinaryWriter.Write((byte) 0);
-        
+        outputStream.Seek(0x1C, SeekOrigin.Begin);
+        outputBinaryWriter.Write((byte) 0);
+        outputBinaryWriter.Write((byte) 0);
+
         // Update used rom space
-        newRomMemoryStream.Seek(0x80, SeekOrigin.Begin);
-        newRomBinaryWriter.Write((uint) newRomMemoryStream.Length);
-        
+        outputStream.Seek(0x80, SeekOrigin.Begin);
+        outputBinaryWriter.Write((uint) outputStream.Length);
+
         // TODO: Fix Header Checksum 0x15E
-        
+
         // Patch 0x180 (Remove dsi headers)
-        newRomMemoryStream.Seek(0x180, SeekOrigin.Begin);
+        outputStream.Seek(0x180, SeekOrigin.Begin);
 
         const int bufferSize = 0x4000 - 0x180;
         var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
@@ -285,22 +283,20 @@ public sealed class NdsFilesystem : IDisposable
         try
         {
             buffer.AsSpan(0, bufferSize).Clear();
-            newRomBinaryWriter.Write(buffer, 0, bufferSize);
+            outputBinaryWriter.Write(buffer, 0, bufferSize);
         }
         finally
         {
             ArrayPool<byte>.Shared.Return(buffer);
         }
 
-        newRomMemoryStream.Seek(0, SeekOrigin.Begin);
-        newRomMemoryStream.CopyTo(stream);
         return;
 
         void Align(BinaryWriter binaryWriter, long length, byte value = 0xFF)
         {
             var remainder = binaryWriter.BaseStream.Position % length;
             if (remainder == 0) return;
-            
+
             var paddingRequired = length - remainder;
             var paddingBuffer = ArrayPool<byte>.Shared.Rent((int) paddingRequired);
 
@@ -316,33 +312,35 @@ public sealed class NdsFilesystem : IDisposable
         }
     }
 
-    public async Task WriteToAsync(Stream stream, CancellationToken cancellationToken = default)
+    public async Task WriteToAsync(Stream outputStream, CancellationToken cancellationToken = default)
     {
-        using var newRomMemoryStream = new MemoryStream();
-        await using var newRomBinaryWriter = new BinaryWriter(newRomMemoryStream, Encoding.ASCII);
+        if (!outputStream.CanWrite) throw new ArgumentException(Localization.StreamIsNotWriteable, nameof(outputStream));
+        if (!outputStream.CanSeek) throw new ArgumentException(Localization.StreamIsNotSeekable, nameof(outputStream));
+
+        await using var outputBinaryWriter = new BinaryWriter(outputStream, Encoding.ASCII);
         using var binaryReader = new BinaryReader(Stream, Encoding.ASCII);
-        
+
         // Write the header first (we will update the header at the end eventually)
-        newRomMemoryStream.Write(Stream.GetBuffer().AsSpan(0, 0x4000));
-        
+        outputStream.Write(Stream.GetBuffer().AsSpan(0, 0x4000));
+
         // Write Arm9RomData
         Stream.Seek(0x20, SeekOrigin.Begin);
         var arm9RomDataOffset = binaryReader.ReadUInt32();
         Stream.Seek(0x2C, SeekOrigin.Begin);
         var arm9RomDataSize = binaryReader.ReadUInt32() + 12;
-        
-        newRomMemoryStream.Write(Stream.GetBuffer().AsSpan((int) arm9RomDataOffset, (int) arm9RomDataSize));
-        Align(newRomBinaryWriter, 0x200);
-        
+
+        outputStream.Write(Stream.GetBuffer().AsSpan((int) arm9RomDataOffset, (int) arm9RomDataSize));
+        Align(outputBinaryWriter, 0x200);
+
         if (Arm9OverlaySize > 0)
         {
             // Write Arm9OverlayTable
-            newRomMemoryStream.Write(Stream.GetBuffer().AsSpan((int) Arm9OverlayOffset, (int) Arm9OverlaySize));
-            Align(newRomBinaryWriter, 0x200);
-            
+            outputStream.Write(Stream.GetBuffer().AsSpan((int) Arm9OverlayOffset, (int) Arm9OverlaySize));
+            Align(outputBinaryWriter, 0x200);
+
             // Write Arm9Overlay
             Stream.Seek(Arm9OverlayOffset, SeekOrigin.Begin);
-            
+
             while (Stream.Position < Arm9OverlayOffset + Arm9OverlaySize)
             {
                 var tempPosition = Stream.Position;
@@ -352,33 +350,33 @@ public sealed class NdsFilesystem : IDisposable
                 if (OverlayFilesById.TryGetValue((ushort) fileId, out var nitroRomFile))
                 {
                     using var nitroRomFileStream = nitroRomFile.OpenRead();
-                    await nitroRomFileStream.CopyToAsync(newRomMemoryStream, cancellationToken).ConfigureAwait(false);
+                    await nitroRomFileStream.CopyToAsync(outputStream, cancellationToken).ConfigureAwait(false);
                 }
-                
-                Align(newRomBinaryWriter, 0x200);
-                
+
+                Align(outputBinaryWriter, 0x200);
+
                 Stream.Seek(tempPosition + 0x20, SeekOrigin.Begin);
             }
         }
-        
+
         // Write Arm7RomData
         Stream.Seek(0x30, SeekOrigin.Begin);
         var arm7RomDataOffset = binaryReader.ReadUInt32();
         Stream.Seek(0x3C, SeekOrigin.Begin);
         var arm7RomDataSize = binaryReader.ReadUInt32();
-        
-        newRomMemoryStream.Write(Stream.GetBuffer().AsSpan((int) arm7RomDataOffset, (int) arm7RomDataSize));
-        Align(newRomBinaryWriter, 0x200);
-        
+
+        outputStream.Write(Stream.GetBuffer().AsSpan((int) arm7RomDataOffset, (int) arm7RomDataSize));
+        Align(outputBinaryWriter, 0x200);
+
         if (Arm7OverlaySize > 0)
         {
             // Write Arm7OverlayTable
-            newRomMemoryStream.Write(Stream.GetBuffer().AsSpan((int) Arm7OverlayOffset, (int) Arm7OverlaySize));
-            Align(newRomBinaryWriter, 0x200);
-            
+            outputStream.Write(Stream.GetBuffer().AsSpan((int) Arm7OverlayOffset, (int) Arm7OverlaySize));
+            Align(outputBinaryWriter, 0x200);
+
             // Write Arm7Overlay
             Stream.Seek(Arm7OverlayOffset, SeekOrigin.Begin);
-            
+
             while (Stream.Position < Arm7OverlayOffset + Arm7OverlaySize)
             {
                 var tempPosition = Stream.Position;
@@ -388,26 +386,26 @@ public sealed class NdsFilesystem : IDisposable
                 if (OverlayFilesById.TryGetValue((ushort) fileId, out var nitroRomFile))
                 {
                     using var nitroRomFileStream = nitroRomFile.OpenRead();
-                    await nitroRomFileStream.CopyToAsync(newRomMemoryStream, cancellationToken).ConfigureAwait(false);
+                    await nitroRomFileStream.CopyToAsync(outputStream, cancellationToken).ConfigureAwait(false);
                 }
-                
-                Align(newRomBinaryWriter, 0x200);
-                
+
+                Align(outputBinaryWriter, 0x200);
+
                 Stream.Seek(tempPosition + 0x20, SeekOrigin.Begin);
             }
         }
-        
-        Debug.Assert(newRomMemoryStream.Position == FileNameTableOffset);
-        
+
+        Debug.Assert(outputStream.Position == FileNameTableOffset);
+
         // Write FNT
-        newRomMemoryStream.Write(Stream.GetBuffer().AsSpan((int) FileNameTableOffset, (int) FileNameTableSize));
-        Align(newRomBinaryWriter, 0x200);
-        
+        outputStream.Write(Stream.GetBuffer().AsSpan((int) FileNameTableOffset, (int) FileNameTableSize));
+        Align(outputBinaryWriter, 0x200);
+
         // Write FAT
-        var newRomFileAllocationTableOffset = newRomMemoryStream.Position;
-        newRomMemoryStream.Write(Stream.GetBuffer().AsSpan((int) FileAllocationTableOffset, (int) FileAllocationTableSize));
-        Align(newRomBinaryWriter, 0x200);
-        
+        var newRomFileAllocationTableOffset = outputStream.Position;
+        outputStream.Write(Stream.GetBuffer().AsSpan((int) FileAllocationTableOffset, (int) FileAllocationTableSize));
+        Align(outputBinaryWriter, 0x200);
+
         // Write Icon Stuff
         Stream.Seek(0x68, SeekOrigin.Begin);
         var iconOffset = binaryReader.ReadUInt32();
@@ -415,12 +413,12 @@ public sealed class NdsFilesystem : IDisposable
         if (iconOffset != 0)
         {
             Stream.Seek(iconOffset, SeekOrigin.Begin);
-            var iconSize = _iconBannerSize[binaryReader.ReadUInt16()];
-        
-            newRomMemoryStream.Write(Stream.GetBuffer().AsSpan((int) iconOffset, (int) iconSize));
-            Align(newRomBinaryWriter, 0x200);
+            var iconSize = IconBannerSize[binaryReader.ReadUInt16()];
+
+            outputStream.Write(Stream.GetBuffer().AsSpan((int) iconOffset, (int) iconSize));
+            Align(outputBinaryWriter, 0x200);
         }
-        
+
         // Write Debug Rom
         Stream.Seek(0x160, SeekOrigin.Begin);
         var debugRomOffset = binaryReader.ReadUInt32();
@@ -428,52 +426,48 @@ public sealed class NdsFilesystem : IDisposable
         if (debugRomOffset != 0)
         {
             var debugRomSize = binaryReader.ReadUInt32();
-            newRomMemoryStream.Write(Stream.GetBuffer().AsSpan((int) debugRomOffset, (int) debugRomSize));
-            Align(newRomBinaryWriter, 0x200);
+            outputStream.Write(Stream.GetBuffer().AsSpan((int) debugRomOffset, (int) debugRomSize));
+            Align(outputBinaryWriter, 0x200);
         }
-        
-        // Write NitroRomFiles
-        var offset = (uint) newRomMemoryStream.Position;
-        var lastFileId = NitroRomFilesById.Values.Last().Id;
 
-        foreach (var nitroRomFile in NitroRomFilesById.Values)
+        // Write NitroRomFiles
+        var offset = (uint) outputStream.Position;
+
+        foreach (var nitroRomFile in NitroRomFilesById.Values.OrderBy(file => file.OriginalOffset))
         {
             var endOffset = offset + nitroRomFile.Size;
 
-            newRomMemoryStream.Seek(newRomFileAllocationTableOffset + nitroRomFile.Id * 8, SeekOrigin.Begin);
-            newRomBinaryWriter.Write(offset);
-            newRomBinaryWriter.Write(endOffset);
+            outputStream.Seek(newRomFileAllocationTableOffset + nitroRomFile.Id * 8, SeekOrigin.Begin);
+            outputBinaryWriter.Write(offset);
+            outputBinaryWriter.Write(endOffset);
 
-            newRomMemoryStream.Seek(offset, SeekOrigin.Begin);
+            outputStream.Seek(offset, SeekOrigin.Begin);
 
             using var file = nitroRomFile.OpenRead();
-            await file.CopyToAsync(newRomMemoryStream, cancellationToken).ConfigureAwait(false);
+            await file.CopyToAsync(outputStream, cancellationToken).ConfigureAwait(false);
 
-            if (nitroRomFile.Id != lastFileId)
-            {
-                Align(newRomBinaryWriter, 0x200);
-            }
+            Align(outputBinaryWriter, 0x200);
 
-            offset = (uint) newRomMemoryStream.Position;
+            offset = (uint) outputStream.Position;
         }
-        
+
         // Patch Unitcode (Only NDS mode)
-        newRomMemoryStream.Seek(0x12, SeekOrigin.Begin);
-        newRomBinaryWriter.Write((byte) 0);
-        
+        outputStream.Seek(0x12, SeekOrigin.Begin);
+        outputBinaryWriter.Write((byte) 0);
+
         // Patch 0x1C - 0x1D (NDS Region)
-        newRomMemoryStream.Seek(0x1C, SeekOrigin.Begin);
-        newRomBinaryWriter.Write((byte) 0);
-        newRomBinaryWriter.Write((byte) 0);
-        
+        outputStream.Seek(0x1C, SeekOrigin.Begin);
+        outputBinaryWriter.Write((byte) 0);
+        outputBinaryWriter.Write((byte) 0);
+
         // Update used rom space
-        newRomMemoryStream.Seek(0x80, SeekOrigin.Begin);
-        newRomBinaryWriter.Write((uint) newRomMemoryStream.Length);
-        
+        outputStream.Seek(0x80, SeekOrigin.Begin);
+        outputBinaryWriter.Write((uint) outputStream.Length);
+
         // TODO: Fix Header Checksum 0x15E
-        
+
         // Patch 0x180 (Remove dsi headers)
-        newRomMemoryStream.Seek(0x180, SeekOrigin.Begin);
+        outputStream.Seek(0x180, SeekOrigin.Begin);
 
         const int bufferSize = 0x4000 - 0x180;
         var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
@@ -481,22 +475,20 @@ public sealed class NdsFilesystem : IDisposable
         try
         {
             buffer.AsSpan(0, bufferSize).Clear();
-            newRomBinaryWriter.Write(buffer, 0, bufferSize);
+            outputBinaryWriter.Write(buffer, 0, bufferSize);
         }
         finally
         {
             ArrayPool<byte>.Shared.Return(buffer);
         }
-        
-        newRomMemoryStream.Seek(0, SeekOrigin.Begin);
-        await newRomMemoryStream.CopyToAsync(stream, cancellationToken).ConfigureAwait(false);
+
         return;
 
         void Align(BinaryWriter binaryWriter, long length, byte value = 0xFF)
         {
             var remainder = binaryWriter.BaseStream.Position % length;
             if (remainder == 0) return;
-            
+
             var paddingRequired = length - remainder;
             var paddingBuffer = ArrayPool<byte>.Shared.Rent((int) paddingRequired);
 

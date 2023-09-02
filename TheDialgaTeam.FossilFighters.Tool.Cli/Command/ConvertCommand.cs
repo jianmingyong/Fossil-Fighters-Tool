@@ -15,6 +15,9 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.CommandLine;
+using System.Text.Json;
+using TheDialgaTeam.FossilFighters.Assets;
+using TheDialgaTeam.FossilFighters.Assets.GameData;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Cli.Command;
 
@@ -22,18 +25,40 @@ internal sealed class ConvertCommand : System.CommandLine.Command
 {
     public ConvertCommand() : base("convert", "List of converter available.")
     {
-        AddCommand(new ConvertImageCommand());
+        AddCommand(new ConvertDtxFileCommand());
     }
 }
 
-internal sealed class ConvertImageCommand : System.CommandLine.Command
+internal sealed class ConvertDtxFileCommand : System.CommandLine.Command
 {
-    public ConvertImageCommand() : base("image", "Convert image to FF1/FFC compatible format.")
+    public ConvertDtxFileCommand() : base("dtx", "Convert json file into dtx file format.")
     {
-        var inputArgument = new Argument<string>("targetImage", "Target image to convert.") { Arity = ArgumentArity.ExactlyOne };
-        
-        var outputOption = new Option<string>(new[] { "--output", "-o" }, () => string.Empty, "Output folder after conversion.") { Arity = ArgumentArity.ExactlyOne, IsRequired = false };
+        var inputArgument = new Argument<string>("input", "Input json file to convert.") { Arity = ArgumentArity.ExactlyOne };
+        var outputArgument = new Argument<string>("output", "Output file after conversion.") { Arity = ArgumentArity.ExactlyOne };
 
-        
+        AddArgument(inputArgument);
+        AddArgument(outputArgument);
+
+        this.SetHandler(static (inputFilePath, outputFilePath) =>
+        {
+            if (!File.Exists(inputFilePath))
+            {
+                Console.WriteLine(Localization.InputDoesNotExists, inputFilePath);
+            }
+            else
+            {
+                using var inputFileStream = File.OpenRead(inputFilePath);
+
+                var dtxFile = new DtxFile
+                {
+                    Texts = JsonSerializer.Deserialize(inputFileStream, CustomJsonSerializerContext.Custom.StringArray) ?? Array.Empty<string>()
+                };
+
+                using var outputFileStream = File.OpenWrite(outputFilePath);
+                dtxFile.WriteToStream(outputFileStream);
+
+                Console.WriteLine(Localization.ConvertDtxFileCommand_ConvertDtxFileCommand_Converted, inputFilePath, outputFilePath);
+            }
+        }, inputArgument, outputArgument);
     }
 }
