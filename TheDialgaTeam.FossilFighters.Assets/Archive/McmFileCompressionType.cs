@@ -16,7 +16,7 @@
 
 namespace TheDialgaTeam.FossilFighters.Assets.Archive;
 
-public enum McmFileCompressionType
+public enum McmFileCompressionType : byte
 {
     None = 0,
     Rle = 1,

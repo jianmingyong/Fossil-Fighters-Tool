@@ -57,4 +57,7 @@
     <data name="StreamDataTooLarge" xml:space="preserve">
         <value>The contents of the stream is too large to generate a proper {0} compression</value>
     </data>
+    <data name="HuffmanStreamInvalidDataSize" xml:space="preserve">
+        <value>The selected DataSize is invalid for this stream.</value>
+    </data>
 </root>

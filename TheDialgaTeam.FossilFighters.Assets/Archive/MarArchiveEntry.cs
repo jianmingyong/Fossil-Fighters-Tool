@@ -95,7 +95,6 @@ public sealed class MarArchiveEntry
 
     public McmFileStream OpenWrite()
     {
-        MemoryStream.Seek(0, SeekOrigin.Begin);
         MemoryStream.SetLength(0);
         return new McmFileStream(MemoryStream, CompressibleStreamMode.Compress, true);
     }

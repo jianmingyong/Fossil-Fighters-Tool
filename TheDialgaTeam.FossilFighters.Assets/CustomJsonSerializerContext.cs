@@ -18,10 +18,11 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using TheDialgaTeam.FossilFighters.Assets.Archive;
+using TheDialgaTeam.FossilFighters.Assets.GameData;
 
 namespace TheDialgaTeam.FossilFighters.Assets;
 
-[JsonSerializable(typeof(string[]))]
+[JsonSerializable(typeof(DtxFile))]
 [JsonSerializable(typeof(Dictionary<int, McmFileMetadata>))]
 public sealed partial class CustomJsonSerializerContext : JsonSerializerContext
 {

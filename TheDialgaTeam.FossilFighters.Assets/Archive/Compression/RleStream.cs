@@ -35,22 +35,19 @@ public sealed class RleStream : CompressibleStream
     {
     }
 
-    protected override void Decompress(BinaryReader reader, BinaryWriter writer, Stream inputStream, MemoryStream outputStream)
+    protected override void Decompress(BinaryReader reader, BinaryWriter writer)
     {
-        var rawHeaderData = reader.ReadInt32();
+        if (writer.BaseStream is not MemoryStream outputStream) throw new ArgumentException(null, nameof(writer));
+
+        var rawHeaderData = reader.ReadUInt32();
         if ((rawHeaderData & 0xF0) != CompressionHeader) throw new InvalidDataException(string.Format(Localization.StreamIsNotCompressedBy, "RLE"));
 
-        var decompressSize = rawHeaderData >>> 8;
-
-        if (outputStream.Capacity < decompressSize)
-        {
-            outputStream.Capacity = decompressSize;
-        }
+        var decompressSize = rawHeaderData >> 8;
 
         while (outputStream.Length < decompressSize)
         {
             var flagRawData = reader.ReadByte();
-            var flagType = (flagRawData >> 7) & 0x1;
+            var flagType = flagRawData >> 7;
             var flagData = flagRawData & MaxFlagDataLength;
 
             if (flagType == 0)
@@ -79,8 +76,11 @@ public sealed class RleStream : CompressibleStream
         }
     }
 
-    protected override void Compress(BinaryReader reader, BinaryWriter writer, MemoryStream inputStream, MemoryStream outputStream)
+    protected override void Compress(BinaryReader reader, BinaryWriter writer)
     {
+        if (reader.BaseStream is not MemoryStream inputStream) throw new ArgumentException(null, nameof(reader));
+        if (writer.BaseStream is not MemoryStream outputStream) throw new ArgumentException(null, nameof(writer));
+
         var dataLength = inputStream.Length;
         if (dataLength > MaxInputDataLength) throw new InvalidDataException(string.Format(Localization.StreamDataTooLarge, "RLE"));
 
@@ -141,7 +141,7 @@ public sealed class RleStream : CompressibleStream
             WriteUncompressed(rawDataBuffer[..rawDataLength]);
         }
 
-        while (outputStream.Length % 4 != 0)
+        while (writer.BaseStream.Length % 4 != 0)
         {
             writer.Write((byte) 0);
         }
@@ -162,18 +162,18 @@ public sealed class RleStream : CompressibleStream
 
         int GetNextRepeatCount(Span<byte> buffer)
         {
-            if (inputStream.Position >= inputStream.Length) return 0;
+            if (reader.BaseStream.Position >= reader.BaseStream.Length) return 0;
 
             var bytesWritten = 0;
             var dataToCheck = reader.ReadByte();
 
             buffer[bytesWritten++] = dataToCheck;
 
-            while (bytesWritten < MaxCompressDataLength && inputStream.Position < inputStream.Length)
+            while (bytesWritten < MaxCompressDataLength && reader.BaseStream.Position < reader.BaseStream.Length)
             {
                 if (dataToCheck != reader.ReadByte())
                 {
-                    inputStream.Seek(-1, SeekOrigin.Current);
+                    reader.BaseStream.Seek(-1, SeekOrigin.Current);
                     break;
                 }
 

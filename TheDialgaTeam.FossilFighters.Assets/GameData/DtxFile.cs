@@ -89,7 +89,7 @@ public sealed class DtxFile
             writer.Write((byte) 0);
         }
 
-        while (writer.BaseStream.Length % 4 != 0)
+        while (stream.Length % 4 != 0)
         {
             writer.Write((byte) 0);
         }

@@ -31,24 +31,21 @@ public sealed class HuffmanStream : CompressibleStream
     private const int CompressionHeader = 2 << 4;
     private const int MaxInputDataLength = (1 << 24) - 1;
 
-    private HuffmanDataSize _dataSize;
+    private HuffmanDataSize _dataSize = HuffmanDataSize.Auto;
 
     public HuffmanStream(Stream stream, CompressibleStreamMode mode, bool leaveOpen = false) : base(stream, mode, leaveOpen)
     {
     }
 
-    protected override void Decompress(BinaryReader reader, BinaryWriter writer, Stream inputStream, MemoryStream outputStream)
+    protected override void Decompress(BinaryReader reader, BinaryWriter writer)
     {
-        var rawHeaderData = reader.ReadInt32();
+        if (writer.BaseStream is not MemoryStream outputStream) throw new ArgumentException(null, nameof(writer));
+
+        var rawHeaderData = reader.ReadUInt32();
         if ((rawHeaderData & 0xF0) != CompressionHeader) throw new InvalidDataException(string.Format(Localization.StreamIsNotCompressedBy, "Huffman"));
 
         _dataSize = (HuffmanDataSize) (rawHeaderData & 0xF);
         var decompressSize = (rawHeaderData >> 8) & 0xFFFFFF;
-
-        if (outputStream.Capacity < decompressSize)
-        {
-            outputStream.Capacity = decompressSize;
-        }
 
         var treeSize = reader.ReadByte();
         var treeNodeLength = (treeSize + 1) * 2 - 1;
@@ -61,11 +58,11 @@ public sealed class HuffmanStream : CompressibleStream
         var isHalfDataWritten = false;
         var halfData = (byte) 0;
 
-        inputStream.Seek(rootPosition + treeNodeLength, SeekOrigin.Begin);
+        reader.BaseStream.Seek(rootPosition + treeNodeLength, SeekOrigin.Begin);
 
         while (outputStream.Length < decompressSize)
         {
-            var bitStream = reader.ReadInt32();
+            var bitStream = reader.ReadUInt32();
 
             for (var index = 31; index >= 0; index--)
             {
@@ -107,8 +104,11 @@ public sealed class HuffmanStream : CompressibleStream
         }
     }
 
-    protected override void Compress(BinaryReader reader, BinaryWriter writer, MemoryStream inputStream, MemoryStream outputStream)
+    protected override void Compress(BinaryReader reader, BinaryWriter writer)
     {
+        if (reader.BaseStream is not MemoryStream inputStream) throw new ArgumentException(null, nameof(reader));
+        if (writer.BaseStream is not MemoryStream outputStream) throw new ArgumentException(null, nameof(writer));
+
         var dataLength = inputStream.Length;
         if (dataLength > MaxInputDataLength) throw new InvalidDataException(string.Format(Localization.StreamDataTooLarge, "Huffman"));
 
@@ -144,7 +144,7 @@ public sealed class HuffmanStream : CompressibleStream
                 break;
 
             default:
-                throw new ArgumentOutOfRangeException();
+                throw new InvalidOperationException(Localization.HuffmanStreamInvalidDataSize);
         }
 
         if (huffmanFrequencyTable.Count < 2) throw new InvalidDataException(Localization.HuffmanStreamDatasetTooSmall);

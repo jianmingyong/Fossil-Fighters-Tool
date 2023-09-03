@@ -48,11 +48,7 @@ internal sealed class ConvertDtxFileCommand : System.CommandLine.Command
             else
             {
                 using var inputFileStream = File.OpenRead(inputFilePath);
-
-                var dtxFile = new DtxFile
-                {
-                    Texts = JsonSerializer.Deserialize(inputFileStream, CustomJsonSerializerContext.Custom.StringArray) ?? Array.Empty<string>()
-                };
+                var dtxFile = JsonSerializer.Deserialize(inputFileStream, CustomJsonSerializerContext.Custom.DtxFile) ?? new DtxFile();
 
                 using var outputFileStream = File.OpenWrite(outputFilePath);
                 dtxFile.WriteToStream(outputFileStream);

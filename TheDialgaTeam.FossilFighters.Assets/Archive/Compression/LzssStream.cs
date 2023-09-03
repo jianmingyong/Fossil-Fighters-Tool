@@ -32,17 +32,14 @@ public sealed class LzssStream : CompressibleStream
     {
     }
 
-    protected override void Decompress(BinaryReader reader, BinaryWriter writer, Stream inputStream, MemoryStream outputStream)
+    protected override void Decompress(BinaryReader reader, BinaryWriter writer)
     {
-        var rawHeaderData = reader.ReadInt32();
+        if (writer.BaseStream is not MemoryStream outputStream) throw new ArgumentException(null, nameof(writer));
+
+        var rawHeaderData = reader.ReadUInt32();
         if ((rawHeaderData & 0xF0) != CompressHeader) throw new InvalidDataException(string.Format(Localization.StreamIsNotCompressedBy, "LZ77"));
 
-        var decompressSize = rawHeaderData >>> 8;
-
-        if (outputStream.Capacity < decompressSize)
-        {
-            outputStream.Capacity = decompressSize;
-        }
+        var decompressSize = rawHeaderData >> 8;
 
         while (outputStream.Length < decompressSize)
         {
@@ -76,8 +73,11 @@ public sealed class LzssStream : CompressibleStream
         }
     }
 
-    protected override void Compress(BinaryReader reader, BinaryWriter writer, MemoryStream inputStream, MemoryStream outputStream)
+    protected override void Compress(BinaryReader reader, BinaryWriter writer)
     {
+        if (reader.BaseStream is not MemoryStream inputStream) throw new ArgumentException(null, nameof(reader));
+        if (writer.BaseStream is not MemoryStream outputStream) throw new ArgumentException(null, nameof(writer));
+
         var dataLength = inputStream.Length;
         if (dataLength > MaxInputDataLength) throw new InvalidDataException(string.Format(Localization.StreamDataTooLarge, "LZ77"));
 

@@ -18,24 +18,13 @@ using System.Text;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Header;
 
-public readonly struct BpExchangeInfo
-{
-    public ushort BpValue { get; init; }
-
-    public ushort DpCost { get; init; }
-
-    public BpExchangeInfo(ushort bpValue, ushort dpCost)
-    {
-        BpValue = bpValue;
-        DpCost = dpCost;
-    }
-}
+public record struct BpExchangeInfo(ushort BpValue, ushort DpCost);
 
 public sealed class DbtlHeader
 {
     public const int FileHeader = 0x4C544244;
 
-    public BpExchangeInfo[] BpExchangeInfos { get; }
+    public BpExchangeInfo[] BpExchangeInfos { get; set; } = Array.Empty<BpExchangeInfo>();
 
     public DbtlHeader(Stream stream)
     {

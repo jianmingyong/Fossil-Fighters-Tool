@@ -87,6 +87,15 @@ namespace TheDialgaTeam.FossilFighters.Assets {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The selected DataSize is invalid for this stream..
+        /// </summary>
+        internal static string HuffmanStreamInvalidDataSize {
+            get {
+                return ResourceManager.GetString("HuffmanStreamInvalidDataSize", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The contents of the stream is too large to generate a proper {0} compression.
         /// </summary>
         internal static string StreamDataTooLarge {

@@ -19,7 +19,7 @@ using TheDialgaTeam.FossilFighters.Assets.Archive.Compression;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Archive;
 
-public sealed record McmFileMetadata(
+public record struct McmFileMetadata(
     uint MaxSizePerChunk,
     McmFileCompressionType CompressionType1,
     McmFileCompressionType CompressionType2);
@@ -56,7 +56,7 @@ public sealed class McmFileStream : CompressibleStream
         }
     }
 
-    private const int HeaderId = 0x004D434D;
+    private const uint HeaderId = 0x004D434D;
 
     private uint _maxSizePerChunk = 0x2000;
     private McmFileCompressionType _compressionType1 = McmFileCompressionType.None;
@@ -78,37 +78,39 @@ public sealed class McmFileStream : CompressibleStream
         CompressionType2 = metadata.CompressionType2;
     }
 
-    protected override void Decompress(BinaryReader reader, BinaryWriter writer, Stream inputStream, MemoryStream outputStream)
+    protected override void Decompress(BinaryReader reader, BinaryWriter writer)
     {
-        var fileHeaderId = reader.ReadInt32();
+        if (writer.BaseStream is not MemoryStream outputStream) throw new ArgumentException(null, nameof(writer));
+
+        var fileHeaderId = reader.ReadUInt32();
         if (fileHeaderId != HeaderId) throw new InvalidDataException(string.Format(Localization.StreamIsNotCompressedBy, "MCM"));
 
         var decompressFileSize = reader.ReadUInt32();
         _maxSizePerChunk = reader.ReadUInt32();
-        var numberOfChunk = reader.ReadInt32();
+        var numberOfChunk = reader.ReadUInt32();
 
-        var dataChunkOffsets = new int[numberOfChunk + 1];
+        var dataChunkOffsets = new uint[numberOfChunk + 1];
         _compressionType1 = (McmFileCompressionType) reader.ReadByte();
         _compressionType2 = (McmFileCompressionType) reader.ReadByte();
 
-        inputStream.Seek(2, SeekOrigin.Current);
+        reader.BaseStream.Seek(2, SeekOrigin.Current);
 
         for (var i = 0; i < dataChunkOffsets.Length; i++)
         {
-            dataChunkOffsets[i] = reader.ReadInt32();
+            dataChunkOffsets[i] = reader.ReadUInt32();
         }
 
         for (var i = 0; i < dataChunkOffsets.Length - 1; i++)
         {
             var requiredLength = dataChunkOffsets[i + 1] - dataChunkOffsets[i];
-            var tempBuffer = ArrayPool<byte>.Shared.Rent(requiredLength);
+            var tempBuffer = ArrayPool<byte>.Shared.Rent((int) requiredLength);
 
             try
             {
-                Stream dataChunk = new MemoryStream(tempBuffer, 0, requiredLength);
+                Stream dataChunk = new MemoryStream(tempBuffer, 0, (int) requiredLength);
 
-                inputStream.Seek(dataChunkOffsets[i], SeekOrigin.Begin);
-                if (inputStream.Read(tempBuffer, 0, requiredLength) < requiredLength) throw new EndOfStreamException();
+                reader.BaseStream.Seek(dataChunkOffsets[i], SeekOrigin.Begin);
+                if (reader.Read(tempBuffer, 0, (int) requiredLength) < requiredLength) throw new EndOfStreamException();
 
                 var compressedStream = CompressionType1 switch
                 {
@@ -152,13 +154,16 @@ public sealed class McmFileStream : CompressibleStream
         if (outputStream.Length != decompressFileSize) throw new InvalidDataException(Localization.StreamIsCorrupted);
     }
 
-    protected override void Compress(BinaryReader reader, BinaryWriter writer, MemoryStream inputStream, MemoryStream outputStream)
+    protected override void Compress(BinaryReader reader, BinaryWriter writer)
     {
+        if (reader.BaseStream is not MemoryStream inputStream) throw new ArgumentException(null, nameof(reader));
+        if (writer.BaseStream is not MemoryStream outputStream) throw new ArgumentException(null, nameof(writer));
+
         writer.Write(HeaderId);
         writer.Write((uint) inputStream.Length);
         writer.Write(MaxSizePerChunk);
 
-        var numberOfChunks = (int) Math.Ceiling((double) inputStream.Length / MaxSizePerChunk);
+        var numberOfChunks = (uint) Math.Ceiling((double) inputStream.Length / MaxSizePerChunk);
         writer.Write(numberOfChunks);
         writer.Write((byte) CompressionType1);
         writer.Write((byte) CompressionType2);

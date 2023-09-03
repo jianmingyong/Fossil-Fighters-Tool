@@ -321,7 +321,7 @@ internal sealed class DecompressCommand : System.CommandLine.Command
                                 var jsonOutputFilePath = Path.Combine(output, $"{i}.json");
                                 using var jsonOutputStream = File.OpenWrite(jsonOutputFilePath);
 
-                                JsonSerializer.Serialize(jsonOutputStream, dtxFile.Texts, CustomJsonSerializerContext.Custom.StringArray);
+                                JsonSerializer.Serialize(jsonOutputStream, dtxFile, CustomJsonSerializerContext.Custom.DtxFile);
 
                                 Console.WriteLine(Localization.FileExtracted, jsonOutputFilePath);
                                 break;
