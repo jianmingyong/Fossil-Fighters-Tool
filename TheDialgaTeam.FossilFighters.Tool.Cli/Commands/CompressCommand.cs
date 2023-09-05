@@ -20,9 +20,9 @@ using Microsoft.Extensions.FileSystemGlobbing;
 using TheDialgaTeam.FossilFighters.Assets;
 using TheDialgaTeam.FossilFighters.Assets.Archive;
 
-namespace TheDialgaTeam.FossilFighters.Tool.Cli.Command;
+namespace TheDialgaTeam.FossilFighters.Tool.Cli.Commands;
 
-internal sealed class CompressCommand : System.CommandLine.Command
+internal sealed class CompressCommand : Command
 {
     public CompressCommand() : base("compress", Localization.CompressCommandDescription)
     {

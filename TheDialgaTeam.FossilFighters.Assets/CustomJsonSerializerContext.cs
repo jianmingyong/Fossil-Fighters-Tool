@@ -22,6 +22,7 @@ using TheDialgaTeam.FossilFighters.Assets.GameData;
 
 namespace TheDialgaTeam.FossilFighters.Assets;
 
+[JsonSerializable(typeof(DmgFile))]
 [JsonSerializable(typeof(DtxFile))]
 [JsonSerializable(typeof(Dictionary<int, McmFileMetadata>))]
 public sealed partial class CustomJsonSerializerContext : JsonSerializerContext

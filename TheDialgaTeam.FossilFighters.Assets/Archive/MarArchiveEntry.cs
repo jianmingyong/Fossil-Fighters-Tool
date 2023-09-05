@@ -34,7 +34,7 @@ public sealed class MarArchiveEntry
         {
             if (memoryStream.TryGetBuffer(out var arraySegment))
             {
-                MemoryStream = new MemoryStream(arraySegment.Array!, fileOffset, fileLength);
+                MemoryStream = new MemoryStream(arraySegment.Array!, arraySegment.Offset + fileOffset, fileLength);
             }
             else
             {

@@ -47,7 +47,7 @@
     <data name="CompressCommand_Compress_Compressing_File" xml:space="preserve">
         <value>Compressing: {0}</value>
     </data>
-    <data name="ConvertDtxFileCommand_ConvertDtxFileCommand_Converted" xml:space="preserve">
+    <data name="FileConvertedFromTo" xml:space="preserve">
         <value>Converted: {0} to {1}</value>
     </data>
 </root>

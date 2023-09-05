@@ -143,7 +143,7 @@ public sealed class MainWindowViewModel : ViewModel
             await ShowProgressBar.Handle(progress);
 
             await using var fileStream = await selectedFiles[0].OpenReadAsync();
-            LoadedRom = await NdsFilesystem.FromFileAsync(fileStream);
+            LoadedRom = await NdsFilesystem.FromStreamAsync(fileStream);
 
             _nitroRomNodes.Clear();
 

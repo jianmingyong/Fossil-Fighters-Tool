@@ -19,43 +19,45 @@ using TheDialgaTeam.FossilFighters.Assets.Utilities;
 
 namespace TheDialgaTeam.FossilFighters.Assets.GameData;
 
-public sealed class DtxFile
+public sealed record DmgMessage(uint MessageId, uint Unknown, string Message);
+
+public sealed class DmgFile
 {
-    public const uint FileHeader = 0x00585444;
+    public const uint FileHeader = 0x00474D44;
 
-    public string[] Texts { get; set; } = Array.Empty<string>();
+    public DmgMessage[] Messages { get; set; } = Array.Empty<DmgMessage>();
 
-    public static DtxFile ReadFromStream(Stream stream)
+    public static DmgFile ReadFromStream(Stream stream)
     {
         if (!stream.CanRead) throw new ArgumentException(Localization.StreamIsNotReadable, nameof(stream));
         if (!stream.CanSeek) throw new ArgumentException(Localization.StreamIsNotSeekable, nameof(stream));
 
         using var reader = new BinaryReader(stream, Encoding.UTF8, true);
 
-        if (reader.ReadUInt32() != FileHeader) throw new InvalidDataException(string.Format(Localization.StreamIsNotFormat, "DTX"));
+        if (reader.ReadUInt32() != FileHeader) throw new InvalidDataException(string.Format(Localization.StreamIsNotFormat, "DMG"));
 
-        var textPointerCount = reader.ReadUInt32();
-        var textPointerAddress = reader.ReadUInt32();
-        var textDataAddresses = new uint[textPointerCount];
+        var messagePointerCount = reader.ReadUInt32();
+        var messagePointerAddress = reader.ReadUInt32();
+        var messageDataAddresses = new uint[messagePointerCount];
 
-        stream.Seek(textPointerAddress, SeekOrigin.Begin);
+        stream.Seek(messagePointerAddress, SeekOrigin.Begin);
 
-        for (var i = 0; i < textPointerCount; i++)
+        for (var i = 0; i < messagePointerCount; i++)
         {
-            textDataAddresses[i] = reader.ReadUInt32();
+            messageDataAddresses[i] = reader.ReadUInt32();
         }
 
-        var textBuilder = new StringBuilder();
-        var texts = new string[textPointerCount];
+        var stringBuilder = new StringBuilder();
+        var messages = new DmgMessage[messagePointerCount];
 
-        for (var i = 0; i < textPointerCount; i++)
+        for (var i = 0; i < messagePointerCount; i++)
         {
-            stream.Seek(textDataAddresses[i], SeekOrigin.Begin);
-            texts[i] = reader.ReadNullTerminatedString(textBuilder);
-            textBuilder.Clear();
+            stream.Seek(messageDataAddresses[i], SeekOrigin.Begin);
+            messages[i] = new DmgMessage(reader.ReadUInt32(), reader.ReadUInt32(), reader.ReadNullTerminatedString(stringBuilder));
+            stringBuilder.Clear();
         }
 
-        return new DtxFile { Texts = texts };
+        return new DmgFile { Messages = messages };
     }
 
     public void WriteToStream(Stream stream)
@@ -65,20 +67,22 @@ public sealed class DtxFile
         using var writer = new BinaryWriter(stream, Encoding.UTF8, true);
 
         writer.Write(FileHeader);
-        writer.Write((uint) Texts.Length);
+        writer.Write((uint) Messages.Length);
         writer.Write((uint) 0xC);
 
-        var textDataAddress = (uint) (0xC + Texts.Length * 4);
+        var textDataAddress = (uint) (0xC + Messages.Length * 4);
 
-        foreach (var text in Texts)
+        foreach (var message in Messages)
         {
             writer.Write(textDataAddress);
-            textDataAddress += (uint) Encoding.UTF8.GetByteCount(text) + 1;
+            textDataAddress += (uint) Encoding.UTF8.GetByteCount(message.Message) + 1 + 4 + 4;
         }
 
-        foreach (var text in Texts)
+        foreach (var message in Messages)
         {
-            writer.Write(text.AsSpan());
+            writer.Write(message.MessageId);
+            writer.Write(message.Unknown);
+            writer.Write(message.Message.AsSpan());
             writer.Write((byte) 0);
         }
 

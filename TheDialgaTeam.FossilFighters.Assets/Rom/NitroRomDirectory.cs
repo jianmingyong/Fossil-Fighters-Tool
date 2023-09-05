@@ -76,31 +76,31 @@ public sealed class NitroRomDirectory : INitroRom
             if (ndsFilesystem.Arm9OverlaySize != 0)
             {
                 stream.Seek(ndsFilesystem.Arm9OverlayOffset, SeekOrigin.Begin);
-            
+
                 while (stream.Position < ndsFilesystem.Arm9OverlayOffset + ndsFilesystem.Arm9OverlaySize)
                 {
                     var tempPosition = stream.Position;
                     var overlayName = reader.ReadUInt32();
                     stream.Seek(0x14, SeekOrigin.Current);
                     var fileId = reader.ReadUInt32();
-                
-                    Files.Add(new NitroRomFile(ndsFilesystem, this, (ushort) fileId, $"overlay9_{overlayName}", true));
+
+                    Files.Add(new NitroRomFile(ndsFilesystem, this, (ushort) fileId, $"overlay9_{overlayName}", NitroRomType.Overlay));
                     stream.Seek(tempPosition + 0x20, SeekOrigin.Begin);
                 }
             }
-            
+
             if (ndsFilesystem.Arm7OverlaySize != 0)
             {
                 stream.Seek(ndsFilesystem.Arm7OverlayOffset, SeekOrigin.Begin);
-            
+
                 while (stream.Position < ndsFilesystem.Arm7OverlayOffset + ndsFilesystem.Arm7OverlaySize)
                 {
                     var tempPosition = stream.Position;
                     var overlayName = reader.ReadUInt32();
                     stream.Seek(0x14, SeekOrigin.Current);
                     var fileId = reader.ReadUInt32();
-                
-                    Files.Add(new NitroRomFile(ndsFilesystem, this, (ushort) fileId, $"overlay7_{overlayName}", true));
+
+                    Files.Add(new NitroRomFile(ndsFilesystem, this, (ushort) fileId, $"overlay7_{overlayName}", NitroRomType.Overlay));
                     stream.Seek(tempPosition + 0x20, SeekOrigin.Begin);
                 }
             }

@@ -1,0 +1,15 @@
+<Project>
+
+    <PropertyGroup>
+        <Version>2.1.0</Version>
+        <Authors>Yong Jian Ming</Authors>
+        <PackageProjectUrl>https://github.com/jianmingyong/Fossil-Fighters-Tool</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/jianmingyong/Fossil-Fighters-Tool</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+    </PropertyGroup>
+    
+    <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+        <DebugType>none</DebugType>
+    </PropertyGroup>
+
+</Project>

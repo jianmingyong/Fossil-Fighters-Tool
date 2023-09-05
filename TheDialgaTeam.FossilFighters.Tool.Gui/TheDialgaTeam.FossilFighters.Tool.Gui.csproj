@@ -1,4 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <Import Project="..\TheDialgaTeam.FossilFighters.prop"/>
+
     <PropertyGroup>
         <AssemblyName>fftoolgui</AssemblyName>
         <OutputType>WinExe</OutputType>
@@ -10,20 +13,13 @@
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
 
-        <PublishSingleFile>true</PublishSingleFile>
+        <PublishDir>..\bin\$(RuntimeIdentifier)</PublishDir>
         <PublishTrimmed>true</PublishTrimmed>
+        <PublishSingleFile>true</PublishSingleFile>
+        <SelfContained>true</SelfContained>
 
-        <Version>2.1.0</Version>
         <Title>Fossil Fighters Tool</Title>
-        <Authors>Yong Jian Ming</Authors>
         <Description>This program is used to decompress and compress MAR archives used in Fossil Fighters game.</Description>
-        <PackageProjectUrl>https://github.com/jianmingyong/Fossil-Fighters-Tool</PackageProjectUrl>
-        <RepositoryUrl>https://github.com/jianmingyong/Fossil-Fighters-Tool</RepositoryUrl>
-        <RepositoryType>git</RepositoryType>
-    </PropertyGroup>
-
-    <PropertyGroup Condition="'$(Configuration)' == 'Release'">
-        <DebugType>none</DebugType>
     </PropertyGroup>
 
     <ItemGroup>
@@ -48,4 +44,5 @@
     <ItemGroup>
         <ProjectReference Include="..\TheDialgaTeam.FossilFighters.Assets\TheDialgaTeam.FossilFighters.Assets.csproj"/>
     </ItemGroup>
+
 </Project>

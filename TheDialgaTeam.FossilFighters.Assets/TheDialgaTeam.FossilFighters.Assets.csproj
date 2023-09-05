@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+    <Import Project="..\TheDialgaTeam.FossilFighters.prop"/>
+
     <PropertyGroup>
         <TargetFramework>net7.0</TargetFramework>
 
@@ -9,21 +11,12 @@
 
         <IsPublishable>false</IsPublishable>
 
-        <Version>2.1.0</Version>
         <Title>Fossil Fighters Tool API</Title>
-        <Authors>Yong Jian Ming</Authors>
         <Description>This library is used to decompress and compress MAR archives used in Fossil Fighters game.</Description>
-        <PackageProjectUrl>https://github.com/jianmingyong/Fossil-Fighters-Tool</PackageProjectUrl>
-        <RepositoryUrl>https://github.com/jianmingyong/Fossil-Fighters-Tool</RepositoryUrl>
-        <RepositoryType>git</RepositoryType>
-    </PropertyGroup>
-
-    <PropertyGroup Condition="'$(Configuration)' == 'Release'">
-        <DebugType>none</DebugType>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="SixLabors.ImageSharp" Version="3.0.1" />
+        <PackageReference Include="SixLabors.ImageSharp" Version="3.0.1"/>
     </ItemGroup>
 
     <ItemGroup>

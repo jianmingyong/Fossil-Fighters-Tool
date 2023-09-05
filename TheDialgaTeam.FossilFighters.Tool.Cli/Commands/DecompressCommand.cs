@@ -16,7 +16,6 @@
 
 using System.CommandLine;
 using System.Text;
-using System.Text.Encodings.Web;
 using System.Text.Json;
 using Microsoft.Extensions.FileSystemGlobbing;
 using SixLabors.ImageSharp;
@@ -30,9 +29,9 @@ using TheDialgaTeam.FossilFighters.Assets.Motion;
 using TheDialgaTeam.FossilFighters.Assets.Rom;
 using ColorPalette = TheDialgaTeam.FossilFighters.Assets.Motion.ColorPalette;
 
-namespace TheDialgaTeam.FossilFighters.Tool.Cli.Command;
+namespace TheDialgaTeam.FossilFighters.Tool.Cli.Commands;
 
-internal sealed class DecompressCommand : System.CommandLine.Command
+internal sealed class DecompressCommand : Command
 {
     public DecompressCommand() : base("decompress", Localization.DecompressCommandDescription)
     {
@@ -56,7 +55,7 @@ internal sealed class DecompressCommand : System.CommandLine.Command
                 if (Path.GetExtension(input).Equals(".nds", StringComparison.OrdinalIgnoreCase))
                 {
                     using var ndsFileStream = File.OpenRead(input);
-                    var ndsFileSystem = NdsFilesystem.FromFile(ndsFileStream);
+                    var ndsFileSystem = NdsFilesystem.FromStream(ndsFileStream);
                     var outputPath = Path.Combine(Path.GetDirectoryName(input)!, ndsFileSystem.GameCode.AsSpan().ToString());
 
                     if (!Directory.Exists(outputPath))
@@ -327,14 +326,17 @@ internal sealed class DecompressCommand : System.CommandLine.Command
                                 break;
                             }
 
-                            case DmgHeader.FileHeader:
+                            case DmgFile.FileHeader:
                             {
                                 fileStream.Seek(0, SeekOrigin.Begin);
 
-                                var jsonText = JsonSerializer.Serialize(DmgHeader.GetHeaderFromStream(fileStream), typeof(DmgHeader), new DmgHeaderContext(new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping, WriteIndented = true }));
-                                var jsonOutputFilePath = Path.Combine(output, $"{i}.json");
+                                var dmgFile = DmgFile.ReadFromStream(fileStream);
 
-                                File.WriteAllText(jsonOutputFilePath, jsonText);
+                                var jsonOutputFilePath = Path.Combine(output, $"{i}.json");
+                                using var jsonOutputStream = File.OpenWrite(jsonOutputFilePath);
+
+                                JsonSerializer.Serialize(jsonOutputStream, dmgFile, CustomJsonSerializerContext.Custom.DmgFile);
+
                                 Console.WriteLine(Localization.FileExtracted, jsonOutputFilePath);
                                 break;
                             }

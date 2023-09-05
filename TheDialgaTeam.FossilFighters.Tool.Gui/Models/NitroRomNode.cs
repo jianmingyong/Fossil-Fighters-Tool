@@ -213,6 +213,7 @@ public sealed class NitroRomNode : ReactiveObject
             NitroRomType.FileFolder => FileFolderTypeName,
             NitroRomType.File => FileTypeName,
             NitroRomType.MarArchive => MarArchiveTypeName,
+            NitroRomType.Overlay => FileTypeName,
             var _ => throw new ArgumentOutOfRangeException(nameof(_nitroRom.FileType))
         };
 
