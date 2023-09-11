@@ -5,11 +5,7 @@
     <PropertyGroup>
         <AssemblyName>fftool</AssemblyName>
         <OutputType>Exe</OutputType>
-        <TargetFramework>net7.0</TargetFramework>
         <ApplicationIcon>fossil-fighters-logo.ico</ApplicationIcon>
-
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
 
         <PublishDir>..\bin\$(RuntimeIdentifier)</PublishDir>
         <PublishTrimmed>true</PublishTrimmed>

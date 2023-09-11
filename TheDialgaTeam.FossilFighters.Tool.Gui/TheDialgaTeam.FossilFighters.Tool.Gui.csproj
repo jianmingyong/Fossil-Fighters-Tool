@@ -5,10 +5,8 @@
     <PropertyGroup>
         <AssemblyName>fftoolgui</AssemblyName>
         <OutputType>WinExe</OutputType>
-        <TargetFramework>net7.0</TargetFramework>
         <ApplicationIcon>Assets\fossil-fighters-logo.ico</ApplicationIcon>
 
-        <Nullable>enable</Nullable>
         <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>

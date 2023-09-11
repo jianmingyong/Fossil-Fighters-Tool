@@ -1,0 +1,76 @@
+name: Publish FFTool
+
+on:
+  push:
+    tags:
+      - v*
+
+env:
+  PROJECT_PROPERTIES: TheDialgaTeam.FossilFighters.prop
+  PROJECT_PUBLISH_ROOT: bin
+  DOTNET_VERSION: 7.0.x
+  RELEASE_TEMPLATE: RELEASE_TEMPLATE.md
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  build:
+    name: Build and Publish FF Tool
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - name: Install dotnet
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Setup NuGet Credentials
+        run: |
+          dotnet nuget add source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --name "github/${{ github.repository_owner }}" --username "${{ github.actor }}" --password "${{ github.token }}" --store-password-in-clear-text
+
+      - name: Get version number
+        id: get_version
+        run: |
+          $version = ("${{ github.ref }}" -split "/" | Select-Object -Last 1) -replace "v", ""
+          Write-Output "::set-output name=version::$version"
+
+      - name: Patch project properties
+        run: |
+          $version = "${{ steps.get_version.outputs.version }}"
+          $properties_file = Join-Path "${{ github.workspace }}" "${{ env.PROJECT_PROPERTIES }}"
+          ((Get-Content "$properties_file") -replace '^(\s*)<Version>.+?<\/Version>(\s*)$', "`$1<Version>${version}</Version>`$2") | Set-Content "${properties_file}"
+
+      - name: Build project
+        run: |
+          dotnet publish -c Release -r win-x64
+          dotnet publish -c Release -r linux-x64
+          dotnet publish -c Release -r osx-x64
+
+      - name: Compress Files
+        run: |
+          cd bin
+          7z a -mx9 "win-x64.zip" "win-x64"
+          
+          7z a "linux-x64.tar" "linux-x64"
+          7z a -mx9 -sdel "linux-x64.tar.gz" "linux-x64.tar"
+          
+          7z a "osx-x64.tar" "osx-x64"
+          7z a -mx9 -sdel "osx-x64.tar.gz" "osx-x64.tar"
+
+      - name: Deploy FFTool
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Fossil Fighters Assets Extractor ${{ steps.get_version.outputs.version }}
+          body_path: ${{ github.workspace }}/${{ env.RELEASE_TEMPLATE }}
+          files: |
+            ${{ github.workspace }}/${{ env.PROJECT_PUBLISH_ROOT }}/*.zip
+            ${{ github.workspace }}/${{ env.PROJECT_PUBLISH_ROOT }}/*.tar.gz
+          draft: false
+          fail_on_unmatched_files: true

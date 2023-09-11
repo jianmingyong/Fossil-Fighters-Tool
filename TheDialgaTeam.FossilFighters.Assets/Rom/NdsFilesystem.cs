@@ -62,6 +62,7 @@ public sealed class NdsFilesystem : IDisposable
     internal Dictionary<string, NitroRomFile> NitroRomFilesByPath { get; } = new();
 
     internal Dictionary<ushort, NitroRomFile> OverlayFilesById { get; } = new();
+
     private const uint Arm9PostRomDataSize = 12;
 
     private static readonly Dictionary<ushort, uint> IconBannerSize = new()
@@ -135,9 +136,6 @@ public sealed class NdsFilesystem : IDisposable
 
     private static void PatchHeader(Stream stream)
     {
-        if (!stream.CanWrite) throw new ArgumentException(Localization.StreamIsNotWriteable, nameof(stream));
-        if (!stream.CanSeek) throw new ArgumentException(Localization.StreamIsNotSeekable, nameof(stream));
-
         using var writer = new BinaryWriter(stream, Encoding.ASCII, true);
 
         // Update used rom space
@@ -167,40 +165,37 @@ public sealed class NdsFilesystem : IDisposable
 
     private static ushort GenerateCrc16(Stream stream, int offset, int length)
     {
-        if (!stream.CanRead) throw new ArgumentException(Localization.StreamIsNotReadable, nameof(stream));
-        if (!stream.CanSeek) throw new ArgumentException(Localization.StreamIsNotSeekable, nameof(stream));
-
         var buffer = ArrayPool<byte>.Shared.Rent(length);
 
         try
         {
             stream.Seek(offset, SeekOrigin.Begin);
             stream.ReadExactly(buffer, 0, length);
+
+            ushort result = 0xFFFF;
+
+            for (var i = 0; i < length; i++)
+            {
+                result ^= buffer[i];
+
+                for (var j = 0; j < 8; j++)
+                {
+                    var carry = result & 1;
+                    result >>= 1;
+
+                    if (carry > 0)
+                    {
+                        result ^= 0xA001;
+                    }
+                }
+            }
+
+            return result;
         }
         finally
         {
             ArrayPool<byte>.Shared.Return(buffer);
         }
-
-        ushort result = 0xFFFF;
-
-        for (var i = 0; i < length; i++)
-        {
-            result ^= buffer[i];
-
-            for (var j = 0; j < 8; j++)
-            {
-                var carry = result & 1;
-                result >>= 1;
-
-                if (carry > 0)
-                {
-                    result ^= 0xA001;
-                }
-            }
-        }
-
-        return result;
     }
 
     public bool TryGetFileById(ushort id, [MaybeNullWhen(false)] out NitroRomFile nitroRomFile)
@@ -213,138 +208,148 @@ public sealed class NdsFilesystem : IDisposable
         return NitroRomFilesByPath.TryGetValue(nitroRomFilePath, out nitroRomFile);
     }
 
-    [SuppressMessage("ReSharper.DPA", "DPA0003: Excessive memory allocations in LOH")]
     public async Task WriteToAsync(Stream stream, CancellationToken cancellationToken = default)
     {
         if (!stream.CanWrite) throw new ArgumentException(Localization.StreamIsNotWriteable, nameof(stream));
 
-        using var outputStream = new MemoryStream();
-        using var reader = new BinaryReader(Stream, Encoding.ASCII);
+        var outputBuffer = ArrayPool<byte>.Shared.Rent(512 * 1024 * 1024);
 
-        // Write the header first (we will update the header at the end eventually)
-        await outputStream.WriteAsync(Stream.GetBuffer().AsMemory(0, 0x4000), cancellationToken).ConfigureAwait(false);
-
-        // Write Arm9RomData
-        await outputStream.WriteAsync(Stream.GetBuffer().AsMemory((int) Arm9RomDataOffset, (int) (Arm9RomDataSize + Arm9PostRomDataSize)), cancellationToken).ConfigureAwait(false);
-        await outputStream.WriteAlignAsync(0x200, cancellationToken: cancellationToken).ConfigureAwait(false);
-
-        if (Arm9OverlaySize > 0)
+        try
         {
-            // Write Arm9OverlayTable
-            await outputStream.WriteAsync(Stream.GetBuffer().AsMemory((int) Arm9OverlayOffset, (int) Arm9OverlaySize), cancellationToken).ConfigureAwait(false);
+            using var outputStream = new MemoryStream(outputBuffer);
+            outputStream.SetLength(0);
+
+            using var reader = new BinaryReader(Stream, Encoding.ASCII);
+
+            // Write the header first (we will update the header at the end eventually)
+            await outputStream.WriteAsync(Stream.GetBuffer().AsMemory(0, 0x4000), cancellationToken).ConfigureAwait(false);
+
+            // Write Arm9RomData
+            await outputStream.WriteAsync(Stream.GetBuffer().AsMemory((int) Arm9RomDataOffset, (int) (Arm9RomDataSize + Arm9PostRomDataSize)), cancellationToken).ConfigureAwait(false);
             await outputStream.WriteAlignAsync(0x200, cancellationToken: cancellationToken).ConfigureAwait(false);
 
-            // Write Arm9Overlay
-            Stream.Seek(Arm9OverlayOffset, SeekOrigin.Begin);
-
-            while (Stream.Position < Arm9OverlayOffset + Arm9OverlaySize)
+            if (Arm9OverlaySize > 0)
             {
-                var tempPosition = Stream.Position;
-                Stream.Seek(0x18, SeekOrigin.Current);
-                var fileId = reader.ReadUInt32();
+                // Write Arm9OverlayTable
+                await outputStream.WriteAsync(Stream.GetBuffer().AsMemory((int) Arm9OverlayOffset, (int) Arm9OverlaySize), cancellationToken).ConfigureAwait(false);
+                await outputStream.WriteAlignAsync(0x200, cancellationToken: cancellationToken).ConfigureAwait(false);
 
-                if (OverlayFilesById.TryGetValue((ushort) fileId, out var nitroRomFile))
+                // Write Arm9Overlay
+                Stream.Seek(Arm9OverlayOffset, SeekOrigin.Begin);
+
+                while (Stream.Position < Arm9OverlayOffset + Arm9OverlaySize)
                 {
-                    using var nitroRomFileStream = nitroRomFile.OpenRead();
-                    await nitroRomFileStream.CopyToAsync(outputStream, cancellationToken).ConfigureAwait(false);
+                    var tempPosition = Stream.Position;
+                    Stream.Seek(0x18, SeekOrigin.Current);
+                    var fileId = reader.ReadUInt32();
+
+                    if (OverlayFilesById.TryGetValue((ushort) fileId, out var nitroRomFile))
+                    {
+                        using var nitroRomFileStream = nitroRomFile.OpenRead();
+                        await nitroRomFileStream.CopyToAsync(outputStream, cancellationToken).ConfigureAwait(false);
+                    }
+
+                    await outputStream.WriteAlignAsync(0x200, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+                    Stream.Seek(tempPosition + 0x20, SeekOrigin.Begin);
                 }
+            }
+
+            // Write Arm7RomData
+            await outputStream.WriteAsync(Stream.GetBuffer().AsMemory((int) Arm7RomDataOffset, (int) Arm7RomDataSize), cancellationToken).ConfigureAwait(false);
+            await outputStream.WriteAlignAsync(0x200, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+            if (Arm7OverlaySize > 0)
+            {
+                // Write Arm7OverlayTable
+                await outputStream.WriteAsync(Stream.GetBuffer().AsMemory((int) Arm7OverlayOffset, (int) Arm7OverlaySize), cancellationToken).ConfigureAwait(false);
+                await outputStream.WriteAlignAsync(0x200, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+                // Write Arm7Overlay
+                Stream.Seek(Arm7OverlayOffset, SeekOrigin.Begin);
+
+                while (Stream.Position < Arm7OverlayOffset + Arm7OverlaySize)
+                {
+                    var tempPosition = Stream.Position;
+                    Stream.Seek(0x18, SeekOrigin.Current);
+                    var fileId = reader.ReadUInt32();
+
+                    if (OverlayFilesById.TryGetValue((ushort) fileId, out var nitroRomFile))
+                    {
+                        using var nitroRomFileStream = nitroRomFile.OpenRead();
+                        await nitroRomFileStream.CopyToAsync(outputStream, cancellationToken).ConfigureAwait(false);
+                    }
+
+                    await outputStream.WriteAlignAsync(0x200, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+                    Stream.Seek(tempPosition + 0x20, SeekOrigin.Begin);
+                }
+            }
+
+            // Write FNT
+            await outputStream.WriteAsync(Stream.GetBuffer().AsMemory((int) FileNameTableOffset, (int) FileNameTableSize), cancellationToken).ConfigureAwait(false);
+            await outputStream.WriteAlignAsync(0x200, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+            // Write FAT
+            var newRomFileAllocationTableOffset = outputStream.Position;
+            await outputStream.WriteAsync(Stream.GetBuffer().AsMemory((int) FileAllocationTableOffset, (int) FileAllocationTableSize), cancellationToken).ConfigureAwait(false);
+            await outputStream.WriteAlignAsync(0x200, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+            // Write Icon Stuff
+            Stream.Seek(0x68, SeekOrigin.Begin);
+            var iconOffset = reader.ReadUInt32();
+
+            if (iconOffset != 0)
+            {
+                Stream.Seek(iconOffset, SeekOrigin.Begin);
+                var iconSize = IconBannerSize[reader.ReadUInt16()];
+
+                await outputStream.WriteAsync(Stream.GetBuffer().AsMemory((int) iconOffset, (int) iconSize), cancellationToken).ConfigureAwait(false);
+                await outputStream.WriteAlignAsync(0x200, cancellationToken: cancellationToken).ConfigureAwait(false);
+            }
+
+            // Write Debug Rom
+            Stream.Seek(0x160, SeekOrigin.Begin);
+            var debugRomOffset = reader.ReadUInt32();
+
+            if (debugRomOffset != 0)
+            {
+                var debugRomSize = reader.ReadUInt32();
+                await outputStream.WriteAsync(Stream.GetBuffer().AsMemory((int) debugRomOffset, (int) debugRomSize), cancellationToken).ConfigureAwait(false);
+                await outputStream.WriteAlignAsync(0x200, cancellationToken: cancellationToken).ConfigureAwait(false);
+            }
+
+            // Write NitroRomFiles
+            var offset = (uint) outputStream.Position;
+            await using var writer = new BinaryWriter(outputStream, Encoding.ASCII, true);
+
+            foreach (var nitroRomFile in NitroRomFilesById.Values.OrderBy(file => file.OriginalOffset))
+            {
+                var endOffset = offset + nitroRomFile.Size;
+
+                outputStream.Seek(newRomFileAllocationTableOffset + nitroRomFile.Id * 8, SeekOrigin.Begin);
+                writer.Write(offset);
+                writer.Write(endOffset);
+
+                outputStream.Seek(offset, SeekOrigin.Begin);
+
+                using var file = nitroRomFile.OpenRead();
+                await file.CopyToAsync(outputStream, cancellationToken).ConfigureAwait(false);
 
                 await outputStream.WriteAlignAsync(0x200, cancellationToken: cancellationToken).ConfigureAwait(false);
 
-                Stream.Seek(tempPosition + 0x20, SeekOrigin.Begin);
+                offset = (uint) outputStream.Position;
             }
+
+            PatchHeader(outputStream);
+
+            outputStream.Seek(0, SeekOrigin.Begin);
+            await outputStream.CopyToAsync(stream, cancellationToken).ConfigureAwait(false);
         }
-
-        // Write Arm7RomData
-        await outputStream.WriteAsync(Stream.GetBuffer().AsMemory((int) Arm7RomDataOffset, (int) Arm7RomDataSize), cancellationToken).ConfigureAwait(false);
-        await outputStream.WriteAlignAsync(0x200, cancellationToken: cancellationToken).ConfigureAwait(false);
-
-        if (Arm7OverlaySize > 0)
+        finally
         {
-            // Write Arm7OverlayTable
-            await outputStream.WriteAsync(Stream.GetBuffer().AsMemory((int) Arm7OverlayOffset, (int) Arm7OverlaySize), cancellationToken).ConfigureAwait(false);
-            await outputStream.WriteAlignAsync(0x200, cancellationToken: cancellationToken).ConfigureAwait(false);
-
-            // Write Arm7Overlay
-            Stream.Seek(Arm7OverlayOffset, SeekOrigin.Begin);
-
-            while (Stream.Position < Arm7OverlayOffset + Arm7OverlaySize)
-            {
-                var tempPosition = Stream.Position;
-                Stream.Seek(0x18, SeekOrigin.Current);
-                var fileId = reader.ReadUInt32();
-
-                if (OverlayFilesById.TryGetValue((ushort) fileId, out var nitroRomFile))
-                {
-                    using var nitroRomFileStream = nitroRomFile.OpenRead();
-                    await nitroRomFileStream.CopyToAsync(outputStream, cancellationToken).ConfigureAwait(false);
-                }
-
-                await outputStream.WriteAlignAsync(0x200, cancellationToken: cancellationToken).ConfigureAwait(false);
-
-                Stream.Seek(tempPosition + 0x20, SeekOrigin.Begin);
-            }
+            ArrayPool<byte>.Shared.Return(outputBuffer);
         }
-
-        // Write FNT
-        await outputStream.WriteAsync(Stream.GetBuffer().AsMemory((int) FileNameTableOffset, (int) FileNameTableSize), cancellationToken).ConfigureAwait(false);
-        await outputStream.WriteAlignAsync(0x200, cancellationToken: cancellationToken).ConfigureAwait(false);
-
-        // Write FAT
-        var newRomFileAllocationTableOffset = outputStream.Position;
-        await outputStream.WriteAsync(Stream.GetBuffer().AsMemory((int) FileAllocationTableOffset, (int) FileAllocationTableSize), cancellationToken).ConfigureAwait(false);
-        await outputStream.WriteAlignAsync(0x200, cancellationToken: cancellationToken).ConfigureAwait(false);
-
-        // Write Icon Stuff
-        Stream.Seek(0x68, SeekOrigin.Begin);
-        var iconOffset = reader.ReadUInt32();
-
-        if (iconOffset != 0)
-        {
-            Stream.Seek(iconOffset, SeekOrigin.Begin);
-            var iconSize = IconBannerSize[reader.ReadUInt16()];
-
-            await outputStream.WriteAsync(Stream.GetBuffer().AsMemory((int) iconOffset, (int) iconSize), cancellationToken).ConfigureAwait(false);
-            await outputStream.WriteAlignAsync(0x200, cancellationToken: cancellationToken).ConfigureAwait(false);
-        }
-
-        // Write Debug Rom
-        Stream.Seek(0x160, SeekOrigin.Begin);
-        var debugRomOffset = reader.ReadUInt32();
-
-        if (debugRomOffset != 0)
-        {
-            var debugRomSize = reader.ReadUInt32();
-            await outputStream.WriteAsync(Stream.GetBuffer().AsMemory((int) debugRomOffset, (int) debugRomSize), cancellationToken).ConfigureAwait(false);
-            await outputStream.WriteAlignAsync(0x200, cancellationToken: cancellationToken).ConfigureAwait(false);
-        }
-
-        // Write NitroRomFiles
-        var offset = (uint) outputStream.Position;
-        await using var writer = new BinaryWriter(outputStream, Encoding.ASCII, true);
-
-        foreach (var nitroRomFile in NitroRomFilesById.Values.OrderBy(file => file.OriginalOffset))
-        {
-            var endOffset = offset + nitroRomFile.Size;
-
-            outputStream.Seek(newRomFileAllocationTableOffset + nitroRomFile.Id * 8, SeekOrigin.Begin);
-            writer.Write(offset);
-            writer.Write(endOffset);
-
-            outputStream.Seek(offset, SeekOrigin.Begin);
-
-            using var file = nitroRomFile.OpenRead();
-            await file.CopyToAsync(outputStream, cancellationToken).ConfigureAwait(false);
-
-            await outputStream.WriteAlignAsync(0x200, cancellationToken: cancellationToken).ConfigureAwait(false);
-
-            offset = (uint) outputStream.Position;
-        }
-
-        PatchHeader(outputStream);
-
-        outputStream.Seek(0, SeekOrigin.Begin);
-        await outputStream.CopyToAsync(stream, cancellationToken).ConfigureAwait(false);
     }
 
     public void Dispose()
