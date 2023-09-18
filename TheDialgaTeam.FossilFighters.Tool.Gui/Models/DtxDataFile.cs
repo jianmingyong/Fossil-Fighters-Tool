@@ -45,6 +45,6 @@ public sealed class DtxDataFile
         using var rawDataStream = new MemoryStream();
         mcmFileStream.CopyTo(rawDataStream);
 
-        _dtxFile = DtxFile.ReadFromStream(rawDataStream);
+        _dtxFile = DtxFile.ReadFromRawStream(rawDataStream);
     }
 }

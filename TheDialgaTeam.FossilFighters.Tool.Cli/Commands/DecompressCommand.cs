@@ -315,7 +315,7 @@ internal sealed class DecompressCommand : Command
                             {
                                 fileStream.Seek(0, SeekOrigin.Begin);
 
-                                var dtxFile = DtxFile.ReadFromStream(fileStream);
+                                var dtxFile = DtxFile.ReadFromRawStream(fileStream);
 
                                 var jsonOutputFilePath = Path.Combine(output, $"{i}.json");
                                 using var jsonOutputStream = File.OpenWrite(jsonOutputFilePath);
@@ -330,7 +330,7 @@ internal sealed class DecompressCommand : Command
                             {
                                 fileStream.Seek(0, SeekOrigin.Begin);
 
-                                var dmgFile = DmgFile.ReadFromStream(fileStream);
+                                var dmgFile = DmgFile.ReadFromRawStream(fileStream);
 
                                 var jsonOutputFilePath = Path.Combine(output, $"{i}.json");
                                 using var jsonOutputStream = File.OpenWrite(jsonOutputFilePath);

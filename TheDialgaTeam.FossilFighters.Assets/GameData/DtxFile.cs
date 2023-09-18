@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.Text;
+using System.Text.Json;
 using TheDialgaTeam.FossilFighters.Assets.Utilities;
 
 namespace TheDialgaTeam.FossilFighters.Assets.GameData;
@@ -25,7 +26,7 @@ public sealed class DtxFile
 
     public string[] Texts { get; set; } = Array.Empty<string>();
 
-    public static DtxFile ReadFromStream(Stream stream)
+    public static DtxFile ReadFromRawStream(Stream stream)
     {
         if (!stream.CanRead) throw new ArgumentException(Localization.StreamIsNotReadable, nameof(stream));
         if (!stream.CanSeek) throw new ArgumentException(Localization.StreamIsNotSeekable, nameof(stream));
@@ -56,6 +57,12 @@ public sealed class DtxFile
         }
 
         return new DtxFile { Texts = texts };
+    }
+    
+    public static DtxFile ReadFromJsonStream(Stream stream)
+    {
+        if (!stream.CanRead) throw new ArgumentException(Localization.StreamIsNotReadable, nameof(stream));
+        return JsonSerializer.Deserialize(stream, CustomJsonSerializerContext.Custom.DtxFile) ?? new DtxFile();
     }
 
     public void WriteToStream(Stream stream)

@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.Text;
+using System.Text.Json;
 using TheDialgaTeam.FossilFighters.Assets.Utilities;
 
 namespace TheDialgaTeam.FossilFighters.Assets.GameData;
@@ -27,7 +28,7 @@ public sealed class DmgFile
 
     public DmgMessage[] Messages { get; set; } = Array.Empty<DmgMessage>();
 
-    public static DmgFile ReadFromStream(Stream stream)
+    public static DmgFile ReadFromRawStream(Stream stream)
     {
         if (!stream.CanRead) throw new ArgumentException(Localization.StreamIsNotReadable, nameof(stream));
         if (!stream.CanSeek) throw new ArgumentException(Localization.StreamIsNotSeekable, nameof(stream));
@@ -60,6 +61,12 @@ public sealed class DmgFile
         return new DmgFile { Messages = messages };
     }
 
+    public static DmgFile ReadFromJsonStream(Stream stream)
+    {
+        if (!stream.CanRead) throw new ArgumentException(Localization.StreamIsNotReadable, nameof(stream));
+        return JsonSerializer.Deserialize(stream, CustomJsonSerializerContext.Custom.DmgFile) ?? new DmgFile();
+    }
+    
     public void WriteToStream(Stream stream)
     {
         if (!stream.CanWrite) throw new ArgumentException(Localization.StreamIsNotWriteable, nameof(stream));

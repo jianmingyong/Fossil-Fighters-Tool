@@ -15,8 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.CommandLine;
-using System.Text.Json;
-using TheDialgaTeam.FossilFighters.Assets;
 using TheDialgaTeam.FossilFighters.Assets.GameData;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Cli.Commands;
@@ -45,11 +43,10 @@ internal sealed class ConvertDmgFileCommand : Command
         this.SetHandler(static (inputFile, outputFile) =>
         {
             using var inputFileStream = inputFile.OpenRead();
-            var dmgFile = JsonSerializer.Deserialize(inputFileStream, CustomJsonSerializerContext.Custom.DmgFile) ?? new DmgFile();
-
             using var outputFileStream = outputFile.OpenWrite();
-            dmgFile.WriteToStream(outputFileStream);
-
+            
+            DmgFile.ReadFromJsonStream(inputFileStream).WriteToStream(outputFileStream);
+            
             Console.WriteLine(Localization.FileConvertedFromTo, inputFile.FullName, outputFile.FullName);
         }, inputArgument, outputArgument);
     }
@@ -70,11 +67,10 @@ internal sealed class ConvertDtxFileCommand : Command
         this.SetHandler(static (inputFile, outputFile) =>
         {
             using var inputFileStream = inputFile.OpenRead();
-            var dtxFile = JsonSerializer.Deserialize(inputFileStream, CustomJsonSerializerContext.Custom.DtxFile) ?? new DtxFile();
-
             using var outputFileStream = outputFile.OpenWrite();
-            dtxFile.WriteToStream(outputFileStream);
-
+            
+            DtxFile.ReadFromJsonStream(inputFileStream).WriteToStream(outputFileStream);
+            
             Console.WriteLine(Localization.FileConvertedFromTo, inputFile.FullName, outputFile.FullName);
         }, inputArgument, outputArgument);
     }
