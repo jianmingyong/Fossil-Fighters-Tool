@@ -15,7 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.Reactive.Disposables;
-using System.Threading.Tasks;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
 using TheDialgaTeam.FossilFighters.Tool.Gui.Utilities;

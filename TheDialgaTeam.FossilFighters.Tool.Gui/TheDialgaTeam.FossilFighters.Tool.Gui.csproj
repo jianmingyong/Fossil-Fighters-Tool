@@ -8,11 +8,10 @@
         <ApplicationIcon>Assets\fossil-fighters-logo.ico</ApplicationIcon>
 
         <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
-        <ApplicationManifest>app.manifest</ApplicationManifest>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
 
         <PublishDir>..\bin\$(RuntimeIdentifier)</PublishDir>
-        <PublishTrimmed>true</PublishTrimmed>
+        <PublishTrimmed>false</PublishTrimmed>
         <PublishSingleFile>true</PublishSingleFile>
         <SelfContained>true</SelfContained>
 
@@ -25,18 +24,18 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Avalonia" Version="11.0.4"/>
-        <PackageReference Include="Avalonia.Controls.TreeDataGrid" Version="11.0.0"/>
-        <PackageReference Include="Avalonia.Desktop" Version="11.0.4"/>
-        <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.0.4"/>
-        <PackageReference Include="Avalonia.Fonts.Inter" Version="11.0.4"/>
-        <PackageReference Include="Avalonia.ReactiveUI" Version="11.0.4"/>
-        <PackageReference Include="Avalonia.Themes.Fluent" Version="11.0.4"/>
-        <PackageReference Include="ReactiveMarbles.ObservableEvents.SourceGenerator" Version="1.2.3">
+        <PackageReference Include="Avalonia" Version="11.0.6" />
+        <PackageReference Include="Avalonia.Controls.TreeDataGrid" Version="11.0.2" />
+        <PackageReference Include="Avalonia.Desktop" Version="11.0.6" />
+        <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.0.6" />
+        <PackageReference Include="Avalonia.Fonts.Inter" Version="11.0.6" />
+        <PackageReference Include="Avalonia.ReactiveUI" Version="11.0.6" />
+        <PackageReference Include="Avalonia.Themes.Fluent" Version="11.0.6" />
+        <PackageReference Include="ReactiveMarbles.ObservableEvents.SourceGenerator" Version="1.3.1">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="ReactiveUI.Fody" Version="19.4.1"/>
+        <PackageReference Include="ReactiveUI.Fody" Version="19.5.39" />
     </ItemGroup>
 
     <ItemGroup>

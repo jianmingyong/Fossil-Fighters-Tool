@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.Text;
+using SixLabors.ImageSharp.PixelFormats;
 using TheDialgaTeam.FossilFighters.Assets.Header;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Image;
@@ -82,9 +83,9 @@ public static class ImageUtility
         return result;
     }
 
-    public static Image<Bgra5551> GetImage(MpmHeader header, ColorPalette colorPalette, byte[] bitmap, int gridSize = 8)
+    public static SixLabors.ImageSharp.Image<Bgra5551> GetImage(MpmHeader header, ColorPalette colorPalette, byte[] bitmap, int gridSize = 8)
     {
-        var image = new Image<Bgra5551>(header.Width, header.Height);
+        var image = new SixLabors.ImageSharp.Image<Bgra5551>(header.Width, header.Height);
         var bitmapIndex = 0;
 
         if (colorPalette.Type == ColorPaletteType.Color16)
@@ -114,11 +115,11 @@ public static class ImageUtility
         return image;
     }
 
-    public static Image<Bgra5551> GetImage(MpmHeader header, ColorPalette colorPalette, ChunkBitmap chunkBitmap)
+    public static SixLabors.ImageSharp.Image<Bgra5551> GetImage(MpmHeader header, ColorPalette colorPalette, ChunkBitmap chunkBitmap)
     {
         const int gridSize = 8;
 
-        var image = new Image<Bgra5551>(header.Width, header.Height);
+        var image = new SixLabors.ImageSharp.Image<Bgra5551>(header.Width, header.Height);
         var gridX = 0;
         var gridY = 0;
 

@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.Text;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Motion;
 
@@ -124,9 +125,9 @@ public static class MotionUtility
         return new Bitmap(width, height, colorPaletteType, colorPaletteIndexes.ToArray());
     }
 
-    public static Image<Bgra5551> GetImage(ColorPalette colorPalette, Bitmap bitmap, int gridSize = 8)
+    public static SixLabors.ImageSharp.Image<Bgra5551> GetImage(ColorPalette colorPalette, Bitmap bitmap, int gridSize = 8)
     {
-        var image = new Image<Bgra5551>(bitmap.Width, bitmap.Height);
+        var image = new SixLabors.ImageSharp.Image<Bgra5551>(bitmap.Width, bitmap.Height);
 
         var bitmapIndex = 0;
         var gridX = 0;

@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System;
 using Avalonia;
 using Avalonia.ReactiveUI;
 
@@ -25,8 +24,8 @@ internal static class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        BuildAvaloniaApp()
-            .StartWithClassicDesktopLifetime(args);
+        AppDomain.CurrentDomain.UnhandledException += OnCurrentDomainOnUnhandledException;
+        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 
     public static AppBuilder BuildAvaloniaApp()
@@ -34,7 +33,14 @@ internal static class Program
         return AppBuilder.Configure<App>()
             .UsePlatformDetect()
             .WithInterFont()
-            .LogToTrace()
             .UseReactiveUI();
+    }
+    
+    private static void OnCurrentDomainOnUnhandledException(object sender, UnhandledExceptionEventArgs eventArgs)
+    {
+        if (!eventArgs.IsTerminating) return;
+
+        var crashFileLocation = Path.Combine(AppContext.BaseDirectory, $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}_crash.log");
+        File.WriteAllText(crashFileLocation, eventArgs.ExceptionObject.ToString());
     }
 }
