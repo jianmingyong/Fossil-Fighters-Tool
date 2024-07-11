@@ -141,8 +141,8 @@ public static class MotionUtility
                 {
                     for (var x = 0; x < gridSize; x += 2)
                     {
-                        image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[bitmap.ColorPaletteIndexes[bitmapIndex] >> 4];
-                        image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[bitmap.ColorPaletteIndexes[bitmapIndex] & 0xF];
+                        image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[bitmap.ColorPaletteIndexes[bitmapIndex] & 0xF];
+                        image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[bitmap.ColorPaletteIndexes[bitmapIndex] >> 4];
 
                         bitmapIndex++;
                     }
