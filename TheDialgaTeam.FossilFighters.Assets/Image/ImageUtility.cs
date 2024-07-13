@@ -137,8 +137,8 @@ public static class ImageUtility
                         for (var x = 0; x < gridSize; x += 2)
                         {
                             var targetIndex = (x + y * gridSize) / 2;
-                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] >> 4];
-                            image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] & 0xF];
+                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] & 0xF];
+                            image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] >> 4];
                         }
                     }
                 }
@@ -149,8 +149,8 @@ public static class ImageUtility
                         for (var x = 0; x < gridSize; x += 2)
                         {
                             var targetIndex = (gridSize - 1 - x + y * gridSize) / 2;
-                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] >> 4];
-                            image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] & 0xF];
+                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] & 0xF];
+                            image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] >> 4];
                         }
                     }
                 }
@@ -161,8 +161,8 @@ public static class ImageUtility
                         for (var x = 0; x < gridSize; x += 2)
                         {
                             var targetIndex = (x + (gridSize - 1 - y) * gridSize) / 2;
-                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] & 0xF];
-                            image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] >> 4];
+                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] >> 4];
+                            image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] & 0xF];
                         }
                     }
                 }
@@ -173,8 +173,8 @@ public static class ImageUtility
                         for (var x = 0; x < gridSize; x += 2)
                         {
                             var targetIndex = (gridSize - 1 - x + (gridSize - 1 - y) * gridSize) / 2;
-                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] & 0xF];
-                            image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] >> 4];
+                            image[x + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] >> 4];
+                            image[x + 1 + gridX * gridSize, y + gridY * gridSize] = colorPalette.Colors[chunkBitmap.ColorPaletteIndexes[bitmapIndex & 0x3FF][targetIndex] & 0xF];
                         }
                     }
                 }

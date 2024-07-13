@@ -2,6 +2,7 @@ Change Logs from v2.1.0:
 - CLI: Changed the behavior of `convert dtx` command such that it uses a new json file format.
 - CLI: Added `convert dmg` command to convert the generated json file to dmg file format.
 - GUI: Fixed nds rom checksum so you can run in bootloader mode.
+- CORE: Fixed images/sprites that uses 16 bytes color palette.
 
 Extra Files Supported:
 - `motion` folder - Containing UI/Sprites.

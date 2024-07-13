@@ -16,15 +16,9 @@
 
 namespace TheDialgaTeam.FossilFighters.Assets.Image;
 
-public readonly struct BitmapIndex
+public readonly struct BitmapIndex(byte bitmapChunkIndex, byte unknown)
 {
-    public byte BitmapChunkIndex { get; }
+    public byte BitmapChunkIndex { get; } = bitmapChunkIndex;
 
-    public byte Unknown { get; }
-
-    public BitmapIndex(byte bitmapChunkIndex, byte unknown)
-    {
-        BitmapChunkIndex = bitmapChunkIndex;
-        Unknown = unknown;
-    }
+    public byte Unknown { get; } = unknown;
 }
