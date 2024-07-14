@@ -24,15 +24,9 @@ public enum ColorPaletteType
     Color256 = 1
 }
 
-public readonly struct ColorPalette
+public readonly struct ColorPalette(ColorPaletteType type, Bgra5551[] colors)
 {
-    public ColorPaletteType Type { get; }
+    public ColorPaletteType Type { get; } = type;
 
-    public Bgra5551[] Colors { get; }
-
-    public ColorPalette(ColorPaletteType type, Bgra5551[] colors)
-    {
-        Type = type;
-        Colors = colors;
-    }
+    public Bgra5551[] Colors { get; } = colors;
 }

@@ -26,18 +26,15 @@ public static class MotionUtility
         using var reader = new BinaryReader(stream, Encoding.UTF8, true);
 
         var paletteType = (ColorPaletteType) reader.ReadInt32();
-        var table = new Rgba32[paletteType == ColorPaletteType.Color16 ? 16 : 256];
-        var colorTable2 = new List<Bgra5551>();
+        var colorTable = new Bgra5551[paletteType == ColorPaletteType.Color16 ? 16 : 256];
 
-        for (var i = 0; i < table.Length; i++)
+        for (var i = 0; i < colorTable.Length; i++)
         {
             var rawValue = reader.ReadUInt16();
-            table[i] = new Rgba32((byte) ((rawValue & 0x1F) << 3), (byte) (((rawValue >> 5) & 0x1F) << 3), (byte) (((rawValue >> 10) & 0x1F) << 3), (byte) (i == 0 ? 0 : 255));
-
-            colorTable2.Add(new Bgra5551((rawValue & 0x1F) / 31f, ((rawValue >> 5) & 0x1F) / 31f, ((rawValue >> 10) & 0x1F) / 31f, colorTable2.Count == 0 ? 0 : 1));
+            colorTable[i] = new Bgra5551((rawValue & 0x1F) / 31f, ((rawValue >> 5) & 0x1F) / 31f, ((rawValue >> 10) & 0x1F) / 31f, i == 0 ? 0 : 1);
         }
 
-        return new ColorPalette(paletteType, table, colorTable2.ToArray());
+        return new ColorPalette(paletteType, colorTable);
     }
 
     public static Bitmap GetBitmap(Stream stream)

@@ -94,8 +94,8 @@ public static class ImageUtility
             {
                 for (var x = 0; x < header.Width; x += 2)
                 {
-                    image[x, y] = colorPalette.Colors[bitmap[bitmapIndex] >> 4];
-                    image[x + 1, y] = colorPalette.Colors[bitmap[bitmapIndex] & 0xF];
+                    image[x, y] = colorPalette.Colors[bitmap[bitmapIndex] & 0xF];
+                    image[x + 1, y] = colorPalette.Colors[bitmap[bitmapIndex] >> 4];
                     bitmapIndex++;
                 }
             }

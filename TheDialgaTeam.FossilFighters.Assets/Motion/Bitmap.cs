@@ -16,21 +16,13 @@
 
 namespace TheDialgaTeam.FossilFighters.Assets.Motion;
 
-public readonly struct Bitmap
+public readonly struct Bitmap(int width, int height, ColorPaletteType colorPaletteType, byte[] colorPaletteIndexes)
 {
-    public int Width { get; }
+    public int Width { get; } = width;
 
-    public int Height { get; }
+    public int Height { get; } = height;
 
-    public ColorPaletteType ColorPaletteType { get; }
+    public ColorPaletteType ColorPaletteType { get; } = colorPaletteType;
 
-    public byte[] ColorPaletteIndexes { get; }
-
-    public Bitmap(int width, int height, ColorPaletteType colorPaletteType, byte[] colorPaletteIndexes)
-    {
-        Width = width;
-        Height = height;
-        ColorPaletteType = colorPaletteType;
-        ColorPaletteIndexes = colorPaletteIndexes;
-    }
+    public byte[] ColorPaletteIndexes { get; } = colorPaletteIndexes;
 }
