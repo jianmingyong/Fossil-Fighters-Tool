@@ -44,9 +44,9 @@ public sealed class NitroRomDirectory : INitroRom
 
     public NitroRomType FileType => NitroRomType.FileFolder;
 
-    public List<NitroRomDirectory> SubDirectories { get; } = new();
+    public List<NitroRomDirectory> SubDirectories { get; } = [];
 
-    public List<NitroRomFile> Files { get; } = new();
+    public List<NitroRomFile> Files { get; } = [];
     private readonly NitroRomDirectory? _parentDirectory;
 
     private string? _fullPath;

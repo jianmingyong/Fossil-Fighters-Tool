@@ -18,9 +18,7 @@ using ReactiveUI;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Gui.ViewModels;
 
-public abstract class ViewModel : ReactiveObject
-{
-}
+public abstract class ViewModel : ReactiveObject;
 
 public abstract class ActivatableViewModel : ViewModel, IActivatableViewModel
 {

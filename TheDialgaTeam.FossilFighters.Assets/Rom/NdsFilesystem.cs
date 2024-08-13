@@ -58,7 +58,6 @@ public sealed class NdsFilesystem : IDisposable
     internal Dictionary<ushort, NitroRomDirectory> NitroRomDirectories { get; } = new();
 
     internal Dictionary<ushort, NitroRomFile> NitroRomFilesById { get; } = new();
-
     internal Dictionary<string, NitroRomFile> NitroRomFilesByPath { get; } = new();
 
     internal Dictionary<ushort, NitroRomFile> OverlayFilesById { get; } = new();

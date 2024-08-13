@@ -14,13 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 using Avalonia.Platform.Storage;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
@@ -32,7 +27,7 @@ namespace TheDialgaTeam.FossilFighters.Tool.Gui.Models;
 
 public sealed class NitroRomNode : ReactiveObject
 {
-    public ObservableCollection<NitroRomNode> ChildNodes { get; } = new();
+    public ObservableCollection<NitroRomNode> ChildNodes { get; } = [];
 
     public string Name => _nitroRom.Name;
 

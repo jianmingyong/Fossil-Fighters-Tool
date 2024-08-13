@@ -26,7 +26,7 @@ public sealed class DmgFile
 {
     public const uint FileHeader = 0x00474D44;
 
-    public DmgMessage[] Messages { get; set; } = Array.Empty<DmgMessage>();
+    public DmgMessage[] Messages { get; set; } = [];
 
     public static DmgFile ReadFromRawStream(Stream stream)
     {

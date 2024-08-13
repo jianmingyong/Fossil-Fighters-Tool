@@ -29,16 +29,16 @@ internal sealed class CompressCommand : Command
         var inputArgument = new Argument<string>("input", "Target folder to compress.") { Arity = ArgumentArity.ExactlyOne };
         inputArgument.LegalFilePathsOnly();
 
-        var outputOption = new Option<string>(new[] { "--output", "-o" }, "Output file after compression.") { Arity = ArgumentArity.ExactlyOne, IsRequired = true, ArgumentHelpName = "file" };
+        var outputOption = new Option<string>(["--output", "-o"], "Output file after compression.") { Arity = ArgumentArity.ExactlyOne, IsRequired = true, ArgumentHelpName = "file" };
 
-        var includeOption = new Option<string[]>(new[] { "--include", "-i" }, static () => new[] { "*.bin" }, "Include files to be compressed. You can use wildcard (*) to specify one or more files. E.g \"-i *.bin -i *.hex\"") { Arity = ArgumentArity.OneOrMore, IsRequired = false, ArgumentHelpName = "fileTypes" };
+        var includeOption = new Option<string[]>(["--include", "-i"], static () => ["*.bin"], "Include files to be compressed. You can use wildcard (*) to specify one or more files. E.g \"-i *.bin -i *.hex\"") { Arity = ArgumentArity.OneOrMore, IsRequired = false, ArgumentHelpName = "fileTypes" };
 
-        var compressionTypeOption = new Option<McmFileCompressionType[]>(new[] { "--compress-type", "-c" }, static () => Array.Empty<McmFileCompressionType>(), "Type of compression to be used. (Maximum 2) E.g \"-c Huffman -c Lzss\" Compression is done in reverse order. Make sure to put huffman first for better compression ratio.") { Arity = new ArgumentArity(1, 2), IsRequired = false };
+        var compressionTypeOption = new Option<McmFileCompressionType[]>(["--compress-type", "-c"], static () => [], "Type of compression to be used. (Maximum 2) E.g \"-c Huffman -c Lzss\" Compression is done in reverse order. Make sure to put huffman first for better compression ratio.") { Arity = new ArgumentArity(1, 2), IsRequired = false };
         compressionTypeOption.AddCompletions(Enum.GetNames<McmFileCompressionType>());
 
-        var maxSizePerChunkOption = new Option<uint>(new[] { "--max-size-per-chunk", "-m" }, static () => 0x2000, "Split each file into chunks of <size> bytes when compressing.") { Arity = ArgumentArity.ExactlyOne, IsRequired = false, ArgumentHelpName = "size" };
+        var maxSizePerChunkOption = new Option<uint>(["--max-size-per-chunk", "-m"], static () => 0x2000, "Split each file into chunks of <size> bytes when compressing.") { Arity = ArgumentArity.ExactlyOne, IsRequired = false, ArgumentHelpName = "size" };
 
-        var metaFileOption = new Option<string>(new[] { "--meta-file", "-mf" }, static () => "meta.json", "Meta definition file to define the compression type and the chunk size.") { Arity = ArgumentArity.ExactlyOne, IsRequired = false, ArgumentHelpName = "file" };
+        var metaFileOption = new Option<string>(["--meta-file", "-mf"], static () => "meta.json", "Meta definition file to define the compression type and the chunk size.") { Arity = ArgumentArity.ExactlyOne, IsRequired = false, ArgumentHelpName = "file" };
 
         AddArgument(inputArgument);
         AddOption(outputOption);

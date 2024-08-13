@@ -39,7 +39,7 @@ public sealed class MarArchive : IDisposable
     private readonly BinaryReader? _reader;
     private readonly BinaryWriter? _writer;
 
-    private readonly List<MarArchiveEntry> _entries = new();
+    private readonly List<MarArchiveEntry> _entries = [];
 
     private bool _hasEntriesRead;
 

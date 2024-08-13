@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.Buffers;
+using System.Diagnostics;
 using System.Text;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Archive;
@@ -34,7 +35,8 @@ public sealed class MarArchiveEntry
         {
             if (memoryStream.TryGetBuffer(out var arraySegment))
             {
-                MemoryStream = new MemoryStream(arraySegment.Array!, arraySegment.Offset + fileOffset, fileLength);
+                Debug.Assert(arraySegment.Array != null, "arraySegment.Array != null");
+                MemoryStream = new MemoryStream(arraySegment.Array, arraySegment.Offset + fileOffset, fileLength);
             }
             else
             {

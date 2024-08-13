@@ -1,5 +1,5 @@
 ﻿// Fossil Fighters Tool is used to decompress and compress MAR archives used in Fossil Fighters game.
-// Copyright (C) 2023 Yong Jian Ming
+// Copyright (C) 2024 Yong Jian Ming
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -14,15 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.IO;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Text.Json;
-using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Controls.Selection;
@@ -72,7 +68,10 @@ public sealed class MainWindowViewModel : ViewModel
 
     public HierarchicalTreeDataGridSource<NitroRomNode> NitroRomNodeSource { get; }
 
-    private readonly ObservableCollection<NitroRomNode> _nitroRomNodes = new();
+    private static readonly string[] s_nintendoRomPatterns = ["*.nds"];
+    private static readonly string[] s_nintendoRomMimeTypes = ["application/x-nintendo-ds-rom"];
+
+    private readonly ObservableCollection<NitroRomNode> _nitroRomNodes = [];
 
     [Reactive]
     private NdsFilesystem? LoadedRom { get; set; }
@@ -132,8 +131,8 @@ public sealed class MainWindowViewModel : ViewModel
                 {
                     new FilePickerFileType("Nintendo DS ROM")
                     {
-                        Patterns = new[] { "*.nds" },
-                        MimeTypes = new[] { "application/x-nintendo-ds-rom" }
+                        Patterns = s_nintendoRomPatterns,
+                        MimeTypes = s_nintendoRomMimeTypes
                     }
                 }
             });
@@ -177,8 +176,8 @@ public sealed class MainWindowViewModel : ViewModel
                 {
                     new FilePickerFileType("Nintendo DS ROM")
                     {
-                        Patterns = new[] { "*.nds" },
-                        MimeTypes = new[] { "application/x-nintendo-ds-rom" }
+                        Patterns = s_nintendoRomPatterns,
+                        MimeTypes = s_nintendoRomMimeTypes
                     }
                 },
                 ShowOverwritePrompt = true

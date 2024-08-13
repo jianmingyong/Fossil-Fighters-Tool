@@ -36,17 +36,19 @@ internal sealed class DecompressCommand : Command
     public DecompressCommand() : base("decompress", Localization.DecompressCommandDescription)
     {
         var inputArgument = new Argument<string[]>("input", "List of folders or files to extract.") { Arity = ArgumentArity.OneOrMore };
-        var outputOption = new Option<string>(new[] { "--output", "-o" }, () => string.Empty, "Output folder to place the extracted contents.") { Arity = ArgumentArity.ExactlyOne, IsRequired = false };
-        var excludeOption = new Option<string[]>(new[] { "--exclude", "-e" }, () => new[] { "**/bin/**/*" }, "Exclude files to be decompressed. You can use wildcard (*) to specify one or more folders.") { Arity = ArgumentArity.OneOrMore, IsRequired = false };
+        var outputOption = new Option<string>(["--output", "-o"], () => string.Empty, "Output folder to place the extracted contents.") { Arity = ArgumentArity.ExactlyOne, IsRequired = false };
+        var excludeOption = new Option<string[]>(["--exclude", "-e"], () => ["**/bin/**/*"], "Exclude files to be decompressed. You can use wildcard (*) to specify one or more folders.") { Arity = ArgumentArity.OneOrMore, IsRequired = false };
+        var outputExtra = new Option<bool>(["--extra", "-ex"], () => false, "Include extra files when extracting contents.") { Arity = ArgumentArity.ZeroOrOne, IsRequired = false };
 
         AddArgument(inputArgument);
         AddOption(outputOption);
         AddOption(excludeOption);
+        AddOption(outputExtra);
 
-        this.SetHandler(Invoke, inputArgument, outputOption, excludeOption);
+        this.SetHandler(Invoke, inputArgument, outputOption, excludeOption, outputExtra);
     }
 
-    private static void Invoke(string[] inputs, string output, string[] excludes)
+    private static void Invoke(string[] inputs, string output, string[] excludes, bool outputExtra)
     {
         foreach (var input in inputs)
         {
@@ -73,7 +75,7 @@ internal sealed class DecompressCommand : Command
 
                     foreach (var file in matcher.GetResultsInFullPath(outputPath))
                     {
-                        Decompress(file, output);
+                        Decompress(file, output, outputExtra);
                     }
 
                     continue;
@@ -103,7 +105,7 @@ internal sealed class DecompressCommand : Command
                     }
                 }
 
-                Decompress(input, output);
+                Decompress(input, output, outputExtra);
             }
             else if (Directory.Exists(input))
             {
@@ -114,7 +116,7 @@ internal sealed class DecompressCommand : Command
 
                 foreach (var file in matcher.GetResultsInFullPath(input))
                 {
-                    Decompress(file, output);
+                    Decompress(file, output, outputExtra);
                 }
             }
             else
@@ -124,7 +126,7 @@ internal sealed class DecompressCommand : Command
         }
     }
 
-    private static void Decompress(string input, string output)
+    private static void Decompress(string input, string output, bool outputExtra)
     {
         Console.WriteLine(Localization.FileExtracting, input);
 
@@ -176,6 +178,8 @@ internal sealed class DecompressCommand : Command
                         {
                             case AclHeader.FileHeader:
                             {
+                                if (!outputExtra) break;
+
                                 fileStream.Seek(0, SeekOrigin.Begin);
 
                                 var header = AclHeader.GetHeaderFromStream(fileStream);
@@ -188,6 +192,8 @@ internal sealed class DecompressCommand : Command
 
                             case DmsHeader.FileHeader:
                             {
+                                if (!outputExtra) break;
+
                                 fileStream.Seek(0, SeekOrigin.Begin);
 
                                 var header = DmsHeader.GetHeaderFromStream(fileStream);
@@ -210,7 +216,7 @@ internal sealed class DecompressCommand : Command
 
                                     if (!File.Exists(colorPaletteFile))
                                     {
-                                        Decompress(Path.Combine(Path.GetDirectoryName(input)!, mmsHeader.ColorPaletteFileName), Path.Combine(output, ".."));
+                                        Decompress(Path.Combine(Path.GetDirectoryName(input)!, mmsHeader.ColorPaletteFileName), Path.Combine(output, ".."), outputExtra);
                                     }
 
                                     using var colorPaletteFileStream = new FileStream(colorPaletteFile, FileMode.Open, FileAccess.Read);
@@ -229,7 +235,7 @@ internal sealed class DecompressCommand : Command
 
                                     if (!File.Exists(bitmapFile))
                                     {
-                                        Decompress(Path.Combine(Path.GetDirectoryName(input)!, mmsHeader.BitmapFileName), Path.Combine(output, ".."));
+                                        Decompress(Path.Combine(Path.GetDirectoryName(input)!, mmsHeader.BitmapFileName), Path.Combine(output, ".."), outputExtra);
                                     }
 
                                     using var bitmapFileStream = new FileStream(bitmapFile, FileMode.Open, FileAccess.Read);
@@ -257,7 +263,7 @@ internal sealed class DecompressCommand : Command
 
                                 if (!File.Exists(colorPaletteFile))
                                 {
-                                    Decompress(Path.Combine(Path.GetDirectoryName(input)!, mpmHeader.ColorPaletteFileName), Path.Combine(output, ".."));
+                                    Decompress(Path.Combine(Path.GetDirectoryName(input)!, mpmHeader.ColorPaletteFileName), Path.Combine(output, ".."), outputExtra);
                                 }
 
                                 using var colorPaletteFileStream = new FileStream(colorPaletteFile, FileMode.Open, FileAccess.Read);
@@ -267,7 +273,7 @@ internal sealed class DecompressCommand : Command
 
                                 if (!File.Exists(bitmapFile))
                                 {
-                                    Decompress(Path.Combine(Path.GetDirectoryName(input)!, mpmHeader.BitmapFileName), Path.Combine(output, ".."));
+                                    Decompress(Path.Combine(Path.GetDirectoryName(input)!, mpmHeader.BitmapFileName), Path.Combine(output, ".."), outputExtra);
                                 }
 
                                 if (mpmHeader.BgMapFileIndex == 0)
@@ -287,7 +293,7 @@ internal sealed class DecompressCommand : Command
 
                                     if (!File.Exists(bitmapFile))
                                     {
-                                        Decompress(Path.Combine(Path.GetDirectoryName(input)!, mpmHeader.BgMapFileName), Path.Combine(output, ".."));
+                                        Decompress(Path.Combine(Path.GetDirectoryName(input)!, mpmHeader.BgMapFileName), Path.Combine(output, ".."), outputExtra);
                                     }
 
                                     using var bitmapFileStream = new FileStream(bitmapFile, FileMode.Open, FileAccess.Read);
@@ -313,6 +319,8 @@ internal sealed class DecompressCommand : Command
 
                             case DtxFile.FileHeader:
                             {
+                                if (!outputExtra) break;
+
                                 fileStream.Seek(0, SeekOrigin.Begin);
 
                                 var dtxFile = DtxFile.ReadFromRawStream(fileStream);
@@ -328,6 +336,8 @@ internal sealed class DecompressCommand : Command
 
                             case DmgFile.FileHeader:
                             {
+                                if (!outputExtra) break;
+
                                 fileStream.Seek(0, SeekOrigin.Begin);
 
                                 var dmgFile = DmgFile.ReadFromRawStream(fileStream);

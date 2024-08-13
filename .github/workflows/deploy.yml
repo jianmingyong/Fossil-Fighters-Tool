@@ -8,7 +8,7 @@ on:
 env:
   PROJECT_PROPERTIES: TheDialgaTeam.FossilFighters.prop
   PROJECT_PUBLISH_ROOT: bin
-  DOTNET_VERSION: 7.0.x
+  DOTNET_VERSION: 8.0.x
   RELEASE_TEMPLATE: RELEASE_TEMPLATE.md
 
 defaults:
