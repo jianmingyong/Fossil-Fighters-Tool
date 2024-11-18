@@ -24,9 +24,11 @@
                     <MenuItem Header="_Open" Command="{Binding OpenFile}" />
                     <MenuItem Header="_Save As..." Command="{Binding SaveFile}" />
                 </MenuItem>
+                <!-- Not Implemented
                 <MenuItem Header="_Editor" IsEnabled="{Binding IsRomLoaded}">
                     <MenuItem Header="_Text Editor" />
                 </MenuItem>
+                -->
             </Menu>
         </Grid>
 

@@ -38,6 +38,8 @@ public sealed class NitroRomFile : INitroRom
 
     public NitroRomType FileType { get; }
 
+    public bool IsDirty => _nitroRomData is not null;
+
     private readonly NdsFilesystem _ndsFilesystem;
     private MemoryStream? _nitroRomData;
 

@@ -218,7 +218,7 @@ public sealed class NdsFilesystem : IDisposable
             using var outputStream = new MemoryStream(outputBuffer);
             outputStream.SetLength(0);
 
-            using var reader = new BinaryReader(Stream, Encoding.ASCII);
+            using var reader = new BinaryReader(Stream, Encoding.ASCII, true);
 
             // Write the header first (we will update the header at the end eventually)
             await outputStream.WriteAsync(Stream.GetBuffer().AsMemory(0, 0x4000), cancellationToken).ConfigureAwait(false);

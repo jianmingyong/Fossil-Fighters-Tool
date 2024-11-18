@@ -91,7 +91,7 @@ public sealed class MainWindowViewModel : ViewModel
             {
                 new HierarchicalExpanderColumn<NitroRomNode>(new TextColumn<NitroRomNode, string>("Name", node => node.Name), node => node.ChildNodes, node => node.ChildNodes.Count > 0),
                 new TextColumn<NitroRomNode, string>("Type", node => node.FileTypeDisplay),
-                new TextColumn<NitroRomNode, string>("Size", node => node.FileType == NitroRomType.FileFolder ? string.Empty : $"{node.Size:N0} B")
+                new TextColumn<NitroRomNode, string>("Size", node => node.FileType == NitroRomType.FileFolder ? string.Empty : $"{node.Size:N0} B {(node.IsDirty ? "(Dirty)" : "")}")
             }
         };
 
@@ -172,14 +172,14 @@ public sealed class MainWindowViewModel : ViewModel
 
             var selectedFile = await SaveFilePicker.Handle(new FilePickerSaveOptions
             {
-                FileTypeChoices = new[]
-                {
+                FileTypeChoices =
+                [
                     new FilePickerFileType("Nintendo DS ROM")
                     {
                         Patterns = s_nintendoRomPatterns,
                         MimeTypes = s_nintendoRomMimeTypes
                     }
-                },
+                ],
                 ShowOverwritePrompt = true
             });
 

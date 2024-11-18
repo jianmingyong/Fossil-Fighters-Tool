@@ -40,6 +40,9 @@ public sealed class NitroRomNode : ReactiveObject
     [Reactive]
     public uint Size { get; private set; }
 
+    [Reactive]
+    public bool IsDirty { get; private set; }
+
     private const string FileFolderTypeName = "File Folder";
     private const string FileTypeName = "File";
     private const string MarArchiveTypeName = "Mar Archive";
@@ -215,6 +218,7 @@ public sealed class NitroRomNode : ReactiveObject
         if (_nitroRom is NitroRomFile nitroRomFile)
         {
             Size = nitroRomFile.Size;
+            IsDirty = nitroRomFile.IsDirty;
         }
     }
 }
