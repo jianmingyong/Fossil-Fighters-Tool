@@ -1,5 +1,5 @@
 ﻿// Fossil Fighters Tool is used to decompress and compress MAR archives used in Fossil Fighters game.
-// Copyright (C) 2023 Yong Jian Ming
+// Copyright (C) 2026 Yong Jian Ming
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -35,20 +35,60 @@ internal sealed class DecompressCommand : Command
 {
     public DecompressCommand() : base("decompress", Localization.DecompressCommandDescription)
     {
-        var inputArgument = new Argument<string[]>("input", "List of folders or files to extract.") { Arity = ArgumentArity.OneOrMore };
-        var outputOption = new Option<string>(["--output", "-o"], () => string.Empty, "Output folder to place the extracted contents.") { Arity = ArgumentArity.ExactlyOne, IsRequired = false };
-        var excludeOption = new Option<string[]>(["--exclude", "-e"], () => ["**/bin/**/*"], "Exclude files to be decompressed. You can use wildcard (*) to specify one or more folders.") { Arity = ArgumentArity.OneOrMore, IsRequired = false };
-        var outputExtra = new Option<bool>(["--extra", "-ex"], () => false, "Include extra files when extracting contents.") { Arity = ArgumentArity.ZeroOrOne, IsRequired = false };
+        var inputArgument = new Argument<string[]>("input")
+        {
+            Description = "List of folders or files to extract.",
+            Arity = ArgumentArity.OneOrMore
+        };
+        var outputOption = new Option<string>("--output", "-o")
+        {
+            Description = "Output folder to place the extracted contents.",
+            DefaultValueFactory = static _ => string.Empty,
+            Arity = ArgumentArity.ExactlyOne,
+            Required = false
+        };
+        var excludeOption = new Option<string[]>("--exclude", "-e")
+        {
+            Description = "Exclude files to be decompressed. You can use wildcard (*) to specify one or more folders.",
+            DefaultValueFactory = static _ => ["**/bin/**/*"],
+            Arity = ArgumentArity.OneOrMore,
+            Required = false
+        };
+        var outputExtra = new Option<bool>("--extra", "-ex")
+        {
+            Description = "Include extra files when extracting contents.",
+            DefaultValueFactory = static _ => false,
+            Arity = ArgumentArity.ZeroOrOne,
+            Required = false
+        };
+        var extractOnlyOption = new Option<bool>("--extract-only", "-eo")
+        {
+            Description = "Extract nds files only. It will not decompress anything.",
+            Arity = ArgumentArity.ZeroOrOne,
+            Required = false
+        };
 
-        AddArgument(inputArgument);
-        AddOption(outputOption);
-        AddOption(excludeOption);
-        AddOption(outputExtra);
+        Add(inputArgument);
+        Add(outputOption);
+        Add(excludeOption);
+        Add(outputExtra);
+        Add(extractOnlyOption);
 
-        this.SetHandler(Invoke, inputArgument, outputOption, excludeOption, outputExtra);
+        SetAction(result =>
+        {
+            Invoke(
+                result.GetRequiredValue(inputArgument),
+                result.GetRequiredValue(outputOption),
+                result.GetRequiredValue(excludeOption),
+                result.GetRequiredValue(outputExtra),
+                result.GetRequiredValue(extractOnlyOption)
+            );
+
+            return 0;
+        });
     }
 
-    private static void Invoke(string[] inputs, string output, string[] excludes, bool outputExtra)
+    private static void Invoke(string[] inputs, string output, string[] excludes, bool outputExtra, bool extractOnly)
     {
         foreach (var input in inputs)
         {
@@ -58,7 +98,7 @@ internal sealed class DecompressCommand : Command
                 {
                     using var ndsFileStream = File.OpenRead(input);
                     var ndsFileSystem = NdsFilesystem.FromStream(ndsFileStream);
-                    var outputPath = Path.Combine(Path.GetDirectoryName(input)!, ndsFileSystem.GameCode.AsSpan().ToString());
+                    var outputPath = Path.Join(Path.GetDirectoryName(input), ndsFileSystem.GameCode.AsSpan().ToString());
 
                     if (!Directory.Exists(outputPath))
                     {
@@ -68,6 +108,8 @@ internal sealed class DecompressCommand : Command
                     Console.WriteLine(Localization.ExtractingNdsFile);
 
                     ExportFile(ndsFileSystem.RootDirectory, outputPath);
+
+                    if (extractOnly) continue;
 
                     var matcher = new Matcher();
                     matcher.AddInclude("**/*");

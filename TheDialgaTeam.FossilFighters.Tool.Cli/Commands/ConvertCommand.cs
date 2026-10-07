@@ -1,5 +1,5 @@
 ﻿// Fossil Fighters Tool is used to decompress and compress MAR archives used in Fossil Fighters game.
-// Copyright (C) 2023 Yong Jian Ming
+// Copyright (C) 2026 Yong Jian Ming
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -23,8 +23,8 @@ internal sealed class ConvertCommand : Command
 {
     public ConvertCommand() : base("convert", "Show a list of converter available.")
     {
-        AddCommand(new ConvertDmgFileCommand());
-        AddCommand(new ConvertDtxFileCommand());
+        Add(new ConvertDmgFileCommand());
+        Add(new ConvertDtxFileCommand());
     }
 }
 
@@ -32,23 +32,41 @@ internal sealed class ConvertDmgFileCommand : Command
 {
     public ConvertDmgFileCommand() : base("dmg", "Convert json file into dmg file format.")
     {
-        var inputArgument = new Argument<FileInfo>("inputFile", "Input json file to convert.") { Arity = ArgumentArity.ExactlyOne };
-        inputArgument.ExistingOnly();
-
-        var outputArgument = new Argument<FileInfo>("outputFile", "Output file after conversion.") { Arity = ArgumentArity.ExactlyOne };
-
-        AddArgument(inputArgument);
-        AddArgument(outputArgument);
-
-        this.SetHandler(static (inputFile, outputFile) =>
+        var inputArgument = new Argument<FileInfo>("inputFile")
         {
-            using var inputFileStream = inputFile.OpenRead();
-            using var outputFileStream = outputFile.OpenWrite();
+            Description = "Input json file to convert.", 
+            Arity = ArgumentArity.ExactlyOne
+        };
+        inputArgument.AcceptExistingOnly();
+
+        var outputArgument = new Argument<FileInfo>("outputFile")
+        {
+            Description = "Output file after conversion.", 
+            Arity = ArgumentArity.ExactlyOne
+        };
+
+        Add(inputArgument);
+        Add(outputArgument);
+        
+        SetAction(result =>
+        {
+            var input = result.GetRequiredValue(inputArgument);
+            var output = result.GetRequiredValue(outputArgument);
             
-            DmgFile.ReadFromJsonStream(inputFileStream).WriteToStream(outputFileStream);
-            
-            Console.WriteLine(Localization.FileConvertedFromTo, inputFile.FullName, outputFile.FullName);
-        }, inputArgument, outputArgument);
+            Convert(input, output);
+
+            return 0;
+        });
+    }
+
+    private static void Convert(FileInfo inputFile, FileInfo outputFile)
+    {
+        using var inputFileStream = inputFile.OpenRead();
+        using var outputFileStream = outputFile.OpenWrite();
+
+        DmgFile.ReadFromJsonStream(inputFileStream).WriteToStream(outputFileStream);
+
+        Console.WriteLine(Localization.FileConvertedFromTo, inputFile.FullName, outputFile.FullName);
     }
 }
 
@@ -56,22 +74,32 @@ internal sealed class ConvertDtxFileCommand : Command
 {
     public ConvertDtxFileCommand() : base("dtx", "Convert json file into dtx file format.")
     {
-        var inputArgument = new Argument<FileInfo>("inputFile", "Input json file to convert.") { Arity = ArgumentArity.ExactlyOne };
-        inputArgument.ExistingOnly();
+        var inputArgument = new Argument<FileInfo>("inputFile") { Description = "Input json file to convert.", Arity = ArgumentArity.ExactlyOne };
+        inputArgument.AcceptExistingOnly();
 
-        var outputArgument = new Argument<FileInfo>("outputFile", "Output file after conversion.") { Arity = ArgumentArity.ExactlyOne };
+        var outputArgument = new Argument<FileInfo>("outputFile") { Description = "Output file after conversion.", Arity = ArgumentArity.ExactlyOne };
 
-        AddArgument(inputArgument);
-        AddArgument(outputArgument);
+        Add(inputArgument);
+        Add(outputArgument);
 
-        this.SetHandler(static (inputFile, outputFile) =>
+        SetAction(result =>
         {
-            using var inputFileStream = inputFile.OpenRead();
-            using var outputFileStream = outputFile.OpenWrite();
+            var input = result.GetRequiredValue(inputArgument);
+            var output = result.GetRequiredValue(outputArgument);
             
-            DtxFile.ReadFromJsonStream(inputFileStream).WriteToStream(outputFileStream);
-            
-            Console.WriteLine(Localization.FileConvertedFromTo, inputFile.FullName, outputFile.FullName);
-        }, inputArgument, outputArgument);
+            Convert(input, output);
+
+            return 0;
+        });
+    }
+
+    private static void Convert(FileInfo inputFile, FileInfo outputFile)
+    {
+        using var inputFileStream = inputFile.OpenRead();
+        using var outputFileStream = outputFile.OpenWrite();
+
+        DtxFile.ReadFromJsonStream(inputFileStream).WriteToStream(outputFileStream);
+
+        Console.WriteLine(Localization.FileConvertedFromTo, inputFile.FullName, outputFile.FullName);
     }
 }

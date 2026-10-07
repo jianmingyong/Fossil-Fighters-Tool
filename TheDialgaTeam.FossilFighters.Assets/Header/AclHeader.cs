@@ -1,5 +1,5 @@
 ﻿// Fossil Fighters Tool is used to decompress and compress MAR archives used in Fossil Fighters game.
-// Copyright (C) 2023 Yong Jian Ming
+// Copyright (C) 2026 Yong Jian Ming
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -20,20 +20,20 @@ using System.Text.Json.Serialization;
 
 namespace TheDialgaTeam.FossilFighters.Assets.Header;
 
+public record DlcInfo(ushort Index, ushort Id);
+
 [JsonSourceGenerationOptions(WriteIndented = true)]
 [JsonSerializable(typeof(AclHeader))]
 public sealed partial class AclHeaderContext : JsonSerializerContext
 {
 }
 
-public record DlcInfo(ushort Index, ushort Id);
-
 public sealed class AclHeader
 {
     public const int FileHeader = 0x004C4341;
 
     public DlcInfo[] DlcInfos { get; set; } = Array.Empty<DlcInfo>();
-    
+
     private AclHeader()
     {
     }
@@ -47,9 +47,9 @@ public sealed class AclHeader
         var dlcCount = reader.ReadInt32();
         var offset = reader.ReadInt32();
         var dlcInfos = new DlcInfo[dlcCount];
-        
+
         reader.BaseStream.Seek(offset, SeekOrigin.Begin);
-        
+
         for (var i = 0; i < dlcCount; i++)
         {
             dlcInfos[i] = new DlcInfo(reader.ReadUInt16(), reader.ReadUInt16());
@@ -60,7 +60,7 @@ public sealed class AclHeader
             DlcInfos = dlcInfos
         };
     }
-    
+
     public string ToJsonString()
     {
         return JsonSerializer.Serialize(this, AclHeaderContext.Default.AclHeader);

@@ -26,40 +26,84 @@ internal sealed class CompressCommand : Command
 {
     public CompressCommand() : base("compress", Localization.CompressCommandDescription)
     {
-        var inputArgument = new Argument<string>("input", "Target folder to compress.") { Arity = ArgumentArity.ExactlyOne };
-        inputArgument.LegalFilePathsOnly();
-
-        var outputOption = new Option<string>(["--output", "-o"], "Output file after compression.") { Arity = ArgumentArity.ExactlyOne, IsRequired = true, ArgumentHelpName = "file" };
-
-        var includeOption = new Option<string[]>(["--include", "-i"], static () => ["*.bin"], "Include files to be compressed. You can use wildcard (*) to specify one or more files. E.g \"-i *.bin -i *.hex\"") { Arity = ArgumentArity.OneOrMore, IsRequired = false, ArgumentHelpName = "fileTypes" };
-
-        var compressionTypeOption = new Option<McmFileCompressionType[]>(["--compress-type", "-c"], static () => [], "Type of compression to be used. (Maximum 2) E.g \"-c Huffman -c Lzss\" Compression is done in reverse order. Make sure to put huffman first for better compression ratio.") { Arity = new ArgumentArity(1, 2), IsRequired = false };
-        compressionTypeOption.AddCompletions(Enum.GetNames<McmFileCompressionType>());
-
-        var maxSizePerChunkOption = new Option<uint>(["--max-size-per-chunk", "-m"], static () => 0x2000, "Split each file into chunks of <size> bytes when compressing.") { Arity = ArgumentArity.ExactlyOne, IsRequired = false, ArgumentHelpName = "size" };
-
-        var metaFileOption = new Option<string>(["--meta-file", "-mf"], static () => "meta.json", "Meta definition file to define the compression type and the chunk size.") { Arity = ArgumentArity.ExactlyOne, IsRequired = false, ArgumentHelpName = "file" };
-
-        AddArgument(inputArgument);
-        AddOption(outputOption);
-        AddOption(includeOption);
-        AddOption(compressionTypeOption);
-        AddOption(maxSizePerChunkOption);
-        AddOption(metaFileOption);
-
-        this.SetHandler(Invoke, inputArgument, outputOption, includeOption, compressionTypeOption, maxSizePerChunkOption, metaFileOption);
-    }
-
-    private static void Invoke(string input, string output, string[] includes, McmFileCompressionType[] compressionTypes, uint maxSizePerChunk, string metaFile)
-    {
-        if (Directory.Exists(input))
+        var inputArgument = new Argument<string>("input")
         {
+            Description = "Target folder to compress.", 
+            Arity = ArgumentArity.ExactlyOne
+        };
+        inputArgument.AcceptLegalFilePathsOnly();
+
+        var outputOption = new Option<string>("--output", "-o")
+        {
+            Description = "Output file after compression", 
+            Arity = ArgumentArity.ExactlyOne, 
+            Required = true,
+            HelpName = "file"
+        };
+
+        var includeOption = new Option<string[]>("--include", "-i")
+        {
+            Description = "Include files to be compressed. You can use wildcard (*) to specify one or more files. E.g \"-i *.bin -i *.hex\"",
+            Arity = ArgumentArity.OneOrMore,
+            Required = false, 
+            HelpName = "fileTypes",
+            DefaultValueFactory = static _ => ["*.bin"]
+        };
+
+        var compressionTypeOption = new Option<McmFileCompressionType[]>("--compress-type", "-c")
+        {
+            Description = "Type of compression to be used. (Maximum 2) E.g \"-c Huffman -c Lzss\" Compression is done in reverse order. Make sure to put huffman first for better compression ratio.",
+            Arity = new ArgumentArity(1, 2), 
+            Required = false,
+            DefaultValueFactory = static _ => []
+        };
+        compressionTypeOption.CompletionSources.Add(Enum.GetNames<McmFileCompressionType>());
+
+        var maxSizePerChunkOption = new Option<uint>("--max-size-per-chunk", "-m")
+        {
+            Description = "Split each file into chunks of <size> bytes when compressing.",
+            Arity = ArgumentArity.ExactlyOne, 
+            Required = false, 
+            HelpName = "size",
+            DefaultValueFactory = static _ => 0x2000
+        };
+
+        var metaFileOption = new Option<string>("--meta-file", "-mf")
+        {
+            Description =  "Meta definition file to define the compression type and the chunk size.",
+            Arity = ArgumentArity.ExactlyOne, 
+            Required = false, 
+            HelpName = "file",
+            DefaultValueFactory = static _ => "meta.json"
+        };
+        
+        Add(inputArgument);
+        Add(outputOption);
+        Add(includeOption);
+        Add(compressionTypeOption);
+        Add(maxSizePerChunkOption);
+        Add(metaFileOption);
+        
+        SetAction(result =>
+        {
+            var input = result.GetRequiredValue(inputArgument);
+            
+            if (!Directory.Exists(input))
+            {
+                Console.WriteLine(Localization.InputDoesNotExists, input);
+                return -1;
+            }
+            
+            var output = result.GetRequiredValue(outputOption);
+            var includes = result.GetRequiredValue(includeOption);
+            var compressionTypes = result.GetRequiredValue(compressionTypeOption);
+            var maxSizePerChunk = result.GetRequiredValue(maxSizePerChunkOption);
+            var metaFile = result.GetRequiredValue(metaFileOption);
+            
             Compress(input, output, includes, compressionTypes, maxSizePerChunk, metaFile);
-        }
-        else
-        {
-            Console.WriteLine(Localization.InputDoesNotExists, input);
-        }
+
+            return 0;
+        });
     }
 
     private static void Compress(string inputFolder, string outputFile, IEnumerable<string> includes, IReadOnlyList<McmFileCompressionType> compressionTypes, uint maxSizePerChunk, string metaFile)

@@ -1,5 +1,5 @@
 ﻿// Fossil Fighters Tool is used to decompress and compress MAR archives used in Fossil Fighters game.
-// Copyright (C) 2023 Yong Jian Ming
+// Copyright (C) 2026 Yong Jian Ming
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@ public sealed partial class DmsHeaderContext : JsonSerializerContext
 public sealed class DmsHeader
 {
     public const int FileHeader = 0x00534D44;
-    
+
     public int Value { get; set; }
 
     public static DmsHeader GetHeaderFromStream(Stream stream)
@@ -43,7 +43,7 @@ public sealed class DmsHeader
             Value = reader.ReadInt32()
         };
     }
-    
+
     public string ToJsonString()
     {
         return JsonSerializer.Serialize(this, DmsHeaderContext.Default.DmsHeader);

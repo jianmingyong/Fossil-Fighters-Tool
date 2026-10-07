@@ -15,20 +15,20 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.CommandLine;
-using System.CommandLine.Builder;
-using System.CommandLine.Parsing;
 using TheDialgaTeam.FossilFighters.Tool.Cli.Commands;
 
 namespace TheDialgaTeam.FossilFighters.Tool.Cli;
 
 internal static class Program
 {
-    public static async Task<int> Main(string[] args)
+    public static int Main(string[] args)
     {
-        var rootCommand = new RootCommand(Localization.FossilFightersToolDescription);
-        rootCommand.AddCommand(new CompressCommand());
-        rootCommand.AddCommand(new DecompressCommand());
-        rootCommand.AddCommand(new ConvertCommand());
+        var rootCommand = new RootCommand(Localization.FossilFightersToolDescription)
+        {
+            new CompressCommand(),
+            new DecompressCommand(),
+            new ConvertCommand()
+        };
 
         if (args.Length > 0)
         {
@@ -40,6 +40,6 @@ internal static class Program
             }
         }
 
-        return await new CommandLineBuilder(rootCommand).UseDefaults().Build().InvokeAsync(args);
+        return rootCommand.Parse(args).Invoke();
     }
 }

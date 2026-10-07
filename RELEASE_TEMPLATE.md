@@ -1,6 +1,5 @@
-Change Logs from v2.2.0:
-- GUI: Fixed rom saving issues.
-- GUI: Added dirty status display when file(s) are modified.
+Change Logs from v2.3.0:
+- CLI: Added `--extract-only` option for decompress to speed up extracting nds files only.
 
 Extra Files Supported:
 - `motion` folder - Containing UI/Sprites.

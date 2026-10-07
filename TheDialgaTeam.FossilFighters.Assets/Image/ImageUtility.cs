@@ -1,5 +1,5 @@
 ﻿// Fossil Fighters Tool is used to decompress and compress MAR archives used in Fossil Fighters game.
-// Copyright (C) 2022 Yong Jian Ming
+// Copyright (C) 2026 Yong Jian Ming
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System.Text;
+using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using TheDialgaTeam.FossilFighters.Assets.Header;
 
@@ -34,7 +35,7 @@ public static class ImageUtility
         tempStream.Seek(0, SeekOrigin.Begin);
 
         using var reader = new BinaryReader(tempStream);
-        
+
         var colorTable = new List<Bgra5551>();
 
         while (tempStream.Position < tempStream.Length)
@@ -42,7 +43,7 @@ public static class ImageUtility
             var rawValue = reader.ReadUInt16();
             colorTable.Add(new Bgra5551((rawValue & 0x1F) / 31f, ((rawValue >> 5) & 0x1F) / 31f, ((rawValue >> 10) & 0x1F) / 31f, colorTable.Count == 0 ? 0 : 1));
         }
-        
+
         return new ColorPalette(colorTable.Count <= 16 ? ColorPaletteType.Color16 : ColorPaletteType.Color256, colorTable.ToArray());
     }
 
@@ -83,9 +84,9 @@ public static class ImageUtility
         return result;
     }
 
-    public static SixLabors.ImageSharp.Image<Bgra5551> GetImage(MpmHeader header, ColorPalette colorPalette, byte[] bitmap, int gridSize = 8)
+    public static Image<Bgra5551> GetImage(MpmHeader header, ColorPalette colorPalette, byte[] bitmap, int gridSize = 8)
     {
-        var image = new SixLabors.ImageSharp.Image<Bgra5551>(header.Width, header.Height);
+        var image = new Image<Bgra5551>(header.Width, header.Height);
         var bitmapIndex = 0;
 
         if (colorPalette.Type == ColorPaletteType.Color16)
@@ -115,11 +116,11 @@ public static class ImageUtility
         return image;
     }
 
-    public static SixLabors.ImageSharp.Image<Bgra5551> GetImage(MpmHeader header, ColorPalette colorPalette, ChunkBitmap chunkBitmap)
+    public static Image<Bgra5551> GetImage(MpmHeader header, ColorPalette colorPalette, ChunkBitmap chunkBitmap)
     {
         const int gridSize = 8;
 
-        var image = new SixLabors.ImageSharp.Image<Bgra5551>(header.Width, header.Height);
+        var image = new Image<Bgra5551>(header.Width, header.Height);
         var gridX = 0;
         var gridY = 0;
 

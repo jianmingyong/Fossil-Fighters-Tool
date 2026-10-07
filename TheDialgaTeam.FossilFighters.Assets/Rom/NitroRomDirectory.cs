@@ -1,5 +1,5 @@
 ﻿// Fossil Fighters Tool is used to decompress and compress MAR archives used in Fossil Fighters game.
-// Copyright (C) 2022 Yong Jian Ming
+// Copyright (C) 2026 Yong Jian Ming
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@ public sealed class NitroRomDirectory : INitroRom
     {
         get
         {
-            if (_fullPath is not null) return _fullPath;
+            if (field is not null) return field;
 
             var temp = new List<string> { Name };
             var currentDirectory = this;
@@ -35,8 +35,8 @@ public sealed class NitroRomDirectory : INitroRom
                 currentDirectory = currentDirectory._parentDirectory;
             }
 
-            _fullPath = string.Join("/", temp.AsEnumerable().Reverse());
-            return _fullPath;
+            field = string.Join("/", temp.AsEnumerable().Reverse());
+            return field;
         }
     }
 
@@ -48,8 +48,6 @@ public sealed class NitroRomDirectory : INitroRom
 
     public List<NitroRomFile> Files { get; } = [];
     private readonly NitroRomDirectory? _parentDirectory;
-
-    private string? _fullPath;
 
     public NitroRomDirectory(NdsFilesystem ndsFilesystem, ushort id, string name)
     {
