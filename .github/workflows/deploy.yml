@@ -22,12 +22,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
       - name: Install dotnet
-        uses: actions/setup-dotnet@v2
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -65,7 +65,7 @@ jobs:
           7z a -mx9 -sdel "osx-x64.tar.gz" "osx-x64.tar"
 
       - name: Deploy FFTool
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3.0.3
         with:
           name: Fossil Fighters Assets Extractor ${{ steps.get_version.outputs.version }}
           body_path: ${{ github.workspace }}/${{ env.RELEASE_TEMPLATE }}
